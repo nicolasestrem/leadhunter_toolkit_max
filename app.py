@@ -626,7 +626,7 @@ with tab1:
             except Exception as e:
                 st.warning(f"Crawl error on {u}: {e}")
 
-        st.toast(f"Crawled {len(all_pages)} pages from {total_sites} sites", icon="✓")
+        st.toast(f"Crawled {len(all_pages)} pages from {total_sites} sites", icon="✅")
 
         # Phase 2: Extracting and classifying
         status_text.text(f"📊 Extracting contact information from {len(all_pages)} pages...")
@@ -775,7 +775,7 @@ with tab2:
                     status_text.text(f"✓ Classification complete!")
                     elapsed_total = (datetime.datetime.now() - start_time).total_seconds()
                     st.success(f"✅ Classified {len(classified)} leads in {elapsed_total:.1f}s (avg {elapsed_total/len(classified):.1f}s per lead)")
-                    st.toast(f"Classified {len(classified)} leads", icon="✓")
+                    st.toast(f"Classified {len(classified)} leads", icon="✅")
 
                 except Exception as e:
                     st.error(f"Classification failed: {str(e)}")
@@ -1241,7 +1241,7 @@ with tab4:
                         progress_bar.progress(1.0)
                         status_text.text(f"✓ Crawled {len(pages_data)} pages")
                         st.success(f"✅ Fetched {len(pages_data)} pages with {sum(len(p.get('content', '')) for p in pages_data)} total characters")
-                        st.toast(f"Crawled {len(pages_data)} pages", icon="✓")
+                        st.toast(f"Crawled {len(pages_data)} pages", icon="✅")
 
                     except Exception as e:
                         st.error(f"Crawl failed: {str(e)}")
@@ -1558,7 +1558,7 @@ with tab5:
                 progress_bar.progress(1.0)
                 status_text.text("✓ Audit complete!")
                 st.success(f"✅ Page audit complete! Score: {page_audit.score}/100, Grade: {page_audit.grade}")
-                st.toast("Page analyzed!", icon="✓")
+                st.toast("Page analyzed!", icon="✅")
 
             except Exception as e:
                 st.error(f"Audit failed: {str(e)}")
