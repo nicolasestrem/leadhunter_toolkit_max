@@ -115,7 +115,7 @@ curl -X POST https://api.scrapegraph.ai/search \\
     - mock boolean optional returns mock data for testing
 
     **Local LLM**
-    You can summarize leads with a local model or any OpenAI compatible endpoint. Set **LLM base URL** and **LLM API key** in the sidebar then use **Summarize with LLM** in Review.
+    You can summarize leads with a local model or any OpenAI compatible endpoint. Set **LLM base URL** (e.g., `http://localhost:1234` for LM Studio or `http://localhost:11434` for Ollama) and **LLM model** in the sidebar, then use **Summarize with LLM** in Review. The `/v1` path is added automatically. API key is optional for local models.
     """)
 
 # ---- Sidebar ----

@@ -99,7 +99,7 @@ Streamlit session_state["results"] holds the lead list throughout the session. T
 - **Places**: Uses /places:searchText and detail lookups with field masks for efficiency
 
 ### LLM Integration
-LLMClient supports any OpenAI-compatible endpoint (e.g., LM Studio, Ollama). Set llm_base (e.g., "http://localhost:1234" for LM Studio), and llm_model in settings. The llm_key is optional and defaults to "not-needed" for local LLMs that don't require authentication. Used for lead summarization in Review tab. The client includes proper error handling and null-safety checks for response parsing.
+LLMClient supports any OpenAI-compatible endpoint (e.g., LM Studio, Ollama). Set llm_base (e.g., "http://localhost:1234" for LM Studio or "http://localhost:11434" for Ollama), and llm_model in settings. The `/v1` path is automatically appended to the base URL if not present. The llm_key is optional and defaults to "not-needed" for local LLMs that don't require authentication. Used for lead summarization in Review tab. The client includes proper error handling and null-safety checks for response parsing.
 
 ## Common Development Tasks
 

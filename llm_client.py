@@ -4,6 +4,11 @@ from openai import OpenAI
 class LLMClient:
     def __init__(self, api_key: str = "", base_url: str = "", model: str = "gpt-4o-mini"):
         self.api_key = api_key or "not-needed"  # Default for local LLMs like LM Studio
+        # Ensure base_url ends with /v1 for OpenAI compatibility
+        if base_url:
+            base_url = base_url.rstrip('/')
+            if not base_url.endswith('/v1'):
+                base_url = f"{base_url}/v1"
         self.base_url = base_url or None
         self.model = model
 
