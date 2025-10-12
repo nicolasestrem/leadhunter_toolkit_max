@@ -11,6 +11,7 @@ from utils_html import domain_of
 from places import text_search as places_text_search, get_details as places_details
 from crawl import crawl_site
 from classify import classify_lead
+from search_scraper import SearchScraper
 
 BASE = os.path.dirname(__file__)
 SETTINGS_PATH = os.path.join(BASE, "settings.json")
@@ -60,62 +61,88 @@ st.title("Lead Hunter Toolkit • Max")
 st.caption("Deeper crawl, presets, classifiers, XLSX export, editable grid, project workspaces, and local LLM helpers.")
 
 # ---- Top docs expander (flat indentation) ----
-with st.expander("It worked! What else can I do with this?", expanded=True):
+with st.expander("📚 Quick Start Guide", expanded=False):
     st.markdown("""
-    **SearchScraper** is an advanced LLM powered search that aggregates information from multiple web sources and returns either AI extracted answers with sources or raw markdown content.
-    **Modes**
-    - AI Extraction Mode default uses AI to extract and structure specific information 10 credits per page
-    - Markdown Mode returns raw markdown content from scraped pages 2 credits per page
-    """)
-    t1, t2, t3 = st.tabs(["Python", "JavaScript", "cURL"])
-    with t1:
-        st.code("""
-from scrapegraph_js import searchScraper
+    ## Lead Hunter Toolkit Features
 
-api_key = "your-api-key"
-prompt = "What is the latest version of Python and what are its main features?"
-num_results = 5
-resp = searchScraper(api_key, prompt, num_results)  # AI extraction mode
-print(resp)
-        """, language="python")
-        st.caption("Markdown mode fewer credits set extraction_mode=False")
-        st.code("""
-from scrapegraph_js import searchScraper
+    ### 🎯 Hunt Tab
+    **Local Lead Generation**
+    - Search the web (DuckDuckGo or Google Custom Search)
+    - Or paste URLs to scan directly
+    - Smart BFS crawling with contact/about page prioritization
+    - Extract emails, phones, social links automatically
+    - Score and rank leads by data quality
+    - Export to CSV, JSON, or XLSX
 
-api_key = "your-api-key"
-prompt = "Latest developments in artificial intelligence"
-resp = searchScraper(api_key, prompt, 3, extraction_mode=False)
-print(resp["markdown_content"])
-        """, language="python")
-    with t2:
-        st.code("""
-import { searchScraper } from 'scrapegraph-js';
+    ### 🔍 Search Scraper Tab (NEW!)
+    **AI-Powered Web Research**
 
-const apiKey = 'your-api-key';
-const prompt = 'What is the latest version of Python and what are its main features?';
-const numResults = 5;
+    **SearchScraper** aggregates information from multiple web sources using AI:
 
-const response = await searchScraper(apiKey, prompt, numResults);
-console.log(response);
-        """, language="javascript")
-    with t3:
-        st.code("""
-curl -X POST https://api.scrapegraph.ai/search \\
-     -H "Authorization: Bearer YOUR_API_KEY" \\
-     -H "Content-Type: application/json" \\
-     -d '{ "prompt": "Latest developments in AI", "numResults": 3, "extraction_mode": false }'
-        """, language="bash")
-    st.markdown("""
-    **Parameters**
-    - apiKey string required your API key
-    - prompt string required your query
-    - numResults number optional default 3 range 3 to 20
-    - extraction_mode boolean optional defaults to true
-    - schema object optional only in AI extraction mode
-    - mock boolean optional returns mock data for testing
+    **Two Modes:**
+    1. **AI Extraction Mode** (default) - Uses your local LLM to:
+       - Search the web for relevant pages
+       - Extract structured insights answering your question
+       - Synthesize information from multiple sources
+       - Provide citations with URLs
+       - Support custom JSON schemas for structured data
 
-    **Local LLM**
-    You can summarize leads with a local model or any OpenAI compatible endpoint. Set **LLM base URL** (e.g., `http://localhost:1234` for LM Studio or `http://localhost:11434` for Ollama) and **LLM model** in the sidebar, then use **Summarize with LLM** in Review. The `/v1` path is added automatically. API key is optional for local models.
+    2. **Markdown Mode** - Faster, no AI required:
+       - Converts web pages to clean markdown
+       - Returns all content for manual review
+       - Ideal for content migration and documentation
+
+    **Use Cases:**
+    - Research questions: "What are the latest developments in X?"
+    - Competitive analysis: "Compare features of X vs Y"
+    - Market research: "What are the trends in X industry?"
+    - Data aggregation: Collect information from multiple sources
+    - Content creation: Gather source material for articles
+
+    **How to Use:**
+    1. Go to the "Search Scraper" tab
+    2. Enter your research question or query
+    3. Choose number of sources (3-20)
+    4. Select mode (AI Extraction or Markdown)
+    5. Optionally define a custom JSON schema for structured extraction
+    6. Click "Search & Scrape"
+    7. View results with source attribution
+    8. Export as text or markdown
+
+    ### 🌍 Enrich with Places Tab
+    - Google Places API integration
+    - Search businesses by text query
+    - Get structured data: name, address, website, phone
+
+    ### ✏️ Review & Edit Tab
+    - Edit leads in spreadsheet interface
+    - Update status, tags, and notes
+    - Summarize leads with LLM
+
+    ### ⚙️ Settings
+    **Search Engines:**
+    - DuckDuckGo (default, no API key needed)
+    - Google Custom Search (requires API key + cx)
+
+    **LLM Integration:**
+    - Works with LM Studio (`http://localhost:1234`)
+    - Works with Ollama (`http://localhost:11434`)
+    - Works with any OpenAI-compatible endpoint
+    - API key optional for local models
+    - Automatic `/v1` path handling
+
+    **Crawl Settings:**
+    - Concurrency (6-8 recommended)
+    - Fetch timeout
+    - Max pages per site
+    - Deep contact page crawling
+
+    ### 💡 Tips
+    - Keep concurrency low (6-8) to respect target sites
+    - Use presets to save configurations per niche/city
+    - SearchScraper works best with specific questions
+    - LLM base URL must be set for AI Extraction mode
+    - Markdown mode is faster and doesn't need LLM
     """)
 
 # ---- Sidebar ----
@@ -188,10 +215,12 @@ with st.sidebar:
     st.subheader("Export current table")
     exp_placeholder = st.empty()
 
-tab1, tab2, tab3, tab4 = st.tabs(["Hunt", "Enrich with Places", "Review & Edit", "Session"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Hunt", "Search Scraper", "Enrich with Places", "Review & Edit", "Session"])
 
 if "results" not in st.session_state:
     st.session_state["results"] = []
+if "search_scraper_result" not in st.session_state:
+    st.session_state["search_scraper_result"] = None
 
 # ---------------------- HUNT TAB ----------------------
 with tab1:
@@ -301,8 +330,128 @@ with tab1:
                 path = export_xlsx(results)
                 exp_placeholder.info(f"Saved XLSX at {path}")
 
-# ---------------------- PLACES TAB ----------------------
+# ---------------------- SEARCH SCRAPER TAB ----------------------
 with tab2:
+    st.subheader("AI-Powered Web Research")
+    st.caption("Search the web and extract insights using AI, or get raw markdown content from multiple sources")
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        scraper_prompt = st.text_area(
+            "Research Question or Query",
+            placeholder="What are the latest developments in renewable energy technology?",
+            height=100
+        )
+    with col2:
+        num_sources = st.slider("Number of sources", 3, 20, 5)
+        extraction_mode = st.selectbox(
+            "Mode",
+            ["AI Extraction", "Markdown"],
+            help="AI Extraction: Get structured insights (uses LLM). Markdown: Get raw content (faster, no AI)"
+        )
+
+    # Optional schema for structured extraction
+    use_schema = st.checkbox("Use custom extraction schema (advanced)")
+    schema_json = None
+    if use_schema:
+        schema_input = st.text_area(
+            "JSON Schema",
+            placeholder='{"key_findings": ["string"], "sources": ["string"]}',
+            height=100
+        )
+        if schema_input.strip():
+            try:
+                schema_json = json.loads(schema_input)
+            except json.JSONDecodeError:
+                st.warning("Invalid JSON schema. Will use default extraction.")
+
+    run_scraper = st.button("🔍 Search & Scrape", type="primary", use_container_width=True)
+
+    if run_scraper and scraper_prompt.strip():
+        with st.status("Searching and extracting...", expanded=True) as status:
+            try:
+                # Create SearchScraper instance with current settings
+                scraper = SearchScraper(
+                    llm_base=s.get("llm_base", ""),
+                    llm_key=s.get("llm_key", ""),
+                    llm_model=s.get("llm_model", "gpt-4o-mini"),
+                    search_engine=s.get("search_engine", "ddg"),
+                    google_api_key=s.get("google_cse_key", ""),
+                    google_cx=s.get("google_cse_cx", "")
+                )
+
+                status.update(label="Searching the web...")
+
+                # Run search and scrape
+                result = scraper.sync_search_and_scrape(
+                    prompt=scraper_prompt,
+                    num_results=num_sources,
+                    extraction_mode=(extraction_mode == "AI Extraction"),
+                    schema=schema_json,
+                    timeout=int(s.get("fetch_timeout", 15)),
+                    concurrency=int(s.get("concurrency", 8))
+                )
+
+                st.session_state["search_scraper_result"] = result
+                status.update(label="✅ Done!", state="complete")
+
+            except Exception as e:
+                st.error(f"Error during search scraping: {str(e)}")
+                status.update(label="❌ Failed", state="error")
+
+    # Display results
+    if st.session_state.get("search_scraper_result"):
+        result = st.session_state["search_scraper_result"]
+
+        if result.error:
+            st.error(result.error)
+        else:
+            st.success(f"Processed {len(result.sources)} sources")
+
+            # Show sources
+            with st.expander(f"📚 Sources ({len(result.sources)})", expanded=False):
+                for i, source in enumerate(result.sources, 1):
+                    st.markdown(f"**{i}. [{source['url']}]({source['url']})**")
+                    st.caption(f"Length: {source['length']} chars | Preview: {source['preview'][:150]}...")
+                    st.divider()
+
+            # Show results based on mode
+            if result.mode == "ai_extraction" and result.extracted_data:
+                st.subheader("🤖 AI Extracted Insights")
+                st.markdown(result.extracted_data)
+
+                # Export option
+                if st.button("💾 Export as Text"):
+                    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    filename = f"search_scraper_ai_{timestamp}.txt"
+                    path = os.path.join(OUT_DIR, filename)
+                    with open(path, "w", encoding="utf-8") as f:
+                        f.write(f"Query: {result.prompt}\n\n")
+                        f.write(f"Sources:\n")
+                        for source in result.sources:
+                            f.write(f"- {source['url']}\n")
+                        f.write(f"\n\nExtracted Insights:\n\n{result.extracted_data}")
+                    st.success(f"Saved to {path}")
+
+            elif result.mode == "markdown" and result.markdown_content:
+                st.subheader("📄 Markdown Content")
+                st.text_area("Full Content", result.markdown_content, height=400)
+
+                # Export option
+                if st.button("💾 Export as Markdown"):
+                    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    filename = f"search_scraper_md_{timestamp}.md"
+                    path = os.path.join(OUT_DIR, filename)
+                    with open(path, "w", encoding="utf-8") as f:
+                        f.write(f"# Query: {result.prompt}\n\n")
+                        f.write(f"## Sources\n\n")
+                        for source in result.sources:
+                            f.write(f"- [{source['url']}]({source['url']})\n")
+                        f.write(f"\n\n## Content\n\n{result.markdown_content}")
+                    st.success(f"Saved to {path}")
+
+# ---------------------- PLACES TAB ----------------------
+with tab3:
     st.subheader("Text search on Google Places")
     st.caption("Requires a valid API key. Uses /places:searchText and detail lookups.")
     query_places = st.text_input("Places text query", placeholder="plombier à Toulouse")
@@ -351,7 +500,7 @@ with tab2:
                 exp_placeholder.info(f"Saved XLSX at {path}")
 
 # ---------------------- REVIEW TAB ----------------------
-with tab3:
+with tab4:
     st.subheader("Review and edit leads")
     df = pd.DataFrame(st.session_state.get("results", []))
     if not df.empty:
@@ -371,7 +520,7 @@ with tab3:
         st.info("Run Hunt first to get some leads.")
 
 # ---------------------- SESSION TAB ----------------------
-with tab4:
+with tab5:
     st.subheader("Session")
     now = datetime.datetime.utcnow().isoformat()
     st.write(f"UTC now: {now}")

@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Lead Hunter Toolkit is a local lead generation workflow with a Streamlit GUI for discovering and enriching business leads through web crawling, search engines, and Google Places API. It extracts contact information (emails, phones, social links), scores leads based on configurable weights, and exports results to CSV/JSON/XLSX formats.
+Lead Hunter Toolkit is a local lead generation and web research tool with a Streamlit GUI. It combines:
+1. **Lead Hunting**: Discover and enrich business leads through web crawling, search engines, and Google Places API
+2. **Search Scraper**: AI-powered web research that aggregates information from multiple sources
+
+Key features: contact extraction (emails, phones, social links), scoring system, LLM-powered insights, and multi-format exports (CSV/JSON/XLSX).
 
 ## Running the Application
 
@@ -33,14 +37,15 @@ The main application is `app.py` (Streamlit GUI). The `app_llm.py` is a legacy e
 
 ### Key Modules
 
-- **app.py**: Main Streamlit GUI with 4 tabs (Hunt, Enrich with Places, Review & Edit, Session)
+- **app.py**: Main Streamlit GUI with 5 tabs (Hunt, Search Scraper, Enrich with Places, Review & Edit, Session)
+- **search_scraper.py**: AI-powered web research tool. Two modes: AI Extraction (LLM-based insights) and Markdown (raw content). Searches web, fetches pages, converts to markdown, optionally extracts structured data via LLM.
 - **crawl.py**: BFS crawler with contact/about page prioritization. Respects same-host boundaries.
 - **extract.py**: HTML extraction using selectolax. Extracts emails (including mailto:), phones, social links, company names from title/H1.
 - **scoring.py**: Configurable weighted scoring system (emails, phones, social, city match, country domain bonus)
 - **classify.py**: Simple keyword-based tagging system using DEFAULT_KEYWORDS dict in app.py
 - **fetch.py**: Async HTTP fetching with caching (cache/ dir), concurrency control via semaphore
 - **robots_util.py**: Robots.txt checker with in-memory cache per base URL
-- **llm_client.py**: OpenAI-compatible client for lead summarization (supports local models via base_url)
+- **llm_client.py**: OpenAI-compatible client for lead summarization and SearchScraper AI extraction (supports local models via base_url)
 - **places.py**: Google Places API integration for text search and detail lookups
 - **exporters.py / exporters_xlsx.py**: Multi-format export handlers
 
@@ -99,7 +104,51 @@ Streamlit session_state["results"] holds the lead list throughout the session. T
 - **Places**: Uses /places:searchText and detail lookups with field masks for efficiency
 
 ### LLM Integration
-LLMClient supports any OpenAI-compatible endpoint (e.g., LM Studio, Ollama). Set llm_base (e.g., "http://localhost:1234" for LM Studio or "http://localhost:11434" for Ollama), and llm_model in settings. The `/v1` path is automatically appended to the base URL if not present. The llm_key is optional and defaults to "not-needed" for local LLMs that don't require authentication. Used for lead summarization in Review tab. The client includes proper error handling and null-safety checks for response parsing.
+LLMClient supports any OpenAI-compatible endpoint (e.g., LM Studio, Ollama). Set llm_base (e.g., "http://localhost:1234" for LM Studio or "http://localhost:11434" for Ollama), and llm_model in settings. The `/v1` path is automatically appended to the base URL if not present. The llm_key is optional and defaults to "not-needed" for local LLMs that don't require authentication. Used for lead summarization in Review tab and SearchScraper AI extraction. The client includes proper error handling and null-safety checks for response parsing.
+
+### SearchScraper Feature
+SearchScraper is an AI-powered web research tool that searches, fetches, and analyzes multiple web pages based on a user's query.
+
+**Architecture** (search_scraper.py):
+- SearchScraperResult: Data class for results with mode, prompt, sources, extracted_data, markdown_content, error
+- SearchScraper: Main class with two operation modes
+
+**Workflow**:
+1. Search web using existing search.py (DDG) or google_search.py
+2. Fetch pages using fetch.py (async, with caching)
+3. Convert HTML to markdown using markdownify library
+4. Process based on mode:
+   - AI Extraction: Use LLM to synthesize insights from all sources with citations
+   - Markdown: Return concatenated markdown content with source metadata
+
+**AI Extraction Mode**:
+- Combines markdown from all sources (max 15K chars for LLM context)
+- Supports optional custom JSON schema for structured extraction
+- Builds comprehensive prompt with user question + content
+- Calls LLM via llm_client.summarize_leads() (async wrapper)
+- Returns synthesized answer with source citations
+
+**Markdown Mode**:
+- Faster, no LLM required
+- Returns clean markdown from all fetched pages
+- Includes source URLs and content length
+- Useful for manual review or content migration
+
+**GUI Integration** (app.py tab2):
+- Text area for research question
+- Slider for number of sources (3-20)
+- Mode selector (AI Extraction / Markdown)
+- Optional custom schema JSON editor
+- Progress indicator with status updates
+- Results display with expandable sources
+- Export options (text for AI mode, markdown for markdown mode)
+
+**Use Cases**:
+- Research questions: aggregating information from multiple sources
+- Competitive analysis: comparing features/products
+- Market research: identifying trends
+- Content creation: gathering source material
+- Data collection: structured extraction with custom schemas
 
 ## Common Development Tasks
 
