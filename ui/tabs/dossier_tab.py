@@ -205,16 +205,12 @@ def render_dossier_tab(settings: dict, out_dir: str):
                 st.markdown("**Website Quality:**")
                 st.write(dp.website_quality or "Not analyzed")
             with col2:
-                st.markdown("**Social Media:**")
-                if dp.social_platforms:
-                    for platform in dp.social_platforms:
-                        st.caption(f"- {platform}")
-                else:
-                    st.caption("No social platforms detected")
+                st.markdown("**Social Activity:**")
+                st.write(dp.social_activity or "Not analyzed")
 
-            if dp.online_reviews:
-                st.markdown("**Online Reviews:**")
-                st.write(dp.online_reviews)
+            if hasattr(dp, 'online_reputation') and dp.online_reputation:
+                st.markdown("**Online Reputation:**")
+                st.write(dp.online_reputation)
 
         # Signals
         with st.expander("📡 Signals", expanded=True):

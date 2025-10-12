@@ -151,8 +151,8 @@ def render_outreach_tab(settings: dict, out_dir: str):
                 timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
 
                 # Save as markdown
-                md_content = f"# Outreach Variants - {result.company_name}\n\n"
-                md_content += f"**Type:** {result.message_type} | **Language:** {result.language} | **Tone:** {result.tone}\n\n"
+                md_content = f"# Outreach Variants - {result.lead_name}\n\n"
+                md_content += f"**Type:** {result.message_type} | **Language:** {result.language}\n\n"
 
                 for i, variant in enumerate(result.variants, 1):
                     md_content += f"## Variant {i}: {variant.angle.title()}\n\n"
@@ -164,7 +164,7 @@ def render_outreach_tab(settings: dict, out_dir: str):
                     md_content += f"**Deliverability Score:** {variant.deliverability_score}/100\n\n"
                     md_content += "---\n\n"
 
-                md_path = out_path / f"outreach_{result.company_name.replace(' ', '_')}_{timestamp}.md"
+                md_path = out_path / f"outreach_{result.lead_name.replace(' ', '_')}_{timestamp}.md"
                 with open(md_path, "w", encoding="utf-8") as f:
                     f.write(md_content)
                 st.success(f"Saved to {md_path}")
@@ -178,10 +178,9 @@ def render_outreach_tab(settings: dict, out_dir: str):
 
                 # Convert to dict
                 result_dict = {
-                    "company_name": result.company_name,
+                    "lead_name": result.lead_name,
                     "message_type": result.message_type,
                     "language": result.language,
-                    "tone": result.tone,
                     "variants": [
                         {
                             "angle": v.angle,
@@ -195,7 +194,7 @@ def render_outreach_tab(settings: dict, out_dir: str):
                     ]
                 }
 
-                json_path = out_path / f"outreach_{result.company_name.replace(' ', '_')}_{timestamp}.json"
+                json_path = out_path / f"outreach_{result.lead_name.replace(' ', '_')}_{timestamp}.json"
                 with open(json_path, "w", encoding="utf-8") as f:
                     json.dump(result_dict, f, ensure_ascii=False, indent=2)
                 st.success(f"Saved to {json_path}")

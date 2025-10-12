@@ -55,7 +55,7 @@ def render_export_buttons(
         with cols[col_idx]:
             if st.button(f"{label_prefix} CSV", use_container_width=True):
                 try:
-                    path = export_csv(data, namespace)
+                    path = export_csv(data)
                     st.success(f"✓ Saved to {path}")
                 except Exception as e:
                     st.error(f"Export failed: {e}")
@@ -66,7 +66,7 @@ def render_export_buttons(
         with cols[col_idx]:
             if st.button(f"{label_prefix} JSON", use_container_width=True):
                 try:
-                    path = export_json(data, namespace)
+                    path = export_json(data)
                     st.success(f"✓ Saved to {path}")
                 except Exception as e:
                     st.error(f"Export failed: {e}")
@@ -77,7 +77,7 @@ def render_export_buttons(
         with cols[col_idx]:
             if st.button(f"{label_prefix} XLSX", use_container_width=True):
                 try:
-                    path = export_xlsx(data, namespace)
+                    path = export_xlsx(data)
                     st.success(f"✓ Saved to {path}")
                 except Exception as e:
                     st.error(f"Export failed: {e}")
@@ -110,11 +110,11 @@ def render_single_export_button(
     if st.button(label, use_container_width=use_container_width):
         try:
             if export_type.lower() == "csv":
-                path = export_csv(data, namespace)
+                path = export_csv(data)
             elif export_type.lower() == "json":
-                path = export_json(data, namespace)
+                path = export_json(data)
             elif export_type.lower() == "xlsx":
-                path = export_xlsx(data, namespace)
+                path = export_xlsx(data)
             else:
                 st.error(f"Unknown export type: {export_type}")
                 return
