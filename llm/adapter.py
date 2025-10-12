@@ -1,9 +1,11 @@
 """
 Unified LLM adapter for OpenAI-compatible endpoints
 Supports LM Studio, Ollama, and OpenAI with consistent interface
+Includes vision/multimodal support for image analysis
 """
 
 from typing import List, Dict, Any, Optional, Union
+from pathlib import Path
 from openai import OpenAI, AsyncOpenAI
 from retry_utils import retry_with_backoff
 from logger import get_logger
@@ -283,3 +285,233 @@ class LLMAdapter:
             temperature=model_config.get('temperature', 0.2),
             max_tokens=model_config.get('max_tokens', 2048)
         )
+
+    def chat_with_image(
+        self,
+        prompt: str,
+        image_data: Union[str, Path],
+        detail: str = "auto",
+        **kwargs
+    ) -> str:
+        """
+        Send chat completion request with image (vision API)
+
+        Args:
+            prompt: Text prompt/question about the image
+            image_data: Base64-encoded image string or path to image file
+            detail: Image detail level ('low', 'high', 'auto')
+            **kwargs: Additional parameters
+
+        Returns:
+            Response content as string
+
+        Note:
+            Requires vision-capable model (gpt-4-vision, gpt-4o, claude-3, etc.)
+        """
+        try:
+            # If image_data is a path, encode it
+            if isinstance(image_data, (str, Path)) and Path(image_data).exists():
+                from multimodal.image_utils import encode_image_to_base64
+                logger.debug(f"Encoding image from path: {image_data}")
+                image_base64 = encode_image_to_base64(image_data, format='JPEG', max_size=(2048, 2048))
+                image_url = f"data:image/jpeg;base64,{image_base64}"
+            else:
+                # Assume it's already base64
+                if not image_data.startswith('data:'):
+                    image_url = f"data:image/jpeg;base64,{image_data}"
+                else:
+                    image_url = image_data
+
+            # Build vision message
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_url,
+                                "detail": detail
+                            }
+                        }
+                    ]
+                }
+            ]
+
+            logger.info(f"Sending vision request with image ({len(image_url)} chars)")
+            return self.chat(messages, **kwargs)
+
+        except Exception as e:
+            logger.error(f"Error in vision chat: {e}", exc_info=True)
+            return f"Error analyzing image: {str(e)}"
+
+    def chat_with_images(
+        self,
+        prompt: str,
+        images: List[Union[str, Path]],
+        detail: str = "auto",
+        **kwargs
+    ) -> str:
+        """
+        Send chat completion request with multiple images
+
+        Args:
+            prompt: Text prompt/question about the images
+            images: List of base64-encoded images or paths
+            detail: Image detail level
+            **kwargs: Additional parameters
+
+        Returns:
+            Response content as string
+        """
+        try:
+            # Build content array with text and all images
+            content = [{"type": "text", "text": prompt}]
+
+            for i, image_data in enumerate(images):
+                # Encode image if it's a path
+                if isinstance(image_data, (str, Path)) and Path(image_data).exists():
+                    from multimodal.image_utils import encode_image_to_base64
+                    logger.debug(f"Encoding image {i+1} from path: {image_data}")
+                    image_base64 = encode_image_to_base64(image_data, format='JPEG', max_size=(2048, 2048))
+                    image_url = f"data:image/jpeg;base64,{image_base64}"
+                else:
+                    if not image_data.startswith('data:'):
+                        image_url = f"data:image/jpeg;base64,{image_data}"
+                    else:
+                        image_url = image_data
+
+                content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": image_url,
+                        "detail": detail
+                    }
+                })
+
+            messages = [{"role": "user", "content": content}]
+
+            logger.info(f"Sending vision request with {len(images)} images")
+            return self.chat(messages, **kwargs)
+
+        except Exception as e:
+            logger.error(f"Error in multi-image vision chat: {e}", exc_info=True)
+            return f"Error analyzing images: {str(e)}"
+
+    async def chat_with_image_async(
+        self,
+        prompt: str,
+        image_data: Union[str, Path],
+        detail: str = "auto",
+        **kwargs
+    ) -> str:
+        """
+        Async version of chat_with_image()
+
+        Args:
+            prompt: Text prompt about the image
+            image_data: Base64 string or path to image
+            detail: Image detail level
+            **kwargs: Additional parameters
+
+        Returns:
+            Response content as string
+        """
+        try:
+            # Prepare image URL
+            if isinstance(image_data, (str, Path)) and Path(image_data).exists():
+                from multimodal.image_utils import encode_image_to_base64
+                image_base64 = encode_image_to_base64(image_data, format='JPEG', max_size=(2048, 2048))
+                image_url = f"data:image/jpeg;base64,{image_base64}"
+            else:
+                if not image_data.startswith('data:'):
+                    image_url = f"data:image/jpeg;base64,{image_data}"
+                else:
+                    image_url = image_data
+
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_url,
+                                "detail": detail
+                            }
+                        }
+                    ]
+                }
+            ]
+
+            logger.info(f"Sending async vision request")
+            return await self.chat_async(messages, **kwargs)
+
+        except Exception as e:
+            logger.error(f"Error in async vision chat: {e}", exc_info=True)
+            return f"Error analyzing image: {str(e)}"
+
+    def analyze_screenshot(
+        self,
+        url: str,
+        analysis_prompt: Optional[str] = None,
+        capture_full_page: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Capture and analyze a website screenshot
+
+        Args:
+            url: Website URL to analyze
+            analysis_prompt: Optional custom analysis prompt
+            capture_full_page: Whether to capture full page
+            **kwargs: Additional parameters for chat
+
+        Returns:
+            Dict with 'screenshot_path', 'analysis', 'url'
+        """
+        try:
+            from multimodal.image_utils import capture_screenshot
+            import tempfile
+
+            # Default analysis prompt
+            if not analysis_prompt:
+                analysis_prompt = """Analyze this website screenshot and provide:
+1. Overall design quality and professionalism
+2. Key visual elements and branding
+3. User experience observations
+4. Mobile responsiveness indicators
+5. Call-to-action visibility
+6. Any technical or design issues spotted"""
+
+            # Capture screenshot to temp file
+            logger.info(f"Capturing screenshot of {url}")
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                screenshot_path = tmp.name
+
+            capture_screenshot(url, output_path=screenshot_path, full_page=capture_full_page)
+
+            # Analyze with vision
+            logger.info("Analyzing screenshot with vision model")
+            analysis = self.chat_with_image(
+                prompt=f"{analysis_prompt}\n\nWebsite: {url}",
+                image_data=screenshot_path,
+                **kwargs
+            )
+
+            return {
+                'url': url,
+                'screenshot_path': screenshot_path,
+                'analysis': analysis,
+                'full_page': capture_full_page
+            }
+
+        except Exception as e:
+            logger.error(f"Error analyzing screenshot: {e}", exc_info=True)
+            return {
+                'url': url,
+                'error': str(e),
+                'analysis': f"Error capturing/analyzing screenshot: {str(e)}"
+            }
