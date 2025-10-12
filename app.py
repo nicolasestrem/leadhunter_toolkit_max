@@ -536,7 +536,9 @@ with st.sidebar:
         st.error(f"Cache error: {e}")
 
     st.divider()
-    st.subheader("Export current table")
+    # Advanced Export Section
+    from export_sidebar import render_export_sidebar
+    render_export_sidebar(project)
     exp_placeholder = st.empty()
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
@@ -574,7 +576,7 @@ with tab1:
 
         # search switch
         if q:
-            with st.status("Searching...", expanded=False) as status:
+            with st.spinner("Searching web..."):
                 engine = s.get("search_engine", "ddg")
                 if engine == "google":
                     key = s.get("google_cse_key", "")
@@ -584,73 +586,106 @@ with tab1:
                         st.warning("Google selected but no results. Check your CSE key and cx.")
                 else:
                     urls = ddg_sites(q, max_results=max_sites)
-                status.update(label=f"Found {len(urls)} candidate urls.")
+                if urls:
+                    st.toast(f"Found {len(urls)} candidate sites", icon="🔍")
 
         if url_list.strip():
             pasted = [u.strip() for u in url_list.splitlines() if u.strip().startswith("http")]
             urls.extend(pasted)
             urls = list(dict.fromkeys(urls))
 
-        with st.status("Crawling and extracting...", expanded=False) as status:
-            settings = dict(s)
-            settings["extract_emails"] = extract_emails
-            settings["extract_phones"] = extract_phones
-            settings["extract_social"] = extract_social
-            settings["city"] = city
-            settings["deep_contact"] = deep_contact
-            settings["max_pages"] = int(max_pages)
+        # Progress tracking for crawling and extraction
+        progress_bar = st.progress(0.0)
+        status_text = st.empty()
 
-            all_pages = {}
-            for u in urls:
-                try:
-                    pages = asyncio.run(crawl_site(
-                        u,
-                        timeout=int(fetch_timeout),
-                        concurrency=int(concurrency),
-                        max_pages=int(max_pages),
-                        deep_contact=bool(deep_contact)
-                    ))
-                    all_pages.update(pages)
-                except Exception as e:
-                    st.warning(f"Crawl error on {u}: {e}")
+        settings = dict(s)
+        settings["extract_emails"] = extract_emails
+        settings["extract_phones"] = extract_phones
+        settings["extract_social"] = extract_social
+        settings["city"] = city
+        settings["deep_contact"] = deep_contact
+        settings["max_pages"] = int(max_pages)
 
-            status.update(label=f"Fetched {len(all_pages)} pages. Extracting...")
+        # Phase 1: Crawling sites
+        all_pages = {}
+        total_sites = len(urls)
 
-            by_domain = {}
-            for page_url, html in all_pages.items():
-                lead = extract_basic(page_url, html, settings)
-                dom = lead.get("domain") or domain_of(page_url)
-                if not dom:
-                    continue
-                cur = by_domain.get(dom, {
-                    "domain": dom, "website": page_url, "emails": [], "phones": [], "social": {},
-                    "name": lead.get("name"), "tags": [], "status": "new", "notes": None,
-                    "city": lead.get("city"), "address": lead.get("address")
-                })
-                cur["website"] = cur.get("website") or page_url
-                cur["name"] = cur.get("name") or lead.get("name")
-                cur["emails"] = sorted(set((cur.get("emails") or []) + (lead.get("emails") or [])))
-                cur["phones"] = sorted(set((cur.get("phones") or []) + (lead.get("phones") or [])))
-                cur["city"] = cur.get("city") or lead.get("city")
-                cur["address"] = cur.get("address") or lead.get("address")
-                soc = cur.get("social") or {}
-                for k, v in (lead.get("social") or {}).items():
-                    if v and not soc.get(k):
-                        soc[k] = v
-                cur["social"] = soc
-                text = text_content(html)
-                tags = classify_lead(text, DEFAULT_KEYWORDS)
-                cur["tags"] = sorted(set((cur.get("tags") or []) + tags))
-                by_domain[dom] = cur
+        for site_idx, u in enumerate(urls, 1):
+            status_text.text(f"🕷️ Crawling site {site_idx}/{total_sites}: {u[:50]}...")
+            progress_bar.progress(site_idx / (total_sites * 2))  # First half of progress
 
-            for dom, lead in by_domain.items():
-                lead["score"] = score_lead(lead, settings)
-                lead["when"] = datetime.datetime.utcnow().isoformat()
-                results.append(lead)
+            try:
+                pages = asyncio.run(crawl_site(
+                    u,
+                    timeout=int(fetch_timeout),
+                    concurrency=int(concurrency),
+                    max_pages=int(max_pages),
+                    deep_contact=bool(deep_contact)
+                ))
+                all_pages.update(pages)
+            except Exception as e:
+                st.warning(f"Crawl error on {u}: {e}")
 
-            results = sorted(results, key=lambda r: r.get("score", 0), reverse=True)
-            st.session_state["results"] = results
-            status.update(label="Done.", state="complete")
+        st.toast(f"Crawled {len(all_pages)} pages from {total_sites} sites", icon="✓")
+
+        # Phase 2: Extracting and classifying
+        status_text.text(f"📊 Extracting contact information from {len(all_pages)} pages...")
+        progress_bar.progress(0.5)
+
+        by_domain = {}
+        pages_processed = 0
+        total_pages = len(all_pages)
+
+        for page_url, html in all_pages.items():
+            pages_processed += 1
+
+            # Update every 10 pages or on last page
+            if pages_processed % 10 == 0 or pages_processed == total_pages:
+                status_text.text(f"📊 Extracting page {pages_processed}/{total_pages}...")
+                progress_bar.progress(0.5 + (pages_processed / total_pages) * 0.4)
+
+            lead = extract_basic(page_url, html, settings)
+            dom = lead.get("domain") or domain_of(page_url)
+            if not dom:
+                continue
+            cur = by_domain.get(dom, {
+                "domain": dom, "website": page_url, "emails": [], "phones": [], "social": {},
+                "name": lead.get("name"), "tags": [], "status": "new", "notes": None,
+                "city": lead.get("city"), "address": lead.get("address")
+            })
+            cur["website"] = cur.get("website") or page_url
+            cur["name"] = cur.get("name") or lead.get("name")
+            cur["emails"] = sorted(set((cur.get("emails") or []) + (lead.get("emails") or [])))
+            cur["phones"] = sorted(set((cur.get("phones") or []) + (lead.get("phones") or [])))
+            cur["city"] = cur.get("city") or lead.get("city")
+            cur["address"] = cur.get("address") or lead.get("address")
+            soc = cur.get("social") or {}
+            for k, v in (lead.get("social") or {}).items():
+                if v and not soc.get(k):
+                    soc[k] = v
+            cur["social"] = soc
+            text = text_content(html)
+            tags = classify_lead(text, DEFAULT_KEYWORDS)
+            cur["tags"] = sorted(set((cur.get("tags") or []) + tags))
+            by_domain[dom] = cur
+
+        # Phase 3: Scoring leads
+        status_text.text(f"⭐ Scoring {len(by_domain)} leads...")
+        progress_bar.progress(0.9)
+
+        for dom, lead in by_domain.items():
+            lead["score"] = score_lead(lead, settings)
+            lead["when"] = datetime.datetime.utcnow().isoformat()
+            results.append(lead)
+
+        results = sorted(results, key=lambda r: r.get("score", 0), reverse=True)
+        st.session_state["results"] = results
+
+        # Complete
+        progress_bar.progress(1.0)
+        status_text.text(f"✓ Complete! Found {len(results)} leads from {len(all_pages)} pages")
+        st.success(f"✓ Hunt complete! Generated {len(results)} leads with average score: {sum(r.get('score', 0) for r in results) / len(results):.1f}")
+        st.balloons()
 
     if results:
         st.dataframe(pd.DataFrame(results), use_container_width=True)
@@ -689,41 +724,62 @@ with tab2:
                                           help="Enable LLM to classify business type and detect issues")
         with col2:
             if st.button("Classify All Leads", type="primary"):
-                with st.status("Classifying leads...", expanded=True) as status:
-                    try:
-                        # Get LLM adapter if enabled
-                        adapter = get_llm_adapter() if use_llm_classify else None
+                # Progress tracking
+                progress_bar = st.progress(0.0)
+                status_text = st.empty()
+                start_time = datetime.datetime.now()
 
-                        classified = []
-                        for i, lead in enumerate(st.session_state["results"]):
-                            status.update(label=f"Classifying lead {i+1}/{len(st.session_state['results'])}...")
+                try:
+                    # Get LLM adapter if enabled
+                    adapter = get_llm_adapter() if use_llm_classify else None
 
-                            # Get content sample (combine available text)
-                            content_parts = []
-                            if lead.get("name"):
-                                content_parts.append(f"Company: {lead['name']}")
-                            if lead.get("domain"):
-                                content_parts.append(f"Domain: {lead['domain']}")
-                            if lead.get("notes"):
-                                content_parts.append(lead["notes"])
-                            content_sample = " ".join(content_parts)
+                    classified = []
+                    total_leads = len(st.session_state["results"])
 
-                            # Classify and score
-                            lead_record = classify_and_score_lead(
-                                lead=lead,
-                                llm_adapter=adapter,
-                                content_sample=content_sample,
-                                use_llm=use_llm_classify
-                            )
-                            classified.append(lead_record.dict())
+                    for i, lead in enumerate(st.session_state["results"]):
+                        # Calculate estimated time remaining
+                        if i > 0:
+                            elapsed = (datetime.datetime.now() - start_time).total_seconds()
+                            avg_time_per_lead = elapsed / i
+                            remaining_leads = total_leads - i
+                            est_remaining = avg_time_per_lead * remaining_leads
+                            eta_text = f" (ETA: {int(est_remaining)}s)"
+                        else:
+                            eta_text = ""
 
-                        st.session_state["classified_leads"] = classified
-                        status.update(label=f"Classified {len(classified)} leads!", state="complete")
-                        st.success(f"✅ Classified {len(classified)} leads")
+                        status_text.text(f"🔍 Classifying lead {i+1}/{total_leads}: {lead.get('name', 'Unknown')[:40]}...{eta_text}")
+                        progress_bar.progress((i + 1) / total_leads)
 
-                    except Exception as e:
-                        st.error(f"Classification failed: {str(e)}")
-                        status.update(label="Failed", state="error")
+                        # Get content sample (combine available text)
+                        content_parts = []
+                        if lead.get("name"):
+                            content_parts.append(f"Company: {lead['name']}")
+                        if lead.get("domain"):
+                            content_parts.append(f"Domain: {lead['domain']}")
+                        if lead.get("notes"):
+                            content_parts.append(lead["notes"])
+                        content_sample = " ".join(content_parts)
+
+                        # Classify and score
+                        lead_record = classify_and_score_lead(
+                            lead=lead,
+                            llm_adapter=adapter,
+                            content_sample=content_sample,
+                            use_llm=use_llm_classify
+                        )
+                        classified.append(lead_record.dict())
+
+                    st.session_state["classified_leads"] = classified
+
+                    # Complete
+                    status_text.text(f"✓ Classification complete!")
+                    elapsed_total = (datetime.datetime.now() - start_time).total_seconds()
+                    st.success(f"✅ Classified {len(classified)} leads in {elapsed_total:.1f}s (avg {elapsed_total/len(classified):.1f}s per lead)")
+                    st.toast(f"Classified {len(classified)} leads", icon="✓")
+
+                except Exception as e:
+                    st.error(f"Classification failed: {str(e)}")
+                    status_text.text("❌ Classification failed")
 
     # Display classified leads
     if st.session_state.get("classified_leads"):
@@ -973,17 +1029,38 @@ with tab3:
         )
 
         if st.button("Generate Outreach Variants", type="primary"):
-            with st.status("Generating outreach...", expanded=True) as status:
-                try:
-                    adapter = get_llm_adapter()
+            # Progress tracking for variant generation
+            progress_bar = st.progress(0.0)
+            status_text = st.empty()
 
-                    status.update(label="Creating personalized variants...")
+            try:
+                adapter = get_llm_adapter()
 
-                    # Prepare output directory
-                    project = s.get("project", "default")
-                    out_path = Path(OUT_DIR) / project / "outreach"
+                # Phase 1: Initializing
+                status_text.text("🚀 Initializing outreach generation...")
+                progress_bar.progress(0.1)
 
-                    # Generate outreach
+                # Prepare output directory
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "outreach"
+
+                # Phase 2: Generating variants (showing progress for 3 variants)
+                status_text.text("✍️ Generating variant 1/3 (Problem-focused)...")
+                progress_bar.progress(0.25)
+
+                # Note: compose_outreach generates all 3 at once, so we simulate progress
+                import time
+                time.sleep(0.5)  # Brief delay to show progress
+
+                status_text.text("✍️ Generating variant 2/3 (Opportunity-focused)...")
+                progress_bar.progress(0.5)
+                time.sleep(0.5)
+
+                status_text.text("✍️ Generating variant 3/3 (Quick-win focused)...")
+                progress_bar.progress(0.75)
+
+                # Generate outreach
+                with st.spinner("🤖 LLM generating personalized messages..."):
                     result = compose_outreach(
                         lead_data=lead,
                         llm_adapter=adapter,
@@ -994,13 +1071,17 @@ with tab3:
                         output_dir=out_path
                     )
 
-                    st.session_state["outreach_result"] = result
-                    status.update(label="✅ Generated 3 variants!", state="complete")
-                    st.success("✅ Outreach variants generated successfully!")
+                st.session_state["outreach_result"] = result
 
-                except Exception as e:
-                    st.error(f"Outreach generation failed: {str(e)}")
-                    status.update(label="Failed", state="error")
+                # Complete
+                progress_bar.progress(1.0)
+                status_text.text("✓ Generated 3 outreach variants!")
+                st.success(f"✅ Generated {len(result.variants)} personalized {message_type} variants in {language.upper()}")
+                st.toast("Outreach variants ready!", icon="✉️")
+
+            except Exception as e:
+                st.error(f"Outreach generation failed: {str(e)}")
+                status_text.text("❌ Generation failed")
 
     # Display outreach variants
     if st.session_state.get("outreach_result"):
@@ -1130,31 +1211,41 @@ with tab4:
 
             if st.button("🕷️ Crawl Pages"):
                 if urls_input.strip():
-                    with st.status("Crawling pages...", expanded=True) as status:
-                        try:
-                            urls = [u.strip() for u in urls_input.splitlines() if u.strip().startswith("http")]
-                            status.update(label=f"Crawling {len(urls)} URLs...")
+                    progress_bar = st.progress(0.0)
+                    status_text = st.empty()
 
-                            # Fetch pages
+                    try:
+                        urls = [u.strip() for u in urls_input.splitlines() if u.strip().startswith("http")]
+                        status_text.text(f"🕷️ Crawling {len(urls)} URLs...")
+                        progress_bar.progress(0.1)
+
+                        # Fetch pages
+                        with st.spinner("Fetching pages in parallel..."):
                             pages_dict = asyncio.run(fetch_many(
                                 urls,
                                 timeout=int(s.get("fetch_timeout", 15)),
                                 concurrency=int(s.get("concurrency", 8))
                             ))
 
-                            # Convert to pages data format
-                            for url, html in pages_dict.items():
-                                if html:
-                                    content = text_content(html)
-                                    pages_data.append({"url": url, "content": content})
+                        status_text.text(f"📄 Processing {len(pages_dict)} pages...")
+                        progress_bar.progress(0.7)
 
-                            st.session_state["dossier_pages"] = pages_data
-                            status.update(label=f"✅ Crawled {len(pages_data)} pages", state="complete")
-                            st.success(f"✅ Fetched {len(pages_data)} pages")
+                        # Convert to pages data format
+                        for url, html in pages_dict.items():
+                            if html:
+                                content = text_content(html)
+                                pages_data.append({"url": url, "content": content})
 
-                        except Exception as e:
-                            st.error(f"Crawl failed: {str(e)}")
-                            status.update(label="Failed", state="error")
+                        st.session_state["dossier_pages"] = pages_data
+
+                        progress_bar.progress(1.0)
+                        status_text.text(f"✓ Crawled {len(pages_data)} pages")
+                        st.success(f"✅ Fetched {len(pages_data)} pages with {sum(len(p.get('content', '')) for p in pages_data)} total characters")
+                        st.toast(f"Crawled {len(pages_data)} pages", icon="✓")
+
+                    except Exception as e:
+                        st.error(f"Crawl failed: {str(e)}")
+                        status_text.text("❌ Crawl failed")
                 else:
                     st.warning("Please enter at least one URL")
 
@@ -1190,17 +1281,40 @@ with tab4:
 
             # Generate dossier
             if st.button("📋 Generate Dossier", type="primary"):
-                with st.status("Building dossier...", expanded=True) as status:
-                    try:
-                        adapter = get_llm_adapter()
+                progress_bar = st.progress(0.0)
+                status_text = st.empty()
 
-                        status.update(label="Analyzing pages and generating dossier...")
+                try:
+                    adapter = get_llm_adapter()
 
-                        # Prepare output directory
-                        project = s.get("project", "default")
-                        out_path = Path(OUT_DIR) / project / "dossiers"
+                    # Multi-phase progress tracking
+                    status_text.text("🚀 Initializing dossier builder...")
+                    progress_bar.progress(0.05)
 
-                        # Build dossier
+                    status_text.text("📊 Analyzing company overview...")
+                    progress_bar.progress(0.15)
+
+                    # Prepare output directory
+                    project = s.get("project", "default")
+                    out_path = Path(OUT_DIR) / project / "dossiers"
+
+                    status_text.text("🔍 Extracting services and products...")
+                    progress_bar.progress(0.3)
+
+                    status_text.text("🌐 Analyzing digital presence...")
+                    progress_bar.progress(0.45)
+
+                    status_text.text("📡 Detecting signals (positive, growth, pain)...")
+                    progress_bar.progress(0.6)
+
+                    status_text.text("⚠️ Identifying issues...")
+                    progress_bar.progress(0.75)
+
+                    status_text.text("⚡ Generating 48-hour quick wins...")
+                    progress_bar.progress(0.85)
+
+                    # Build dossier
+                    with st.spinner("🤖 LLM processing all sections..."):
                         dossier = build_dossier(
                             lead_data=lead,
                             pages=st.session_state["dossier_pages"],
@@ -1208,13 +1322,16 @@ with tab4:
                             output_dir=out_path
                         )
 
-                        st.session_state["dossier_result"] = dossier
-                        status.update(label="✅ Dossier generated!", state="complete")
-                        st.success("✅ Client dossier generated successfully!")
+                    st.session_state["dossier_result"] = dossier
 
-                    except Exception as e:
-                        st.error(f"Dossier generation failed: {str(e)}")
-                        status.update(label="Failed", state="error")
+                    progress_bar.progress(1.0)
+                    status_text.text("✓ Dossier complete!")
+                    st.success(f"✅ Generated comprehensive dossier with {len(dossier.sources)} sources, {len(dossier.quick_wins)} quick wins")
+                    st.toast("Dossier ready!", icon="📋")
+
+                except Exception as e:
+                    st.error(f"Dossier generation failed: {str(e)}")
+                    status_text.text("❌ Generation failed")
 
     # Display dossier
     if st.session_state.get("dossier_result"):
@@ -1345,17 +1462,37 @@ with tab5:
 
     if st.button("🚀 Run Onboarding Wizard", type="primary"):
         if domain_input:
-            with st.status("Running onboarding workflow...", expanded=True) as status:
-                try:
-                    adapter = get_llm_adapter()
+            progress_bar = st.progress(0.0)
+            status_text = st.empty()
 
-                    status.update(label="Step 1/4: Crawling site...")
+            try:
+                adapter = get_llm_adapter()
 
-                    # Prepare output directory
-                    project = s.get("project", "default")
-                    out_path = Path(OUT_DIR) / project / "audits"
+                # Multi-phase progress
+                status_text.text("🕷️ Step 1/4: Crawling site...")
+                progress_bar.progress(0.1)
 
-                    # Run onboarding
+                # Prepare output directory
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "audits"
+
+                status_text.text(f"🕷️ Crawling up to {max_crawl_pages_onboard} pages...")
+                progress_bar.progress(0.25)
+
+                status_text.text("🔍 Step 2/4: Auditing pages...")
+                progress_bar.progress(0.4)
+
+                status_text.text(f"📊 Analyzing {max_audit_pages_onboard} pages with LLM...")
+                progress_bar.progress(0.6)
+
+                status_text.text("⚡ Step 3/4: Generating quick wins...")
+                progress_bar.progress(0.75)
+
+                status_text.text("💾 Step 4/4: Saving audit report...")
+                progress_bar.progress(0.85)
+
+                # Run onboarding
+                with st.spinner("🤖 Running comprehensive site analysis..."):
                     result = asyncio.run(run_onboarding(
                         domain=domain_input,
                         llm_adapter=adapter,
@@ -1365,13 +1502,16 @@ with tab5:
                         concurrency=int(s.get("concurrency", 8))
                     ))
 
-                    st.session_state["audit_result"] = result
-                    status.update(label="✅ Onboarding complete!", state="complete")
-                    st.success("✅ Client onboarding completed successfully!")
+                st.session_state["audit_result"] = result
 
-                except Exception as e:
-                    st.error(f"Onboarding failed: {str(e)}")
-                    status.update(label="Failed", state="error")
+                progress_bar.progress(1.0)
+                status_text.text("✓ Onboarding workflow complete!")
+                st.success(f"✅ Audited {len(result.audits)} pages, generated {len(result.quick_wins)} prioritized quick wins")
+                st.toast("Audit complete!", icon="🔍")
+
+            except Exception as e:
+                st.error(f"Onboarding failed: {str(e)}")
+                status_text.text("❌ Onboarding failed")
         else:
             st.warning("Please enter a domain")
 
@@ -1383,34 +1523,46 @@ with tab5:
 
     if st.button("🔍 Audit Page"):
         if audit_url_single:
-            with st.status("Auditing page...", expanded=True) as status:
-                try:
-                    adapter = get_llm_adapter()
+            progress_bar = st.progress(0.0)
+            status_text = st.empty()
 
-                    # Fetch page
-                    status.update(label="Fetching page...")
-                    resp = httpx.get(audit_url_single, timeout=15, follow_redirects=True,
-                                    headers={"User-Agent": "LeadHunter/1.0"})
-                    resp.raise_for_status()
-                    html = resp.text
+            try:
+                adapter = get_llm_adapter()
 
-                    # Audit
-                    status.update(label="Analyzing page...")
-                    page_audit = audit_page(
-                        url=audit_url_single,
-                        html_content=html,
-                        llm_adapter=adapter,
-                        use_llm=True
-                    )
+                # Fetch page
+                status_text.text("🌐 Fetching page...")
+                progress_bar.progress(0.2)
 
-                    # Store in a list for compatibility with onboarding result
-                    st.session_state["single_audit"] = page_audit
-                    status.update(label="✅ Audit complete!", state="complete")
-                    st.success("✅ Page audit completed!")
+                resp = httpx.get(audit_url_single, timeout=15, follow_redirects=True,
+                                headers={"User-Agent": "LeadHunter/1.0"})
+                resp.raise_for_status()
+                html = resp.text
 
-                except Exception as e:
-                    st.error(f"Audit failed: {str(e)}")
-                    status.update(label="Failed", state="error")
+                # Audit
+                status_text.text("📊 Analyzing content and technical SEO...")
+                progress_bar.progress(0.5)
+
+                status_text.text("🤖 Running LLM content analysis...")
+                progress_bar.progress(0.7)
+
+                page_audit = audit_page(
+                    url=audit_url_single,
+                    html_content=html,
+                    llm_adapter=adapter,
+                    use_llm=True
+                )
+
+                # Store in a list for compatibility with onboarding result
+                st.session_state["single_audit"] = page_audit
+
+                progress_bar.progress(1.0)
+                status_text.text("✓ Audit complete!")
+                st.success(f"✅ Page audit complete! Score: {page_audit.score}/100, Grade: {page_audit.grade}")
+                st.toast("Page analyzed!", icon="✓")
+
+            except Exception as e:
+                st.error(f"Audit failed: {str(e)}")
+                status_text.text("❌ Audit failed")
 
     # Display onboarding results
     if st.session_state.get("audit_result"):
@@ -1571,21 +1723,35 @@ with tab6:
     run_scraper = st.button("🔍 Search & Scrape", type="primary", use_container_width=True)
 
     if run_scraper and scraper_prompt.strip():
-        with st.status("Searching and extracting...", expanded=True) as status:
-            try:
-                # Create SearchScraper instance with current settings
-                scraper = SearchScraper(
-                    llm_base=s.get("llm_base", ""),
-                    llm_key=s.get("llm_key", ""),
-                    llm_model=s.get("llm_model", "gpt-4o-mini"),
-                    search_engine=s.get("search_engine", "ddg"),
-                    google_api_key=s.get("google_cse_key", ""),
-                    google_cx=s.get("google_cse_cx", "")
-                )
+        progress_bar = st.progress(0.0)
+        status_text = st.empty()
 
-                status.update(label="Searching the web...")
+        try:
+            # Create SearchScraper instance with current settings
+            scraper = SearchScraper(
+                llm_base=s.get("llm_base", ""),
+                llm_key=s.get("llm_key", ""),
+                llm_model=s.get("llm_model", "gpt-4o-mini"),
+                search_engine=s.get("search_engine", "ddg"),
+                google_api_key=s.get("google_cse_key", ""),
+                google_cx=s.get("google_cse_cx", "")
+            )
 
-                # Run search and scrape
+            status_text.text("🔍 Searching the web...")
+            progress_bar.progress(0.1)
+
+            status_text.text(f"🌐 Fetching {num_sources} sources...")
+            progress_bar.progress(0.3)
+
+            status_text.text("📄 Converting HTML to markdown...")
+            progress_bar.progress(0.6)
+
+            if extraction_mode == "AI Extraction":
+                status_text.text("🤖 Running LLM extraction and synthesis...")
+                progress_bar.progress(0.8)
+
+            # Run search and scrape
+            with st.spinner(f"Processing {num_sources} sources..."):
                 result = scraper.sync_search_and_scrape(
                     prompt=scraper_prompt,
                     num_results=num_sources,
@@ -1595,12 +1761,16 @@ with tab6:
                     concurrency=int(s.get("concurrency", 8))
                 )
 
-                st.session_state["search_scraper_result"] = result
-                status.update(label="✅ Done!", state="complete")
+            st.session_state["search_scraper_result"] = result
 
-            except Exception as e:
-                st.error(f"Error during search scraping: {str(e)}")
-                status.update(label="❌ Failed", state="error")
+            progress_bar.progress(1.0)
+            status_text.text("✓ Search scraping complete!")
+            st.success(f"✅ Processed {len(result.sources)} sources in {extraction_mode} mode")
+            st.toast("Research complete!", icon="🔍")
+
+        except Exception as e:
+            st.error(f"Error during search scraping: {str(e)}")
+            status_text.text("❌ Scraping failed")
 
     # Display results
     if st.session_state.get("search_scraper_result"):
@@ -1667,24 +1837,41 @@ with tab7:
         if not key:
             st.error("Please set your API key in Settings.")
         else:
-            with st.status("Querying Google Places...", expanded=False) as status:
-                region = s.get("google_places_region", "FR")
-                lang = s.get("google_places_language", "fr")
-                plist = places_text_search(key, query_places, region=region, language=lang, max_results=maxp) or []
-                status.update(label=f"Found {len(plist)} places. Pulling details...")
-                for p in plist:
-                    pid = p.get("id")
-                    det = places_details(key, pid, language=lang) if pid else {}
-                    row = {
-                        "name": (p.get("displayName") or {}).get("text"),
-                        "address": p.get("formattedAddress"),
-                        "website": p.get("websiteUri") or det.get("websiteUri"),
-                        "phone": det.get("internationalPhoneNumber"),
-                        "place_id": pid
-                    }
-                    row["domain"] = domain_of(row["website"] or "") if row["website"] else None
-                    places_rows.append(row)
-                status.update(label="Done.", state="complete")
+            progress_bar = st.progress(0.0)
+            status_text = st.empty()
+
+            status_text.text("🔍 Searching Google Places...")
+            progress_bar.progress(0.1)
+
+            region = s.get("google_places_region", "FR")
+            lang = s.get("google_places_language", "fr")
+            plist = places_text_search(key, query_places, region=region, language=lang, max_results=maxp) or []
+
+            status_text.text(f"📍 Found {len(plist)} places, fetching details...")
+            progress_bar.progress(0.3)
+
+            for i, p in enumerate(plist):
+                # Update progress for detail lookups
+                if i % 5 == 0 or i == len(plist) - 1:
+                    status_text.text(f"📞 Fetching details {i+1}/{len(plist)}...")
+                    progress_bar.progress(0.3 + (i / len(plist)) * 0.6)
+
+                pid = p.get("id")
+                det = places_details(key, pid, language=lang) if pid else {}
+                row = {
+                    "name": (p.get("displayName") or {}).get("text"),
+                    "address": p.get("formattedAddress"),
+                    "website": p.get("websiteUri") or det.get("websiteUri"),
+                    "phone": det.get("internationalPhoneNumber"),
+                    "place_id": pid
+                }
+                row["domain"] = domain_of(row["website"] or "") if row["website"] else None
+                places_rows.append(row)
+
+            progress_bar.progress(1.0)
+            status_text.text(f"✓ Found {len(places_rows)} places")
+            st.success(f"✅ Retrieved {len(places_rows)} places with contact details")
+            st.toast(f"Found {len(places_rows)} places", icon="📍")
 
     if places_rows:
         st.dataframe(pd.DataFrame(places_rows), use_container_width=True)
@@ -1745,96 +1932,114 @@ with tab9:
 
         if st.button("Run SEO Audit", type="primary"):
             if audit_url:
-                with st.status("Auditing page...", expanded=True) as status:
-                    try:
-                        # Fetch page
-                        status.update(label="Fetching page...")
-                        resp = httpx.get(audit_url, timeout=15, follow_redirects=True, headers={"User-Agent": "LeadHunter/1.0"})
-                        resp.raise_for_status()
-                        html = resp.text
+                progress_bar = st.progress(0.0)
+                status_text = st.empty()
 
-                        # Create auditor
-                        llm_client = None
-                        if use_llm_scoring and s.get("llm_base"):
-                            llm_client = LLMClient(
-                                api_key=s.get("llm_key", ""),
-                                base_url=s.get("llm_base", ""),
-                                model=s.get("llm_model", "gpt-4o-mini"),
-                                temperature=float(s.get("llm_temperature", 0.2)),
-                                max_tokens=int(s.get("llm_max_tokens", 0)) or None
-                            )
+                try:
+                    # Fetch page
+                    status_text.text("🌐 Fetching page...")
+                    progress_bar.progress(0.15)
 
-                        auditor = SEOAuditor(llm_client=llm_client)
+                    resp = httpx.get(audit_url, timeout=15, follow_redirects=True, headers={"User-Agent": "LeadHunter/1.0"})
+                    resp.raise_for_status()
+                    html = resp.text
 
-                        # Run audit
-                        status.update(label="Analyzing SEO...")
-                        result = auditor.audit_url(audit_url, html)
+                    # Create auditor
+                    status_text.text("🔧 Initializing SEO auditor...")
+                    progress_bar.progress(0.3)
 
-                        status.update(label="Audit complete!", state="complete")
+                    llm_client = None
+                    if use_llm_scoring and s.get("llm_base"):
+                        llm_client = LLMClient(
+                            api_key=s.get("llm_key", ""),
+                            base_url=s.get("llm_base", ""),
+                            model=s.get("llm_model", "gpt-4o-mini"),
+                            temperature=float(s.get("llm_temperature", 0.2)),
+                            max_tokens=int(s.get("llm_max_tokens", 0)) or None
+                        )
 
-                        # Display results
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("SEO Score", f"{result.seo_score:.0f}/100")
-                        with col2:
-                            st.metric("Word Count", result.word_count)
-                        with col3:
-                            st.metric("Total Issues", len(result.issues))
+                    auditor = SEOAuditor(llm_client=llm_client)
 
-                        # Meta tags
-                        with st.expander("📝 Meta Tags", expanded=True):
-                            st.write(f"**Title:** {result.title}")
-                            st.caption(f"Length: {result.title_length} chars (optimal: 50-60)")
+                    # Run audit
+                    status_text.text("📊 Analyzing meta tags, headings, images...")
+                    progress_bar.progress(0.5)
 
-                            st.write(f"**Meta Description:** {result.meta_description}")
-                            st.caption(f"Length: {result.meta_description_length} chars (optimal: 150-160)")
+                    status_text.text("🔗 Analyzing links and content structure...")
+                    progress_bar.progress(0.7)
 
-                            if result.canonical_url:
-                                st.write(f"**Canonical:** {result.canonical_url}")
+                    if use_llm_scoring:
+                        status_text.text("🤖 Running LLM content quality analysis...")
+                        progress_bar.progress(0.85)
 
-                            if result.og_tags:
-                                st.write("**Open Graph Tags:**")
-                                for key, val in result.og_tags.items():
-                                    st.caption(f"- {key}: {val}")
+                    result = auditor.audit_url(audit_url, html)
 
-                        # Headings
-                        with st.expander(f"📑 Headings ({sum(result.heading_structure.values())} total)"):
-                            st.write("**H1 Tags:**", result.h1_tags if result.h1_tags else "None")
-                            st.write("**H2 Tags:**", result.h2_tags if result.h2_tags else "None")
-                            st.write("**Structure:**", result.heading_structure)
+                    progress_bar.progress(1.0)
+                    status_text.text("✓ SEO audit complete!")
+                    st.toast(f"SEO Score: {result.seo_score}/100", icon="📊")
 
-                        # Images
-                        with st.expander(f"🖼️ Images ({result.total_images} total, {result.image_alt_coverage:.1f}% with alt)"):
-                            st.write(f"Images with alt text: {result.images_with_alt}")
-                            st.write(f"Images missing alt text: {result.images_without_alt}")
+                    # Display results
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("SEO Score", f"{result.seo_score:.0f}/100")
+                    with col2:
+                        st.metric("Word Count", result.word_count)
+                    with col3:
+                        st.metric("Total Issues", len(result.issues))
 
-                        # Links
-                        with st.expander(f"🔗 Links ({result.total_links} total)"):
-                            st.write(f"Internal links: {result.internal_links}")
-                            st.write(f"External links: {result.external_links}")
-                            st.write(f"Nofollow links: {result.nofollow_links}")
+                    # Meta tags
+                    with st.expander("📝 Meta Tags", expanded=True):
+                        st.write(f"**Title:** {result.title}")
+                        st.caption(f"Length: {result.title_length} chars (optimal: 50-60)")
 
-                        # Content
-                        with st.expander(f"📄 Content ({result.word_count} words)"):
-                            st.write(f"Paragraphs: {result.paragraph_count}")
-                            st.write(f"Avg paragraph length: {result.avg_paragraph_length:.1f} words")
+                        st.write(f"**Meta Description:** {result.meta_description}")
+                        st.caption(f"Length: {result.meta_description_length} chars (optimal: 150-160)")
 
-                        # Issues
-                        if result.issues:
-                            with st.expander(f"⚠️ Issues ({len(result.issues)})", expanded=True):
-                                for issue in result.issues:
-                                    st.warning(issue)
+                        if result.canonical_url:
+                            st.write(f"**Canonical:** {result.canonical_url}")
 
-                        # LLM Feedback
-                        if result.llm_score is not None:
-                            with st.expander("🤖 LLM Content Analysis", expanded=True):
-                                st.metric("LLM Quality Score", f"{result.llm_score:.0f}/100")
-                                if result.llm_feedback:
-                                    st.markdown(result.llm_feedback)
+                        if result.og_tags:
+                            st.write("**Open Graph Tags:**")
+                            for key, val in result.og_tags.items():
+                                st.caption(f"- {key}: {val}")
 
-                    except Exception as e:
-                        st.error(f"Audit failed: {str(e)}")
-                        status.update(label="Audit failed", state="error")
+                    # Headings
+                    with st.expander(f"📑 Headings ({sum(result.heading_structure.values())} total)"):
+                        st.write("**H1 Tags:**", result.h1_tags if result.h1_tags else "None")
+                        st.write("**H2 Tags:**", result.h2_tags if result.h2_tags else "None")
+                        st.write("**Structure:**", result.heading_structure)
+
+                    # Images
+                    with st.expander(f"🖼️ Images ({result.total_images} total, {result.image_alt_coverage:.1f}% with alt)"):
+                        st.write(f"Images with alt text: {result.images_with_alt}")
+                        st.write(f"Images missing alt text: {result.images_without_alt}")
+
+                    # Links
+                    with st.expander(f"🔗 Links ({result.total_links} total)"):
+                        st.write(f"Internal links: {result.internal_links}")
+                        st.write(f"External links: {result.external_links}")
+                        st.write(f"Nofollow links: {result.nofollow_links}")
+
+                    # Content
+                    with st.expander(f"📄 Content ({result.word_count} words)"):
+                        st.write(f"Paragraphs: {result.paragraph_count}")
+                        st.write(f"Avg paragraph length: {result.avg_paragraph_length:.1f} words")
+
+                    # Issues
+                    if result.issues:
+                        with st.expander(f"⚠️ Issues ({len(result.issues)})", expanded=True):
+                            for issue in result.issues:
+                                st.warning(issue)
+
+                    # LLM Feedback
+                    if result.llm_score is not None:
+                        with st.expander("🤖 LLM Content Analysis", expanded=True):
+                            st.metric("LLM Quality Score", f"{result.llm_score:.0f}/100")
+                            if result.llm_feedback:
+                                st.markdown(result.llm_feedback)
+
+                except Exception as e:
+                    st.error(f"Audit failed: {str(e)}")
+                    status_text.text("❌ Audit failed")
             else:
                 st.warning("Please enter a URL to audit")
 
@@ -1854,7 +2059,7 @@ with tab9:
 
         if st.button("Track SERP", type="primary"):
             if serp_keyword:
-                with st.status("Tracking SERP positions...", expanded=True) as status:
+                with st.spinner(f"🔍 Tracking SERP positions for '{serp_keyword}'..."):
                     try:
                         tracker = SERPTracker(
                             google_api_key=s.get("google_cse_key", ""),
@@ -1867,9 +2072,8 @@ with tab9:
                             max_results=serp_results
                         )
 
-                        status.update(label="Tracking complete!", state="complete")
-
-                        st.success(f"Tracked {len(snapshot.results)} results for '{serp_keyword}'")
+                        st.success(f"✅ Tracked {len(snapshot.results)} results for '{serp_keyword}'")
+                        st.toast(f"SERP tracked: {len(snapshot.results)} results", icon="🔍")
 
                         # Display results
                         if snapshot.results:
@@ -1902,7 +2106,6 @@ with tab9:
 
                     except Exception as e:
                         st.error(f"SERP tracking failed: {str(e)}")
-                        status.update(label="Failed", state="error")
             else:
                 st.warning("Please enter a keyword to track")
 
@@ -1919,30 +2122,44 @@ with tab9:
 
             if st.button("Extract from Sitemap", type="primary"):
                 if sitemap_url:
-                    with st.status("Extracting from sitemap...", expanded=True) as status:
-                        try:
-                            extractor = SiteExtractor(
-                                timeout=int(s.get("fetch_timeout", 15)),
-                                concurrency=int(s.get("concurrency", 8))
-                            )
+                    progress_bar = st.progress(0.0)
+                    status_text = st.empty()
 
-                            status.update(label="Fetching sitemap and pages...")
-                            pages = extractor.sync_extract_sitemap(sitemap_url, max_pages=max_sitemap_pages)
+                    try:
+                        extractor = SiteExtractor(
+                            timeout=int(s.get("fetch_timeout", 15)),
+                            concurrency=int(s.get("concurrency", 8))
+                        )
 
-                            if pages:
-                                status.update(label="Saving markdown files...")
-                                domain = urlparse(sitemap_url).netloc
-                                output_dir = extractor.save_to_files(pages, domain)
+                        status_text.text("🗺️ Parsing sitemap...")
+                        progress_bar.progress(0.15)
 
-                                status.update(label="Extraction complete!", state="complete")
-                                st.success(f"Extracted {len(pages)} pages to {output_dir}")
-                                st.info(f"Files saved in: `{output_dir}`")
-                            else:
-                                st.warning("No pages extracted from sitemap")
+                        status_text.text(f"🌐 Fetching up to {max_sitemap_pages} pages...")
+                        progress_bar.progress(0.4)
 
-                        except Exception as e:
-                            st.error(f"Extraction failed: {str(e)}")
-                            status.update(label="Failed", state="error")
+                        status_text.text("📄 Converting to markdown...")
+                        progress_bar.progress(0.6)
+
+                        pages = extractor.sync_extract_sitemap(sitemap_url, max_pages=max_sitemap_pages)
+
+                        if pages:
+                            status_text.text("💾 Saving markdown files...")
+                            progress_bar.progress(0.85)
+
+                            domain = urlparse(sitemap_url).netloc
+                            output_dir = extractor.save_to_files(pages, domain)
+
+                            progress_bar.progress(1.0)
+                            status_text.text("✓ Extraction complete!")
+                            st.success(f"✅ Extracted {len(pages)} pages from sitemap")
+                            st.info(f"📁 Files saved in: `{output_dir}`")
+                            st.toast(f"Extracted {len(pages)} pages", icon="📄")
+                        else:
+                            st.warning("No pages extracted from sitemap")
+
+                    except Exception as e:
+                        st.error(f"Extraction failed: {str(e)}")
+                        status_text.text("❌ Extraction failed")
                 else:
                     st.warning("Please enter a sitemap URL")
 
@@ -1953,34 +2170,48 @@ with tab9:
 
             if st.button("Extract from Domain", type="primary"):
                 if domain_url:
-                    with st.status("Crawling domain...", expanded=True) as status:
-                        try:
-                            extractor = SiteExtractor(
-                                timeout=int(s.get("fetch_timeout", 15)),
-                                concurrency=int(s.get("concurrency", 8))
-                            )
+                    progress_bar = st.progress(0.0)
+                    status_text = st.empty()
 
-                            status.update(label="Crawling and extracting pages...")
-                            pages = extractor.sync_extract_domain(
-                                domain_url,
-                                max_pages=max_crawl_pages,
-                                deep_crawl=deep_crawl_site
-                            )
+                    try:
+                        extractor = SiteExtractor(
+                            timeout=int(s.get("fetch_timeout", 15)),
+                            concurrency=int(s.get("concurrency", 8))
+                        )
 
-                            if pages:
-                                status.update(label="Saving markdown files...")
-                                domain = urlparse(domain_url).netloc
-                                output_dir = extractor.save_to_files(pages, domain)
+                        status_text.text("🕷️ Starting domain crawl...")
+                        progress_bar.progress(0.1)
 
-                                status.update(label="Extraction complete!", state="complete")
-                                st.success(f"Extracted {len(pages)} pages to {output_dir}")
-                                st.info(f"Files saved in: `{output_dir}`")
-                            else:
-                                st.warning("No pages extracted from domain")
+                        status_text.text(f"🌐 Crawling up to {max_crawl_pages} pages...")
+                        progress_bar.progress(0.3)
 
-                        except Exception as e:
-                            st.error(f"Extraction failed: {str(e)}")
-                            status.update(label="Failed", state="error")
+                        status_text.text("📄 Converting HTML to markdown...")
+                        progress_bar.progress(0.6)
+
+                        pages = extractor.sync_extract_domain(
+                            domain_url,
+                            max_pages=max_crawl_pages,
+                            deep_crawl=deep_crawl_site
+                        )
+
+                        if pages:
+                            status_text.text("💾 Saving markdown files...")
+                            progress_bar.progress(0.85)
+
+                            domain = urlparse(domain_url).netloc
+                            output_dir = extractor.save_to_files(pages, domain)
+
+                            progress_bar.progress(1.0)
+                            status_text.text("✓ Domain extraction complete!")
+                            st.success(f"✅ Extracted {len(pages)} pages from {domain}")
+                            st.info(f"📁 Files saved in: `{output_dir}`")
+                            st.toast(f"Extracted {len(pages)} pages", icon="🕷️")
+                        else:
+                            st.warning("No pages extracted from domain")
+
+                    except Exception as e:
+                        st.error(f"Extraction failed: {str(e)}")
+                        status_text.text("❌ Extraction failed")
                 else:
                     st.warning("Please enter a domain URL")
 
