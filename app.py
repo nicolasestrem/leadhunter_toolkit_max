@@ -13,12 +13,12 @@ from utils_html import domain_of
 from places import text_search as places_text_search, get_details as places_details
 from crawl import crawl_site
 from classify import classify_lead
-from search_scraper import SearchScraper
-from seo_audit import SEOAuditor
-from serp_tracker import SERPTracker
-from site_extractor import SiteExtractor
 from llm_client import LLMClient
 import httpx
+from constants import *
+
+# Lazy-loaded imports (loaded on first use to improve startup time)
+# SearchScraper, SEOAuditor, SERPTracker, SiteExtractor
 
 # Consulting Pack imports
 from config.loader import ConfigLoader
@@ -112,6 +112,44 @@ def dataframe_to_json_safe(df):
 
     # Convert any remaining Timestamp objects to ISO strings
     return [dict_to_json_safe(record) for record in records]
+
+# Lazy loading for heavy optional modules
+_search_scraper_module = None
+_seo_auditor_module = None
+_serp_tracker_module = None
+_site_extractor_module = None
+
+def get_search_scraper():
+    """Lazy load SearchScraper module"""
+    global _search_scraper_module
+    if _search_scraper_module is None:
+        from search_scraper import SearchScraper
+        _search_scraper_module = SearchScraper
+    return _search_scraper_module
+
+def get_seo_auditor():
+    """Lazy load SEOAuditor module"""
+    global _seo_auditor_module
+    if _seo_auditor_module is None:
+        from seo_audit import SEOAuditor
+        _seo_auditor_module = SEOAuditor
+    return _seo_auditor_module
+
+def get_serp_tracker():
+    """Lazy load SERPTracker module"""
+    global _serp_tracker_module
+    if _serp_tracker_module is None:
+        from serp_tracker import SERPTracker
+        _serp_tracker_module = SERPTracker
+    return _serp_tracker_module
+
+def get_site_extractor():
+    """Lazy load SiteExtractor module"""
+    global _site_extractor_module
+    if _site_extractor_module is None:
+        from site_extractor import SiteExtractor
+        _site_extractor_module = SiteExtractor
+    return _site_extractor_module
 
 def load_settings():
     try:
@@ -353,12 +391,12 @@ with st.sidebar:
     country = st.text_input("Country code", s.get("country", "fr"))
     language = st.text_input("Language", s.get("language", "fr-FR"))
     city = st.text_input("City focus", s.get("city", "Toulouse"))
-    radius_km = st.number_input("Radius km", min_value=0, max_value=500, value=int(s.get("radius_km", 50)))
-    max_sites = st.slider("Max sites to scan (per query)", 1, 200, int(s.get("max_sites", 25)))
-    fetch_timeout = st.slider("Fetch timeout seconds", 5, 60, int(s.get("fetch_timeout", 15)))
-    concurrency = st.slider("Concurrency", 1, 32, int(s.get("concurrency", 8)))
+    radius_km = st.number_input("Radius km", min_value=MIN_RADIUS_KM, max_value=MAX_RADIUS_KM, value=int(s.get("radius_km", DEFAULT_RADIUS_KM)))
+    max_sites = st.slider("Max sites to scan (per query)", MIN_MAX_SITES, MAX_MAX_SITES, int(s.get("max_sites", DEFAULT_MAX_SITES)))
+    fetch_timeout = st.slider("Fetch timeout seconds", MIN_FETCH_TIMEOUT, MAX_FETCH_TIMEOUT, int(s.get("fetch_timeout", DEFAULT_FETCH_TIMEOUT)))
+    concurrency = st.slider("Concurrency", MIN_CONCURRENCY, MAX_CONCURRENCY, int(s.get("concurrency", DEFAULT_CONCURRENCY)))
     deep_contact = st.checkbox("Deep crawl contact/about pages", value=bool(s.get("deep_contact", True)))
-    max_pages = st.slider("Max pages per site", 1, 20, int(s.get("max_pages", 5)))
+    max_pages = st.slider("Max pages per site", MIN_MAX_PAGES, MAX_MAX_PAGES, int(s.get("max_pages", DEFAULT_MAX_PAGES)))
     extract_emails = st.checkbox("Extract emails", value=bool(s.get("extract_emails", True)))
     extract_phones = st.checkbox("Extract phones", value=bool(s.get("extract_phones", True)))
     extract_social = st.checkbox("Extract social links", value=bool(s.get("extract_social", True)))
@@ -380,9 +418,9 @@ with st.sidebar:
     with st.expander("Advanced LLM Settings"):
         llm_temperature = st.slider(
             "Temperature",
-            min_value=0.0,
-            max_value=2.0,
-            value=float(s.get("llm_temperature", 0.2)),
+            min_value=MIN_LLM_TEMPERATURE,
+            max_value=MAX_LLM_TEMPERATURE,
+            value=float(s.get("llm_temperature", DEFAULT_LLM_TEMPERATURE)),
             step=0.1,
             help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
         )
@@ -862,11 +900,11 @@ with tab2:
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            min_quality = st.slider("Min Quality Score", 0.0, 10.0, 0.0)
+            min_quality = st.slider("Min Quality Score", MIN_SCORE, MAX_SCORE, DEFAULT_MIN_QUALITY)
         with col2:
-            min_fit = st.slider("Min Fit Score", 0.0, 10.0, 0.0)
+            min_fit = st.slider("Min Fit Score", MIN_SCORE, MAX_SCORE, DEFAULT_MIN_FIT)
         with col3:
-            min_priority = st.slider("Min Priority Score", 0.0, 10.0, 0.0)
+            min_priority = st.slider("Min Priority Score", MIN_SCORE, MAX_SCORE, DEFAULT_MIN_PRIORITY)
         with col4:
             business_types = df["business_type"].unique().tolist() if "business_type" in df.columns else []
             selected_types = st.multiselect("Business Type", business_types, default=business_types)
@@ -1279,7 +1317,7 @@ with tab4:
                 height=150
             )
 
-            max_pages_crawl = st.slider("Max pages to crawl", 1, 20, 5)
+            max_pages_crawl = st.slider("Max pages to crawl", MIN_DOSSIER_CRAWL_PAGES, MAX_DOSSIER_CRAWL_PAGES, DEFAULT_DOSSIER_CRAWL_PAGES)
 
             if st.button("🕷️ Crawl Pages"):
                 if urls_input.strip():
@@ -1322,7 +1360,7 @@ with tab4:
                     st.warning("Please enter at least one URL")
 
         else:  # Paste Content
-            num_pages = st.number_input("Number of pages", min_value=1, max_value=10, value=2)
+            num_pages = st.number_input("Number of pages", min_value=MIN_DOSSIER_NUM_PAGES, max_value=MAX_DOSSIER_NUM_PAGES, value=DEFAULT_DOSSIER_NUM_PAGES)
 
             for i in range(num_pages):
                 with st.expander(f"Page {i+1}", expanded=(i==0)):
@@ -1528,9 +1566,9 @@ with tab5:
 
     col1, col2 = st.columns(2)
     with col1:
-        max_crawl_pages_onboard = st.slider("Max pages to crawl", 5, 50, 10, key="onboard_crawl")
+        max_crawl_pages_onboard = st.slider("Max pages to crawl", MIN_ONBOARD_CRAWL_PAGES, MAX_ONBOARD_CRAWL_PAGES, DEFAULT_ONBOARD_CRAWL_PAGES, key="onboard_crawl")
     with col2:
-        max_audit_pages_onboard = st.slider("Pages to audit", 1, 10, 3, key="onboard_audit")
+        max_audit_pages_onboard = st.slider("Pages to audit", MIN_ONBOARD_AUDIT_PAGES, MAX_ONBOARD_AUDIT_PAGES, DEFAULT_ONBOARD_AUDIT_PAGES, key="onboard_audit")
 
     if st.button("🚀 Run Onboarding Wizard", type="primary"):
         if domain_input:
@@ -1770,7 +1808,7 @@ with tab6:
             height=100
         )
     with col2:
-        num_sources = st.slider("Number of sources", 3, 20, 5)
+        num_sources = st.slider("Number of sources", MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES)
         extraction_mode = st.selectbox(
             "Mode",
             ["AI Extraction", "Markdown"],
@@ -1800,7 +1838,7 @@ with tab6:
 
         try:
             # Create SearchScraper instance with current settings
-            scraper = SearchScraper(
+            scraper = get_search_scraper()(
                 llm_base=s.get("llm_base", ""),
                 llm_key=s.get("llm_key", ""),
                 llm_model=s.get("llm_model", "gpt-4o-mini"),
@@ -1900,7 +1938,7 @@ with tab7:
     st.subheader("Text search on Google Places")
     st.caption("Requires a valid API key. Uses /places:searchText and detail lookups.")
     query_places = st.text_input("Places text query", placeholder="plombier à Toulouse")
-    maxp = st.slider("Max places", 1, 100, 20)
+    maxp = st.slider("Max places", MIN_MAX_PLACES, MAX_MAX_PLACES, DEFAULT_MAX_PLACES)
     go_places = st.button("Search Places")
     places_rows = []
 
@@ -2030,7 +2068,7 @@ with tab9:
                             max_tokens=int(s.get("llm_max_tokens", 0)) or None
                         )
 
-                    auditor = SEOAuditor(llm_client=llm_client)
+                    auditor = get_seo_auditor()(llm_client=llm_client)
 
                     # Run audit
                     status_text.text("📊 Analyzing meta tags, headings, images...")
@@ -2125,7 +2163,7 @@ with tab9:
         with col1:
             serp_engine = st.selectbox("Search Engine", ["ddg", "google"], key="serp_engine")
         with col2:
-            serp_results = st.slider("Number of results", 10, 50, 20)
+            serp_results = st.slider("Number of results", MIN_SERP_RESULTS, MAX_SERP_RESULTS, DEFAULT_SERP_RESULTS)
 
         track_domain = st.text_input("Track specific domain (optional)", placeholder="example.com")
 
@@ -2133,7 +2171,7 @@ with tab9:
             if serp_keyword:
                 with st.spinner(f"🔍 Tracking SERP positions for '{serp_keyword}'..."):
                     try:
-                        tracker = SERPTracker(
+                        tracker = get_serp_tracker()(
                             google_api_key=s.get("google_cse_key", ""),
                             google_cx=s.get("google_cse_cx", "")
                         )
@@ -2190,7 +2228,7 @@ with tab9:
 
         if extraction_mode == "Sitemap URL":
             sitemap_url = st.text_input("Sitemap URL", placeholder="https://example.com/sitemap.xml")
-            max_sitemap_pages = st.number_input("Max pages", min_value=1, max_value=1000, value=50)
+            max_sitemap_pages = st.number_input("Max pages", min_value=MIN_SITEMAP_PAGES, max_value=MAX_SITEMAP_PAGES, value=DEFAULT_SITEMAP_PAGES)
 
             if st.button("Extract from Sitemap", type="primary"):
                 if sitemap_url:
@@ -2198,7 +2236,7 @@ with tab9:
                     status_text = st.empty()
 
                     try:
-                        extractor = SiteExtractor(
+                        extractor = get_site_extractor()(
                             timeout=int(s.get("fetch_timeout", 15)),
                             concurrency=int(s.get("concurrency", 8))
                         )
@@ -2237,7 +2275,7 @@ with tab9:
 
         else:  # Domain Crawl
             domain_url = st.text_input("Domain URL", placeholder="https://example.com")
-            max_crawl_pages = st.number_input("Max pages to crawl", min_value=1, max_value=200, value=50)
+            max_crawl_pages = st.number_input("Max pages to crawl", min_value=MIN_SITE_CRAWL_PAGES, max_value=MAX_SITE_CRAWL_PAGES, value=DEFAULT_SITE_CRAWL_PAGES)
             deep_crawl_site = st.checkbox("Deep crawl (slower, more thorough)", value=True)
 
             if st.button("Extract from Domain", type="primary"):
@@ -2246,7 +2284,7 @@ with tab9:
                     status_text = st.empty()
 
                     try:
-                        extractor = SiteExtractor(
+                        extractor = get_site_extractor()(
                             timeout=int(s.get("fetch_timeout", 15)),
                             concurrency=int(s.get("concurrency", 8))
                         )
