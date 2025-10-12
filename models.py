@@ -10,6 +10,7 @@ class Social(BaseModel):
     youtube: Optional[str] = None
 
 class Lead(BaseModel):
+    """Lead data model for business contact information"""
     name: Optional[str] = None
     domain: Optional[str] = None
     website: Optional[str] = None
@@ -21,6 +22,12 @@ class Lead(BaseModel):
     city: Optional[str] = None
     country: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
+    status: str = "new"  # new, contacted, qualified, rejected
     score: float = 0.0
     notes: Optional[str] = None
     when: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        """Pydantic config to allow dict compatibility"""
+        from_attributes = True
+        arbitrary_types_allowed = True

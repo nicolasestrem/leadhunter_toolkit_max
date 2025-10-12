@@ -210,5 +210,7 @@ __marimo__/
 cache/
 out/
 presets/
+logs/
+serp_data/
 settings.json
 /serp_data
