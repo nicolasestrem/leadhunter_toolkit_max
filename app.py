@@ -31,6 +31,7 @@ from audit.page_audit import audit_page
 from audit.quick_wins import generate_quick_wins
 from onboarding.wizard import run_onboarding
 from plugins import load_plugins, get_loaded_plugins, call_plugin_hook
+from models import Lead
 import zipfile
 
 BASE = os.path.dirname(__file__)
@@ -760,9 +761,15 @@ with tab2:
                             content_parts.append(lead["notes"])
                         content_sample = " ".join(content_parts)
 
-                        # Classify and score
+                        # Classify and score (convert dict to Lead object)
+                        try:
+                            lead_obj = Lead(**lead)
+                        except Exception as e:
+                            st.warning(f"Invalid lead data: {e}")
+                            continue
+
                         lead_record = classify_and_score_lead(
-                            lead=lead,
+                            lead=lead_obj,
                             llm_adapter=adapter,
                             content_sample=content_sample,
                             use_llm=use_llm_classify
@@ -2218,7 +2225,7 @@ with tab9:
 # ---------------------- SESSION TAB ----------------------
 with tab10:
     st.subheader("Session")
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     st.write(f"UTC now: {now}")
     st.write(f"Project: {s.get('project', 'default')}")
     st.write(f"Out folder: {OUT_DIR}")
