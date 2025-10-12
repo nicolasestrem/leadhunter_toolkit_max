@@ -44,8 +44,10 @@ def register() -> Dict[str, Any]:
 
         # Hooks: Functions called at specific points
         'hooks': {
-            'after_lead_classification': after_classification_hook,
-            'before_outreach_generation': before_outreach_hook,
+            'before_classification': before_classification_hook,
+            'after_classification': after_classification_hook,
+            'before_outreach': before_outreach_hook,
+            'after_outreach': after_outreach_hook,
         },
 
         # Menu items: Add custom UI elements
@@ -57,6 +59,21 @@ def register() -> Dict[str, Any]:
             }
         ]
     }
+
+
+def before_classification_hook(lead_data: dict) -> dict:
+    """
+    Called before a lead is classified
+
+    Args:
+        lead_data: Lead data dict
+
+    Returns:
+        Modified lead_data (or original if no changes)
+    """
+    # Example: Pre-process lead data before classification
+    # Could add custom fields, normalize data, etc.
+    return lead_data
 
 
 def after_classification_hook(lead_record: dict) -> dict:
@@ -96,6 +113,22 @@ def before_outreach_hook(lead_data: dict, message_type: str) -> dict:
         lead_data['custom_note'] = 'Focus on online reservations and Google My Business'
 
     return lead_data
+
+
+def after_outreach_hook(result_dict: dict, lead_data: dict) -> None:
+    """
+    Called after outreach generation
+
+    Args:
+        result_dict: Outreach result dict with variants
+        lead_data: Lead data dict
+
+    Returns:
+        None (informational hook for logging/analytics)
+    """
+    # Example: Log outreach generation for analytics
+    # Could send to analytics service, update CRM, etc.
+    pass
 
 
 def example_action():

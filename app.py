@@ -30,6 +30,7 @@ from dossier.build import build_dossier
 from audit.page_audit import audit_page
 from audit.quick_wins import generate_quick_wins
 from onboarding.wizard import run_onboarding
+from plugins import load_plugins, get_loaded_plugins, call_plugin_hook
 import zipfile
 
 BASE = os.path.dirname(__file__)
@@ -77,6 +78,18 @@ def save_preset(name: str, data: dict):
 
 st.set_page_config(page_title="Lead Hunter Toolkit • Consulting Pack v1", layout="wide")
 st.title("Lead Hunter Toolkit • Consulting Pack v1")
+
+# Initialize plugins on first run
+if 'plugins_loaded' not in st.session_state:
+    try:
+        st.session_state.plugins = load_plugins()
+        st.session_state.plugins_loaded = True
+        if st.session_state.plugins:
+            st.toast(f"✓ Loaded {len(st.session_state.plugins)} plugins", icon="🔌")
+    except Exception as e:
+        st.error(f"Plugin loading error: {e}")
+        st.session_state.plugins = []
+        st.session_state.plugins_loaded = False
 st.caption("Complete SMB consulting solution: Lead generation, AI-powered classification, personalized outreach, client dossiers, and comprehensive site audits.")
 
 # ---- Top docs expander (flat indentation) ----
@@ -344,6 +357,118 @@ with st.sidebar:
         })
         save_settings(s)
         st.success("Saved.")
+
+    st.divider()
+    st.subheader("Vertical Presets")
+    st.caption("Industry-specific scoring and outreach optimization")
+
+    # Get available verticals
+    verticals_dir = Path(__file__).parent / "presets" / "verticals"
+    available_verticals = []
+    if verticals_dir.exists():
+        available_verticals = [
+            f.stem for f in verticals_dir.glob("*.yml")
+        ]
+
+    # Get currently active vertical
+    config_loader = ConfigLoader()
+    active_vertical = config_loader.get_active_vertical()
+
+    # Show current status
+    if active_vertical:
+        st.info(f"✓ Active vertical: **{active_vertical}**")
+    else:
+        st.caption("No vertical preset active (using default settings)")
+
+    # Vertical selector
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        selected_vertical = st.selectbox(
+            "Select vertical",
+            ["None"] + available_verticals,
+            index=0 if not active_vertical else (
+                available_verticals.index(active_vertical) + 1
+                if active_vertical in available_verticals else 0
+            ),
+            help="Apply industry-specific scoring weights and outreach templates"
+        )
+    with col2:
+        st.write("")  # Spacing
+        st.write("")  # Spacing
+        if st.button("Apply", key="apply_vertical"):
+            # Update settings with new vertical
+            new_vertical = None if selected_vertical == "None" else selected_vertical
+            s["active_vertical"] = new_vertical
+            save_settings(s)
+
+            # Reload config to apply changes
+            config_loader.reload()
+
+            if new_vertical:
+                st.success(f"Applied vertical: {new_vertical}")
+            else:
+                st.success("Cleared vertical preset")
+            st.rerun()
+
+    # Show vertical details if active
+    if active_vertical and active_vertical in available_verticals:
+        vertical_config = config_loader.load_vertical_preset(active_vertical)
+        if vertical_config:
+            with st.expander("Vertical Details"):
+                st.caption(f"**Description**: {vertical_config.get('description', 'N/A')}")
+
+                # Show scoring weights
+                scoring = vertical_config.get('scoring', {})
+                if scoring:
+                    st.caption("**Scoring Weights**:")
+                    for key, value in scoring.items():
+                        st.caption(f"  • {key}: {value}")
+
+                # Show outreach focus
+                outreach = vertical_config.get('outreach', {})
+                if outreach:
+                    focus_areas = outreach.get('focus_areas', [])
+                    if focus_areas:
+                        st.caption(f"**Focus Areas**: {', '.join(focus_areas[:3])}{'...' if len(focus_areas) > 3 else ''}")
+
+    st.divider()
+    st.subheader("Plugins")
+    st.caption("Extend functionality with custom plugins")
+
+    # Get loaded plugins
+    loaded_plugins = st.session_state.get('plugins', [])
+
+    if loaded_plugins:
+        st.info(f"✓ {len(loaded_plugins)} plugin(s) loaded")
+
+        # Show plugin details in expander
+        with st.expander("Plugin Details", expanded=False):
+            for plugin in loaded_plugins:
+                st.markdown(f"**{plugin.get('name', 'Unknown')}** v{plugin.get('version', '0.0.0')}")
+                st.caption(plugin.get('description', 'No description'))
+
+                # Show hooks
+                hooks = plugin.get('hooks', {})
+                if hooks:
+                    st.caption(f"Hooks: {', '.join(hooks.keys())}")
+
+                # Show author if available
+                if 'author' in plugin:
+                    st.caption(f"Author: {plugin['author']}")
+
+                st.markdown("---")
+    else:
+        st.caption("No plugins loaded")
+
+    # Reload plugins button
+    if st.button("Reload Plugins", help="Reload all plugins from plugins/ directory"):
+        try:
+            st.session_state.plugins = load_plugins()
+            st.session_state.plugins_loaded = True
+            st.success(f"Reloaded {len(st.session_state.plugins)} plugins")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error reloading plugins: {e}")
 
     st.divider()
     st.subheader("Presets")
