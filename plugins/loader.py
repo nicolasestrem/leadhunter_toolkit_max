@@ -1,18 +1,116 @@
 """
 Plugin loader for Lead Hunter Toolkit
-Dynamically loads plugins from plugins/ directory
+Dynamically loads plugins from plugins/ directory with health checking
 """
 
 import os
 import importlib.util
 from pathlib import Path
-from typing import List, Callable, Any
+from typing import List, Callable, Any, Dict
 from logger import get_logger
 
 logger = get_logger(__name__)
 
 PLUGINS_DIR = Path(__file__).parent
 LOADED_PLUGINS = []
+
+# Plugin health tracking
+MAX_PLUGIN_ERRORS = 5  # Disable plugin after this many consecutive errors
+PLUGIN_HEALTH = {}  # {plugin_name: {'errors': int, 'enabled': bool, 'last_error': str}}
+
+
+def init_plugin_health(plugin_name: str):
+    """
+    Initialize health tracking for a plugin
+
+    Args:
+        plugin_name: Name of plugin
+    """
+    if plugin_name not in PLUGIN_HEALTH:
+        PLUGIN_HEALTH[plugin_name] = {
+            'errors': 0,
+            'enabled': True,
+            'last_error': None,
+            'total_calls': 0,
+            'successful_calls': 0
+        }
+
+
+def record_plugin_error(plugin_name: str, error: str):
+    """
+    Record a plugin error and disable if threshold exceeded
+
+    Args:
+        plugin_name: Name of plugin
+        error: Error message
+    """
+    if plugin_name not in PLUGIN_HEALTH:
+        init_plugin_health(plugin_name)
+
+    health = PLUGIN_HEALTH[plugin_name]
+    health['errors'] += 1
+    health['last_error'] = error
+
+    if health['errors'] >= MAX_PLUGIN_ERRORS and health['enabled']:
+        health['enabled'] = False
+        logger.error(
+            f"Plugin '{plugin_name}' automatically disabled after {health['errors']} consecutive errors. "
+            f"Last error: {error}"
+        )
+
+
+def record_plugin_success(plugin_name: str):
+    """
+    Record a successful plugin call (resets error counter)
+
+    Args:
+        plugin_name: Name of plugin
+    """
+    if plugin_name not in PLUGIN_HEALTH:
+        init_plugin_health(plugin_name)
+
+    health = PLUGIN_HEALTH[plugin_name]
+    health['errors'] = 0  # Reset consecutive error count
+    health['successful_calls'] += 1
+
+
+def is_plugin_enabled(plugin_name: str) -> bool:
+    """
+    Check if plugin is enabled
+
+    Args:
+        plugin_name: Name of plugin
+
+    Returns:
+        True if enabled, False otherwise
+    """
+    if plugin_name not in PLUGIN_HEALTH:
+        return True
+
+    return PLUGIN_HEALTH[plugin_name]['enabled']
+
+
+def enable_plugin(plugin_name: str):
+    """
+    Manually re-enable a disabled plugin
+
+    Args:
+        plugin_name: Name of plugin
+    """
+    if plugin_name in PLUGIN_HEALTH:
+        PLUGIN_HEALTH[plugin_name]['enabled'] = True
+        PLUGIN_HEALTH[plugin_name]['errors'] = 0
+        logger.info(f"Plugin '{plugin_name}' manually re-enabled")
+
+
+def get_plugin_health_status() -> Dict[str, Dict]:
+    """
+    Get health status of all plugins
+
+    Returns:
+        Dict mapping plugin names to health status
+    """
+    return PLUGIN_HEALTH.copy()
 
 
 def load_plugins() -> List[dict]:
@@ -57,6 +155,9 @@ def load_plugins() -> List[dict]:
                         plugins.append(metadata)
                         LOADED_PLUGINS.append(metadata)
 
+                        # Initialize health tracking
+                        init_plugin_health(plugin_name)
+
                         logger.info(f"Plugin loaded: {plugin_name}")
                     else:
                         logger.warning(f"Plugin {plugin_name} register() returned None")
@@ -83,7 +184,10 @@ def get_loaded_plugins() -> List[dict]:
 
 def call_plugin_hook(hook_name: str, *args, **kwargs) -> List[Any]:
     """
-    Call a hook on all loaded plugins
+    Call a hook on all loaded plugins with health checking
+
+    Automatically tracks plugin health and disables plugins after repeated failures.
+    Disabled plugins are skipped until manually re-enabled.
 
     Args:
         hook_name: Name of hook function
@@ -96,17 +200,36 @@ def call_plugin_hook(hook_name: str, *args, **kwargs) -> List[Any]:
     results = []
 
     for plugin in LOADED_PLUGINS:
+        plugin_name = plugin['name']
+
+        # Skip disabled plugins
+        if not is_plugin_enabled(plugin_name):
+            logger.debug(f"Skipping disabled plugin: {plugin_name}")
+            continue
+
         if 'hooks' in plugin and hook_name in plugin['hooks']:
             hook_fn = plugin['hooks'][hook_name]
 
+            # Update total calls counter
+            if plugin_name in PLUGIN_HEALTH:
+                PLUGIN_HEALTH[plugin_name]['total_calls'] += 1
+
             try:
-                logger.debug(f"Calling {hook_name} on plugin {plugin['name']}")
+                logger.debug(f"Calling {hook_name} on plugin {plugin_name}")
                 result = hook_fn(*args, **kwargs)
                 results.append(result)
+
+                # Record success (resets error counter)
+                record_plugin_success(plugin_name)
+
             except Exception as e:
+                error_msg = str(e)
                 logger.error(
-                    f"Error calling {hook_name} on plugin {plugin['name']}: {e}",
+                    f"Error calling {hook_name} on plugin {plugin_name}: {error_msg}",
                     exc_info=True
                 )
+
+                # Record error (may disable plugin)
+                record_plugin_error(plugin_name, error_msg)
 
     return results
