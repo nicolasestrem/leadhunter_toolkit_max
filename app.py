@@ -988,7 +988,7 @@ with tab2:
                             audit_result = st.session_state["audit_result"]
 
                             audit_md = f"# Audit Report: {audit_result.domain}\n\n"
-                            audit_md += f"**Crawled:** {len(audit_result.crawled_urls)} pages | **Audited:** {len(audit_result.audits)} pages\n\n"
+                            audit_md += f"**Crawled:** {audit_result.pages_crawled} pages | **Audited:** {audit_result.pages_audited} pages\n\n"
 
                             for i, audit in enumerate(audit_result.audits, 1):
                                 audit_md += f"## Page {i}: {audit.url}\n\n"
@@ -1003,9 +1003,9 @@ with tab2:
                                         audit_md += f"- [{issue.severity.upper()}] {issue.description}\n"
                                     audit_md += "\n"
 
-                            if audit_result.quick_wins:
-                                audit_md += f"## Top {len(audit_result.quick_wins)} Quick Wins\n\n"
-                                for i, task in enumerate(audit_result.quick_wins, 1):
+                            if audit_result.all_quick_wins:
+                                audit_md += f"## Top {len(audit_result.all_quick_wins)} Quick Wins\n\n"
+                                for i, task in enumerate(audit_result.all_quick_wins, 1):
                                     audit_md += f"### {i}. {task.task.title}\n\n"
                                     audit_md += f"**Description:** {task.task.description}\n\n"
                                     audit_md += f"**Impact:** {task.impact:.1f}/10 | **Feasibility:** {task.feasibility:.1f}/10 | **Priority:** {task.priority_score:.1f}/10\n\n"
@@ -1578,7 +1578,7 @@ with tab5:
 
                 progress_bar.progress(1.0)
                 status_text.text("✓ Onboarding workflow complete!")
-                st.success(f"✅ Audited {len(result.audits)} pages, generated {len(result.quick_wins)} prioritized quick wins")
+                st.success(f"✅ Audited {len(result.audits)} pages, generated {len(result.all_quick_wins)} prioritized quick wins")
                 st.toast("Audit complete!", icon="🔍")
 
             except Exception as e:
@@ -1643,7 +1643,7 @@ with tab5:
         st.divider()
         st.subheader(f"📊 Audit Results: {result.domain}")
 
-        st.info(f"Crawled: {len(result.crawled_urls)} pages | Audited: {len(result.audits)} pages")
+        st.info(f"Crawled: {result.pages_crawled} pages | Audited: {result.pages_audited} pages")
 
         # Page audits
         for i, audit in enumerate(result.audits, 1):
@@ -1673,11 +1673,11 @@ with tab5:
                         st.caption(f"- {strength}")
 
         # Quick wins
-        if result.quick_wins:
+        if result.all_quick_wins:
             st.divider()
-            st.subheader(f"⚡ Top Quick Wins ({len(result.quick_wins)})")
+            st.subheader(f"⚡ Top Quick Wins ({len(result.all_quick_wins)})")
 
-            for i, task in enumerate(result.quick_wins, 1):
+            for i, task in enumerate(result.all_quick_wins, 1):
                 with st.expander(f"{i}. {task.task.title} (Priority: {task.priority_score:.1f}/10)", expanded=(i<=3)):
                     st.markdown(f"**Description:** {task.task.description}")
                     st.markdown(f"**Expected Outcome:** {task.task.expected_outcome}")
