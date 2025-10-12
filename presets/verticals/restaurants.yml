@@ -1,0 +1,47 @@
+# Restaurant Vertical Preset
+# Optimized for restaurant and food service lead hunting
+
+name: "Restaurants"
+description: "Restaurant, café, and food service businesses"
+
+# Custom scoring weights
+scoring:
+  email_weight: 3.0         # Email important for reservations/bookings
+  phone_weight: 5.0         # Phone critical for restaurants (reservations, orders)
+  social_weight: 2.5        # Social media important for visibility
+  about_or_contact_weight: 1.5
+  city_match_weight: 2.5    # Location matters for restaurants
+  country_domain_bonus: 0.5
+
+# Industry-specific classification keywords
+keywords:
+  restaurant:
+    - restaurant
+    - bistrot
+    - bistro
+    - café
+    - brasserie
+    - pizzeria
+    - trattoria
+    - eatery
+  cuisine:
+    - cuisine
+    - chef
+    - menu
+    - gastronomie
+    - gastronomy
+    - culinary
+  service:
+    - delivery
+    - takeout
+    - catering
+    - livraison
+    - à emporter
+    - traiteur
+  food_type:
+    - vegan
+    - vegetarian
+    - organic
+    - bio
+    - farm-to-table
+    - street food

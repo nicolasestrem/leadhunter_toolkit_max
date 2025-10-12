@@ -1,0 +1,49 @@
+# Plumbing Vertical Preset
+# Optimized for plumbing and heating service lead hunting
+
+name: "Plumbing & Heating"
+description: "Plumbing, heating, and HVAC service businesses"
+
+# Custom scoring weights
+scoring:
+  phone_weight: 6.0         # Emergency contact critical for plumbers
+  email_weight: 2.0         # Email less critical (emergencies = phone)
+  social_weight: 1.0        # Social media less important for trades
+  about_or_contact_weight: 2.0
+  city_match_weight: 4.0    # Local service area very important
+  country_domain_bonus: 1.0
+
+# Industry-specific classification keywords
+keywords:
+  plumbing:
+    - plombier
+    - plomberie
+    - plumbing
+    - plumber
+    - sanitaire
+    - sanitation
+  heating:
+    - chauffage
+    - heating
+    - chaudière
+    - boiler
+    - radiateur
+    - furnace
+  hvac:
+    - hvac
+    - climatisation
+    - air conditioning
+    - ventilation
+  emergency:
+    - urgence
+    - emergency
+    - 24/7
+    - dépannage
+    - repair
+  services:
+    - installation
+    - maintenance
+    - réparation
+    - renovation
+    - leak
+    - fuite

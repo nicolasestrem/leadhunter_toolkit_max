@@ -1,0 +1,91 @@
+# Professional Services Vertical Preset
+# Optimized for consultants, lawyers, accountants, agencies
+
+vertical: "professional_services"
+description: "Professional services (legal, accounting, consulting, agencies)"
+
+scoring:
+  email_weight: 2.0
+  phone_weight: 1.5
+  social_weight: 0.8  # LinkedIn more important than Instagram
+  about_or_contact_weight: 1.5
+  city_match_weight: 1.0
+  linkedin_weight: 2.0  # Professional network critical
+
+fit_rules:
+  business_types: ["professional_services", "consulting", "legal", "accounting", "agency"]
+  min_quality_score: 6.0  # Higher bar
+  preferred_signals:
+    - "Professional design"
+    - "Content authority"
+    - "Case studies present"
+  deal_breakers:
+    - "No clear service offering"
+
+outreach:
+  focus_areas:
+    - "Lead generation forms"
+    - "Case studies and testimonials"
+    - "Service pages optimization"
+    - "Professional blogging"
+    - "LinkedIn presence"
+
+  value_props:
+    - "25-40% more qualified leads"
+    - "Authority positioning"
+    - "Automated consultation booking"
+    - "Content marketing system"
+
+  typical_issues:
+    - "No clear CTA"
+    - "Missing case studies"
+    - "Generic service descriptions"
+    - "No consultation booking"
+
+audit:
+  priorities:
+    - category: "content"
+      weight: 2.0  # Expertise content critical
+    - category: "trust_signals"
+      weight: 1.8
+    - category: "lead_gen"
+      weight: 1.8
+
+  service_specific_checks:
+    - "Services clearly described"
+    - "Team/bio pages present"
+    - "Case studies or portfolio"
+    - "Testimonials visible"
+    - "Contact form functional"
+    - "Consultation booking option"
+
+quick_wins:
+  - title: "Add Consultation Booking"
+    action: "Integrate Calendly or booking form for consultations"
+    impact: "Capture 20-30% more leads"
+    effort: "1 hour"
+    priority: 1
+
+  - title: "Create Service Landing Pages"
+    action: "Dedicated page per main service with CTA"
+    impact: "Better SEO and conversion per service"
+    effort: "3 hours"
+    priority: 2
+
+  - title: "Add Trust Badges"
+    action: "Display certifications, memberships, awards"
+    impact: "Increase credibility and conversion"
+    effort: "30 mins"
+    priority: 3
+
+keywords:
+  - "consulting"
+  - "consultant"
+  - "lawyer"
+  - "attorney"
+  - "accountant"
+  - "agency"
+  - "professional"
+  - "services"
+  - "legal"
+  - "financial"

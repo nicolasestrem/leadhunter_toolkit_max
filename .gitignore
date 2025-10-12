@@ -209,8 +209,10 @@ __marimo__/
 # Lead Hunter Toolkit specific
 cache/
 out/
-presets/
+presets/*.json     # User-specific presets
+!presets/verticals/  # But include vertical templates
 logs/
 serp_data/
 settings.json
 /serp_data
+2025-10-12-this-session-is-being-continued-from-a-previous-co3.txt

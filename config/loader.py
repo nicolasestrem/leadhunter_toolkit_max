@@ -6,6 +6,7 @@ Loads and merges configuration from YAML files and settings.json
 import os
 import yaml
 import json
+import copy
 from typing import Dict, Any, Optional
 from pathlib import Path
 
@@ -310,11 +311,9 @@ class ConfigLoader:
         Returns:
             Merged configuration dictionary
         """
-        config = {}
-
-        # Start with defaults
+        # Start with deep copy of defaults to avoid mutating cache
         defaults = self.load_defaults()
-        config.update(defaults)
+        config = copy.deepcopy(defaults)
 
         # Apply vertical preset overrides if active
         active_vertical = self.get_active_vertical()

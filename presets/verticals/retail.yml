@@ -1,0 +1,89 @@
+# Retail Vertical Preset
+# Optimized for retail stores, boutiques, and e-commerce
+
+vertical: "retail"
+description: "Retail stores and e-commerce businesses"
+
+scoring:
+  email_weight: 2.0
+  phone_weight: 1.5
+  social_weight: 1.2  # Instagram/Pinterest important
+  about_or_contact_weight: 1.0
+  city_match_weight: 1.5
+  ecommerce_weight: 2.0  # Online store presence
+
+fit_rules:
+  business_types: ["retail", "ecommerce", "boutique", "shop"]
+  min_quality_score: 5.0
+  preferred_signals:
+    - "Professional design"
+    - "Product catalog online"
+    - "Social active"
+  deal_breakers:
+    - "B2B only"
+
+outreach:
+  focus_areas:
+    - "E-commerce optimization"
+    - "Product photography"
+    - "Checkout conversion"
+    - "Inventory visibility"
+    - "Local pickup options"
+
+  value_props:
+    - "15-25% conversion rate improvement"
+    - "Mobile shopping optimization"
+    - "Automated inventory updates"
+    - "Multi-channel presence"
+
+  typical_issues:
+    - "No online store"
+    - "Poor product photos"
+    - "Complicated checkout"
+    - "Missing shipping info"
+
+audit:
+  priorities:
+    - category: "images"
+      weight: 1.5  # Product photos critical
+    - category: "ecommerce"
+      weight: 2.0
+    - category: "mobile"
+      weight: 1.8
+
+  retail_specific_checks:
+    - "Product catalog accessibility"
+    - "Pricing visibility"
+    - "Shipping information"
+    - "Return policy"
+    - "Stock availability"
+    - "Payment options"
+
+quick_wins:
+  - title: "Product Image Optimization"
+    action: "Add high-quality product photos (800x800px minimum)"
+    impact: "Higher click-through and conversion"
+    effort: "2 hours"
+    priority: 1
+
+  - title: "Clear Shipping Information"
+    action: "Add shipping costs and delivery times to product pages"
+    impact: "Reduce cart abandonment by 10-15%"
+    effort: "30 mins"
+    priority: 2
+
+  - title: "Google Shopping Feed"
+    action: "Set up Google Merchant Center and product feed"
+    impact: "Appear in Google Shopping results"
+    effort: "2 hours"
+    priority: 3
+
+keywords:
+  - "shop"
+  - "store"
+  - "boutique"
+  - "retail"
+  - "products"
+  - "shopping"
+  - "ecommerce"
+  - "online store"

@@ -8,7 +8,7 @@ import os
 from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
 from openai import OpenAI, AsyncOpenAI
-from retry_utils import retry_with_backoff
+from retry_utils import retry_with_backoff, async_retry_with_backoff
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -183,7 +183,7 @@ class LLMAdapter:
 
         return self.chat(messages, **kwargs)
 
-    @retry_with_backoff(max_retries=2, initial_delay=2.0, exceptions=(Exception,))
+    @async_retry_with_backoff(max_retries=2, initial_delay=2.0, exceptions=(Exception,))
     async def chat_async(
         self,
         messages: List[Dict[str, str]],
