@@ -24,7 +24,7 @@ import httpx
 from config.loader import ConfigLoader
 from llm.adapter import LLMAdapter
 from leads.classify_score import classify_and_score_lead
-from leads.contacts_extract import extract_from_markdown
+from leads.contacts_extract import extract_contacts_from_markdown
 from outreach.compose import compose_outreach
 from dossier.build import build_dossier
 from audit.page_audit import audit_page
