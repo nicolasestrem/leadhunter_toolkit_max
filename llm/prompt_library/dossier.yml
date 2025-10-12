@@ -1,0 +1,206 @@
+# Dossier Building Prompt
+# Creates comprehensive RAG-based lead dossiers with cited sources
+
+system_prompt: |
+  You are an expert business analyst creating comprehensive client dossiers for SMB consulting engagements.
+
+  Your task is to synthesize information from multiple web pages into a structured, actionable dossier.
+
+  **Dossier Structure**:
+
+  1. **Company Overview** (2-3 sentences)
+     - What they do, who they serve, key differentiators
+
+  2. **Services/Products** (bulleted list)
+     - Main offerings
+     - Price ranges if mentioned
+     - Target market
+
+  3. **Digital Presence Analysis**
+     - Website quality and functionality
+     - Social media activity
+     - Online reputation (reviews, mentions)
+
+  4. **Signals & Opportunities**
+     - **Positive signals**: Things they're doing well
+     - **Growth signals**: Signs of expansion or investment
+     - **Pain signals**: Problems or challenges detected
+
+  5. **Issues Detected** (with page citations)
+     - Technical issues (SSL, mobile, performance)
+     - Content issues (thin content, missing info, outdated)
+     - SEO issues (meta tags, structure, keywords)
+     - UX issues (navigation, accessibility, clarity)
+     - **Citation format**: Issue description [Source: page_url]
+
+  6. **48-Hour Quick Wins** (5 specific, actionable items)
+     - High-impact, low-effort improvements
+     - Each win should be specific and measurable
+     - Prioritized by impact × feasibility
+     - Format: "**Win N**: [Action] - Expected impact: [Impact]"
+
+  **Guidelines**:
+  - **Always cite sources**: Use [Source: URL] for every fact/claim
+  - **Be specific**: Avoid generic observations
+  - **Focus on actionable insights**: What can be improved?
+  - **Prioritize quick wins**: 48h timeline is critical
+  - **Stay consultative**: Professional, not salesy
+
+user_prompt_template: |
+  Create a comprehensive dossier for this lead:
+
+  **Company Information**:
+  - Name: {company_name}
+  - Website: {website}
+  - Type: {business_type}
+  - Location: {city}, {country}
+
+  **Contact Information**:
+  - Emails: {emails}
+  - Phones: {phones}
+  - Social: {social_links}
+
+  **Classification Data**:
+  - Quality Score: {score_quality}/10
+  - Fit Score: {score_fit}/10
+  - Issues Flagged: {issue_flags}
+  - Quality Signals: {quality_signals}
+
+  **Pages Analyzed** ({page_count} pages):
+  {pages_content}
+
+  Please generate a dossier following the structure:
+  {{
+    "company_overview": "2-3 sentence overview",
+    "services_products": ["Service 1", "Service 2", ...],
+    "digital_presence": {{
+      "website_quality": "Assessment with rating 1-10",
+      "social_activity": "Description of social media presence",
+      "online_reputation": "Reviews and mentions summary"
+    }},
+    "signals": {{
+      "positive": ["Signal 1 [Source: URL]", ...],
+      "growth": ["Signal 1 [Source: URL]", ...],
+      "pain": ["Signal 1 [Source: URL]", ...]
+    }},
+    "issues": [
+      {{
+        "category": "technical|content|seo|ux",
+        "severity": "critical|high|medium|low",
+        "description": "Issue description",
+        "source": "page_url"
+      }},
+      ...
+    ],
+    "quick_wins": [
+      {{
+        "title": "Win title",
+        "action": "Specific action to take",
+        "impact": "Expected impact description",
+        "effort": "low|medium",
+        "priority": 1-5
+      }},
+      ... (5 total, sorted by priority)
+    ]
+  }}
+
+# Examples for few-shot learning
+examples:
+  - input:
+      company_name: "Café Mozart"
+      website: "https://cafe-mozart-berlin.de"
+      business_type: "restaurant"
+      city: "Berlin"
+      country: "de"
+      score_quality: 7
+      score_fit: 9
+      page_count: 3
+
+    output:
+      company_overview: "Café Mozart is a traditional Viennese-style café in Berlin's Charlottenburg district, serving authentic Austrian pastries and coffee since 1998. Known for their homemade Sachertorte and classical music ambiance, they attract both locals and tourists seeking an authentic café experience."
+
+      services_products:
+        - "Breakfast and brunch (€8-€15)"
+        - "Traditional Viennese pastries and cakes"
+        - "Coffee specialties and hot beverages"
+        - "Light lunch menu (€12-€18)"
+        - "Private event hosting (up to 40 guests)"
+
+      digital_presence:
+        website_quality: "6/10 - Functional but dated design, lacks online reservations. Content is adequate but could be richer. [Source: homepage]"
+        social_activity: "Moderate Instagram presence (@cafemozartberlin, 890 followers) with weekly posts of daily specials. No Facebook or TikTok presence. [Source: Instagram]"
+        online_reputation: "4.6 stars on Google (127 reviews), praised for authenticity and quality. Common complaints about slow service during peak hours. [Source: Google Maps]"
+
+      signals:
+        positive:
+          - "Long-standing business (25+ years) indicates stability [Source: about page]"
+          - "Loyal customer base evident from repeat review mentions [Source: Google reviews]"
+          - "Unique positioning as authentic Viennese café [Source: homepage]"
+        growth:
+          - "Recently added event hosting services [Source: services page]"
+          - "Expanding breakfast menu based on customer feedback [Source: Instagram post]"
+        pain:
+          - "No online reservation system, losing potential bookings [Source: contact page]"
+          - "Limited social media presence vs. competitors [Source: social audit]"
+          - "Website not mobile-optimized, poor UX on phones [Source: mobile test]"
+
+      issues:
+        - category: "technical"
+          severity: "high"
+          description: "No SSL certificate (HTTP only) - security warning for visitors"
+          source: "https://cafe-mozart-berlin.de"
+        - category: "ux"
+          severity: "high"
+          description: "No online reservation system - competitors have this"
+          source: "contact page"
+        - category: "content"
+          severity: "medium"
+          description: "Menu not available online - requires phone call or visit"
+          source: "homepage"
+        - category: "seo"
+          severity: "medium"
+          description: "Missing meta descriptions on all pages"
+          source: "all pages"
+
+      quick_wins:
+        - title: "Add SSL Certificate"
+          action: "Install SSL certificate to enable HTTPS and remove security warnings"
+          impact: "Immediate trust signal to visitors, better Google rankings"
+          effort: "low"
+          priority: 1
+        - title: "Google Business Profile Optimization"
+          action: "Complete Google Business profile with hours, menu highlights, and weekly photo updates"
+          impact: "20-30% increase in local search visibility and calls"
+          effort: "low"
+          priority: 2
+        - title: "Simple Online Reservation Form"
+          action: "Add Calendly or simple contact form for reservation requests"
+          impact: "Capture 10-15% more bookings, reduce phone volume"
+          effort: "low"
+          priority: 3
+        - title: "Mobile-Friendly Menu PDF"
+          action: "Create and link mobile-optimized PDF menu on homepage"
+          impact: "Reduce customer service calls about menu items"
+          effort: "low"
+          priority: 4
+        - title: "Instagram Story Highlights"
+          action: "Create highlights for: Daily Specials, Events, Customer Reviews"
+          impact: "Better social proof and engagement, easier content discovery"
+          effort: "low"
+          priority: 5
+
+# Settings for LLM call
+temperature: 0.2  # Lower temp for factual, structured output
+max_tokens: 3000
+model_preference: "dossier"  # Use dossier model from models.yml
+
+# Page content limits
+max_content_per_page: 5000  # Max chars per page
+max_total_content: 15000    # Max total chars for LLM context
+priority_pages:
+  - "home"
+  - "index"
+  - "about"
+  - "contact"
+  - "services"
+  - "products"

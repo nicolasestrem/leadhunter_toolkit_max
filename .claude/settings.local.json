@@ -14,7 +14,15 @@
       "Bash(python:*)",
       "Bash(.venv/Scripts/python.exe -m py_compile:*)",
       "Bash(python3:*)",
-      "Bash(.venv/Scripts/python.exe:*)"
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(git mv:*)",
+      "Bash(awk:*)",
+      "Bash(for const in MIN_DOSSIER_CRAWL_PAGES MAX_DOSSIER_CRAWL_PAGES DEFAULT_DOSSIER_CRAWL_PAGES MIN_DOSSIER_NUM_PAGES MAX_DOSSIER_NUM_PAGES DEFAULT_DOSSIER_NUM_PAGES MIN_ONBOARD_CRAWL_PAGES MAX_ONBOARD_CRAWL_PAGES DEFAULT_ONBOARD_CRAWL_PAGES MIN_ONBOARD_AUDIT_PAGES MAX_ONBOARD_AUDIT_PAGES DEFAULT_ONBOARD_AUDIT_PAGES MIN_NUM_SOURCES MAX_NUM_SOURCES DEFAULT_NUM_SOURCES MIN_MAX_PLACES MAX_MAX_PLACES DEFAULT_MAX_PLACES MIN_SERP_RESULTS MAX_SERP_RESULTS DEFAULT_SERP_RESULTS MIN_SITEMAP_PAGES MAX_SITEMAP_PAGES DEFAULT_SITEMAP_PAGES MIN_SITE_CRAWL_PAGES MAX_SITE_CRAWL_PAGES DEFAULT_SITE_CRAWL_PAGES MIN_SCORE MAX_SCORE DEFAULT_MIN_QUALITY DEFAULT_MIN_FIT DEFAULT_MIN_PRIORITY)",
+      "Bash(do if grep -q \"^$const = \" constants.py)",
+      "Bash(then echo \"✓ $const\")",
+      "Bash(else echo \"✗ MISSING: $const\")",
+      "Bash(fi)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

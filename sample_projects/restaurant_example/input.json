@@ -1,0 +1,25 @@
+{
+  "domain": "bella-trattoria-berlin.de",
+  "name": "Bella Trattoria Berlin",
+  "website": "https://bella-trattoria-berlin.de",
+  "emails": [
+    "info@bella-trattoria-berlin.de",
+    "reservations@bella-trattoria-berlin.de"
+  ],
+  "phones": [
+    "+49 30 1234567",
+    "+49 176 98765432"
+  ],
+  "social": {
+    "facebook": "https://facebook.com/bellatrattoriaberlin",
+    "instagram": "https://instagram.com/bellatrattoria_berlin",
+    "google_business": "https://g.page/bella-trattoria-berlin"
+  },
+  "address": "Prenzlauer Allee 123, 10405 Berlin",
+  "city": "Berlin",
+  "country": "DE",
+  "tags": ["restaurant", "italian", "local"],
+  "status": "new",
+  "notes": "Authentic Italian restaurant in Prenzlauer Berg. Active on Instagram with food photos. Google Business profile present but could be optimized.",
+  "content_sample": "Welcome to Bella Trattoria Berlin! We serve authentic Italian cuisine in the heart of Prenzlauer Berg. Our chef brings traditional recipes from Naples. Reservations available online or by phone. Open Tuesday-Sunday, 12:00-22:00. Follow us on Instagram for daily specials and events."
+}

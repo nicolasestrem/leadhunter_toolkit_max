@@ -1,0 +1,77 @@
+# LLM Model Configuration
+# Defines model aliases and defaults for LM Studio and Ollama endpoints
+
+# Default LLM endpoint (LM Studio)
+default_endpoint: "https://lm.leophir.com/"
+
+# Ollama endpoint (currently offline, for future use)
+ollama_endpoint: "http://oll.leophir.com/"
+
+# Model aliases - map friendly names to actual model IDs
+models:
+  # LM Studio models
+  gpt-oss-20b:
+    id: "openai/gpt-oss-20b"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.2
+    max_tokens: 2048
+    description: "GPT-OSS 20B - General purpose model"
+
+  qwen-4b:
+    id: "qwen/qwen3-4b-2507"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.3
+    max_tokens: 2048
+    description: "Qwen 4B - Fast, efficient model for quick tasks"
+
+  qwen-7b:
+    id: "qwen/qwen3-7b"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.2
+    max_tokens: 4096
+    description: "Qwen 7B - Balanced performance"
+
+  # Task-specific presets
+  classification:
+    id: "openai/gpt-oss-20b"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.1  # Low temp for consistent classification
+    max_tokens: 1024
+    description: "Optimized for lead classification"
+
+  outreach:
+    id: "openai/gpt-oss-20b"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.7  # Higher temp for creative writing
+    max_tokens: 1024
+    description: "Optimized for personalized outreach drafts"
+
+  dossier:
+    id: "openai/gpt-oss-20b"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.2
+    max_tokens: 3072
+    description: "Optimized for dossier building"
+
+  audit:
+    id: "openai/gpt-oss-20b"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.1
+    max_tokens: 2048
+    description: "Optimized for SEO audits"
+
+# Ollama models (for future use when endpoint is online)
+ollama_models:
+  llama3:
+    id: "llama3"
+    endpoint: "http://oll.leophir.com/"
+    temperature: 0.2
+    max_tokens: 2048
+    description: "Llama 3 via Ollama"
+
+  mistral:
+    id: "mistral"
+    endpoint: "http://oll.leophir.com/"
+    temperature: 0.2
+    max_tokens: 2048
+    description: "Mistral via Ollama"

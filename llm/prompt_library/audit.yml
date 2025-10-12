@@ -1,0 +1,104 @@
+# Page Audit Prompt
+# Analyzes web pages for SEO, content, and UX issues
+
+system_prompt: |
+  You are an expert SEO and web optimization consultant analyzing web pages for quick-win improvements.
+
+  Your task is to audit a web page and identify actionable issues with specific recommendations.
+
+  **Audit Categories**:
+
+  1. **Meta Tags** (titles, descriptions, OG tags)
+     - Title length (50-60 chars optimal)
+     - Description presence and quality (150-160 chars)
+     - Open Graph tags for social sharing
+     - Twitter Card tags
+
+  2. **Heading Structure** (H1-H6)
+     - Single H1 per page
+     - Logical hierarchy (H1 → H2 → H3)
+     - Descriptive, keyword-rich headings
+
+  3. **Content Quality**
+     - Word count (min 300 for most pages)
+     - Readability (short paragraphs, clear language)
+     - Keyword usage (natural, not stuffed)
+     - Internal linking
+
+  4. **Images**
+     - ALT text presence and quality
+     - File size/optimization
+     - Responsive images
+
+  5. **Links**
+     - Internal link structure
+     - External links (nofollow where needed)
+     - Broken links detection
+
+  6. **Technical SEO**
+     - HTTPS/SSL
+     - Mobile-friendliness
+     - Page load speed indicators
+     - Schema.org markup
+
+  **Scoring** (0-100):
+  - 90-100: Excellent, minor tweaks only
+  - 75-89: Good, some improvements recommended
+  - 60-74: Fair, several issues to address
+  - 0-59: Poor, significant work needed
+
+user_prompt_template: |
+  Audit this web page for SEO and UX issues:
+
+  **Page Information**:
+  - URL: {url}
+  - Title: {page_title}
+  - Domain: {domain}
+
+  **HTML Content** (first 10,000 chars):
+  {html_content}
+
+  **Metrics**:
+  - Word count: {word_count}
+  - Has HTTPS: {has_https}
+  - Has H1: {has_h1}
+  - Image count: {image_count}
+  - Link count: {link_count}
+
+  Please analyze and provide a JSON response:
+  {{
+    "score": 85,
+    "grade": "A|B|C|D|F",
+    "issues": [
+      {{
+        "category": "meta|headings|content|images|links|technical",
+        "severity": "critical|high|medium|low",
+        "title": "Issue title",
+        "description": "Detailed description",
+        "recommendation": "Specific action to fix"
+      }},
+      ...
+    ],
+    "strengths": [
+      "Positive aspect 1",
+      "Positive aspect 2",
+      ...
+    ],
+    "quick_wins": [
+      {{
+        "title": "Quick win title",
+        "action": "Specific action",
+        "impact": "Expected impact",
+        "effort": "5 mins|15 mins|1 hour"
+      }},
+      ... (prioritized, max 8)
+    ],
+    "content_score": 80,
+    "technical_score": 90,
+    "seo_score": 75
+  }}
+
+# Settings for LLM call
+temperature: 0.1  # Low temp for consistent analysis
+max_tokens: 2000
+model_preference: "audit"  # Use audit model from models.yml

@@ -1,0 +1,141 @@
+{
+  "classification": {
+    "business_type": "retail",
+    "score_quality": 6.5,
+    "score_fit": 8.0,
+    "score_priority": 7.5,
+    "issue_flags": [
+      "Limited contact information",
+      "Minimal social presence"
+    ],
+    "quality_signals": [
+      "Professional domain",
+      "Location in city center",
+      "Niche focus (organic cosmetics)"
+    ],
+    "vertical_applied": "retail"
+  },
+  "dossier": {
+    "business_overview": "Family-owned organic cosmetics retailer in Munich city center. Focuses on natural and sustainable beauty products with personalized in-store consultations. Limited digital presence suggests growth opportunity.",
+    "digital_presence": {
+      "website": "Basic presence, opportunity for e-commerce integration",
+      "social_media": "Instagram and Facebook present but underutilized",
+      "google_business": "Not verified or optimized"
+    },
+    "opportunities": [
+      "Develop e-commerce capability for online sales",
+      "Optimize Google My Business for local discovery",
+      "Enhance Instagram with product showcases and tutorials",
+      "Implement email marketing for customer retention"
+    ],
+    "target_audience": "Health-conscious Munich residents seeking organic and sustainable beauty products",
+    "competitive_position": "Niche positioning in growing organic cosmetics market"
+  },
+  "outreach_variants": [
+    {
+      "angle": "opportunity-focused",
+      "subject": "Naturkosmetik Müller: Online-Verkauf erweitern",
+      "body": "Hallo Frau/Herr Müller,\\n\\nIhre Spezialisierung auf Naturkosmetik ist stark - ich sehe ungenutztes Potenzial für Online-Verkäufe. Viele München-Kunden suchen online nach 'Naturkosmetik München', finden Sie aber nicht.\\n\\nMit optimiertem Google My Business und einfachem Online-Shop könnten Sie 30-40% zusätzlichen Umsatz erreichen, ohne Ihre persönliche Beratung aufzugeben.\\n\\nKurzes Gespräch über Quick-Wins diese Woche?",
+      "cta": "15-Minuten-Call vereinbaren",
+      "tone_used": "professional",
+      "deliverability_score": 93,
+      "vertical_context_used": true
+    },
+    {
+      "angle": "quick-win",
+      "subject": "3 einfache Schritte für mehr Kunden",
+      "body": "Hallo,\\n\\nIch habe Naturkosmetik Müller analysiert - Sie haben starkes Produkt-Portfolio, aber digitale Sichtbarkeit fehlt. 3 Quick-Wins für mehr Laufkundschaft:\\n\\n1. Google My Business optimieren (erscheinen Sie bei 'Naturkosmetik München')\\n2. Instagram-Produktfotos professionalisieren\\n3. Online-Terminbuchung für Beratungen\\n\\nUmsetzung in 2-3 Tagen, messbare Ergebnisse in 2 Wochen. Interesse?",
+      "cta": "Kostenlose Erstanalyse anfragen",
+      "tone_used": "friendly",
+      "deliverability_score": 91,
+      "vertical_context_used": true
+    },
+    {
+      "angle": "problem-focused",
+      "subject": "Ihre Online-Sichtbarkeit: Verbesserungsbedarf",
+      "body": "Hallo Naturkosmetik Müller,\\n\\nBei Google-Suche 'Naturkosmetik München' erscheinen Sie nicht in den Top 10 - dabei liegt Ihr Geschäft zentral und Naturkosmetik boomt.\\n\\nProbleme identifiziert:\\n- Google Business Profil unvollständig\\n- Instagram-Potenzial ungenutzt\\n- Keine Online-Präsenzzeiten\\n\\nLösung: Lokale SEO-Optimierung mit Fokus auf Naturkosmetik-Nische. Typische Verbesserung: +40% Laufkundschaft in 4 Wochen.\\n\\nKostenlose Analyse?",
+      "cta": "Analyse anfragen",
+      "tone_used": "direct",
+      "deliverability_score": 87,
+      "vertical_context_used": true
+    }
+  ],
+  "audit_findings": {
+    "priority_issues": [
+      {
+        "category": "local_visibility",
+        "severity": "high",
+        "description": "Google My Business profile not claimed or optimized",
+        "impact": "Missing 60-70% of potential local discovery traffic",
+        "quick_win": "Claim and optimize GMB profile (1-2 hours)"
+      },
+      {
+        "category": "e-commerce",
+        "severity": "medium",
+        "description": "No online shopping capability",
+        "impact": "Lost sales from customers preferring online purchase",
+        "quick_win": "Add Shopify Lite or WooCommerce starter (4-6 hours setup)"
+      },
+      {
+        "category": "content_marketing",
+        "severity": "medium",
+        "description": "Minimal content on social media platforms",
+        "impact": "Low engagement and brand awareness",
+        "quick_win": "Create 30-day content calendar for Instagram (2 hours planning)"
+      },
+      {
+        "category": "customer_retention",
+        "severity": "low",
+        "description": "No email marketing or loyalty program",
+        "impact": "Missed repeat purchase opportunities",
+        "quick_win": "Set up basic email capture and welcome series (3 hours)"
+      }
+    ],
+    "strengths": [
+      "Niche focus on organic/natural products",
+      "Central Munich location",
+      "Personal consultation expertise",
+      "Family-owned authenticity"
+    ]
+  },
+  "quick_wins": [
+    {
+      "title": "Google My Business Optimization",
+      "description": "Claim and fully optimize GMB profile for local discovery",
+      "estimated_time": "1-2 hours",
+      "estimated_impact": "40-50% increase in local search visibility",
+      "steps": [
+        "Claim business on Google My Business",
+        "Add complete business information and categories",
+        "Upload 15+ product and store photos",
+        "Add business hours and attributes",
+        "Set up Google Posts for promotions"
+      ]
+    },
+    {
+      "title": "Instagram Product Showcase",
+      "description": "Transform Instagram into digital storefront",
+      "estimated_time": "3-4 hours setup + 30 min daily",
+      "estimated_impact": "25-35% increase in brand awareness and foot traffic",
+      "steps": [
+        "Create 30-day content calendar",
+        "Take professional product photos (can use smartphone)",
+        "Set up Instagram Shopping",
+        "Post daily with product tags and location",
+        "Use Stories for behind-the-scenes content"
+      ]
+    },
+    {
+      "title": "Simple Online Booking",
+      "description": "Add online consultation booking to reduce phone calls",
+      "estimated_time": "2 hours",
+      "estimated_impact": "15-20% reduction in phone call volume, better customer experience",
+      "steps": [
+        "Sign up for Calendly or similar",
+        "Add booking button to website",
+        "Share booking link on Instagram bio",
+        "Add to Google My Business profile"
+      ]
+    }
+  ]
+}

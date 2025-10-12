@@ -1,0 +1,98 @@
+# Restaurant Vertical Preset
+# Optimized for restaurants, cafés, bistros, and food service businesses
+
+vertical: "restaurant"
+description: "Restaurant and food service businesses"
+
+# Lead scoring adjustments
+scoring:
+  email_weight: 2.5  # Higher weight - reservations important
+  phone_weight: 2.0  # Critical for reservations
+  social_weight: 1.0  # Higher weight - Instagram/Facebook crucial
+  about_or_contact_weight: 1.5
+  city_match_weight: 2.0  # Local presence very important
+  google_business_weight: 2.0  # GMB critical for restaurants
+
+# Fit criteria
+fit_rules:
+  business_types: ["restaurant", "hospitality", "food_service"]
+  min_quality_score: 5.0
+  preferred_signals:
+    - "Social active"
+    - "Local presence"
+    - "Reviews present"
+  deal_breakers:
+    - "Enterprise-focused"
+    - "International chain"
+
+# Outreach customization
+outreach:
+  focus_areas:
+    - "Online reservations"
+    - "Google My Business"
+    - "Menu visibility"
+    - "Review management"
+    - "Local SEO"
+    - "Instagram presence"
+
+  value_props:
+    - "20-30% more online reservations"
+    - "Top 3 Google Maps rankings"
+    - "Instagram-ready menu photos"
+    - "Automated review requests"
+
+  typical_issues:
+    - "No online reservation system"
+    - "Menu not searchable"
+    - "Poor Google Business profile"
+    - "Limited social media"
+
+# Audit rule tweaks
+audit:
+  priorities:
+    - category: "images"
+      weight: 1.5  # Food photos critical
+    - category: "local_seo"
+      weight: 2.0  # Local search crucial
+    - category: "mobile"
+      weight: 1.8  # Mobile ordering important
+
+  restaurant_specific_checks:
+    - "Menu accessibility (PDF/online)"
+    - "Hours clearly displayed"
+    - "Reservation system present"
+    - "Food photography quality"
+    - "Delivery/takeout options"
+    - "Instagram integration"
+
+# Quick wins templates
+quick_wins:
+  - title: "Google Business Profile Optimization"
+    action: "Complete profile with hours, menu highlights, weekly photos"
+    impact: "20-30% increase in discovery and calls"
+    effort: "1 hour"
+    priority: 1
+
+  - title: "Instagram Story Highlights Setup"
+    action: "Create highlights: Menu, Specials, Reviews, Events"
+    impact: "Better social proof and engagement"
+    effort: "30 mins"
+    priority: 2
+
+  - title: "Online Menu Addition"
+    action: "Add mobile-friendly PDF menu or menu page"
+    impact: "Reduce phone calls, improve SEO"
+    effort: "1 hour"
+    priority: 3
+
+# Keywords for classification
+keywords:
+  - "restaurant"
+  - "café"
+  - "bistro"
+  - "cuisine"
+  - "menu"
+  - "reservations"
+  - "dining"
+  - "food"
+  - "gastronomie"

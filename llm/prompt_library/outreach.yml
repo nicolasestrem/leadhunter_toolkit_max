@@ -1,0 +1,196 @@
+# Outreach Prompt Library
+# Templates for personalized email, LinkedIn, and SMS outreach
+
+system_prompt_template: |
+  You are an expert business development copywriter specializing in {language} ({language_name}) communications.
+
+  Your task is to create compelling, personalized outreach messages for SMB consulting services.
+
+  **Tone**: {tone_description}
+  **Language**: {language_name}
+  **Formality**: {formality}
+
+  **Guidelines**:
+  1. **Deliverability first**: Keep emails 80-140 words (first contact)
+  2. **Avoid spam words**: No "free", "guarantee", "limited time", excessive exclamation marks
+  3. **Personalization**: Reference specific details about their business
+  4. **Value focus**: Lead with value, not your services
+  5. **Clear CTA**: Single, specific call-to-action
+  6. **Mobile-friendly**: Short paragraphs, easy to scan
+  7. **No hard selling**: Consultative approach, not salesy
+
+  **Voice presets**:
+  - **Professional** ({professional_greeting}): Formal, respectful, expertise-focused
+  - **Friendly** ({friendly_greeting}): Warm, approachable, partnership-focused
+  - **Direct** ({direct_greeting}): Efficient, value-focused, action-oriented
+
+  Generate 3 variants with different angles:
+  1. **Problem-focused**: Highlight a specific issue you noticed
+  2. **Opportunity-focused**: Emphasize growth potential
+  3. **Quick-win focused**: Offer immediate, tangible value
+
+user_prompt_template: |
+  Create 3 outreach message variants for this lead:
+
+  **Business Information**:
+  - Company: {company_name}
+  - Type: {business_type}
+  - Website: {website}
+  - City: {city}, {country}
+
+  **Contact Details**:
+  - Emails: {emails}
+  - Phones: {phones}
+
+  **Analysis**:
+  - Quality Score: {score_quality}/10
+  - Fit Score: {score_fit}/10
+  - Issues detected: {issue_flags}
+  - Quality signals: {quality_signals}
+
+  **Key Insights** (from dossier):
+  {dossier_summary}
+
+  **Your Context**:
+  - Your service: SMB digital consulting (quick-win SEO, web improvements, local marketing)
+  - Your value prop: Tangible results in 48h, no long-term contracts
+  - Typical engagement: 2-5k EUR for first project
+
+  **Message Type**: {message_type}
+  - **email**: Subject + 80-140 word body + signature
+  - **linkedin**: 300 character LinkedIn note (no subject)
+  - **sms**: 160 character text message (ultra-concise)
+
+  Please provide 3 variants in this JSON format:
+  {{
+    "variants": [
+      {{
+        "angle": "problem-focused|opportunity-focused|quick-win",
+        "subject": "Subject line here (email only, ~40-60 chars)",
+        "body": "Message body here",
+        "cta": "Specific call-to-action",
+        "tone_used": "professional|friendly|direct",
+        "personalization_notes": "Brief note on personalization used"
+      }},
+      ... 2 more variants
+    ]
+  }}
+
+# Language-specific tone presets
+tones:
+  en:
+    professional:
+      description: "Professional and respectful tone"
+      greeting: "Dear"
+      closing: "Best regards"
+      formality: "formal"
+
+    friendly:
+      description: "Warm and approachable tone"
+      greeting: "Hi"
+      closing: "Cheers"
+      formality: "casual"
+
+    direct:
+      description: "Direct and efficient tone"
+      greeting: "Hello"
+      closing: "Thanks"
+      formality: "neutral"
+
+  fr:
+    professional:
+      description: "Ton professionnel et respectueux"
+      greeting: "Madame, Monsieur"
+      closing: "Cordialement"
+      formality: "formal"
+
+    friendly:
+      description: "Ton chaleureux et accessible"
+      greeting: "Bonjour"
+      closing: "Bien à vous"
+      formality: "casual"
+
+    direct:
+      description: "Ton direct et efficace"
+      greeting: "Bonjour"
+      closing: "Merci"
+      formality: "neutral"
+
+  de:
+    professional:
+      description: "Professioneller und respektvoller Ton"
+      greeting: "Sehr geehrte Damen und Herren"
+      closing: "Mit freundlichen Grüßen"
+      formality: "formal"
+
+    friendly:
+      description: "Warmer und zugänglicher Ton"
+      greeting: "Hallo"
+      closing: "Viele Grüße"
+      formality: "casual"
+
+    direct:
+      description: "Direkter und effizienter Ton"
+      greeting: "Guten Tag"
+      closing: "Danke"
+      formality: "neutral"
+
+# Message type constraints
+message_types:
+  email:
+    min_words: 80
+    max_words: 140
+    subject_min_chars: 30
+    subject_max_chars: 60
+    max_links: 1
+    requires_subject: true
+
+  linkedin:
+    max_chars: 300
+    max_links: 0
+    requires_subject: false
+
+  sms:
+    max_chars: 160
+    max_links: 0
+    requires_subject: false
+
+  whatsapp:
+    max_chars: 160
+    max_links: 1
+    requires_subject: false
+
+# Example outputs for few-shot learning
+examples:
+  - input:
+      company_name: "Bella Vista Restaurant"
+      business_type: "restaurant"
+      city: "Berlin"
+      score_quality: 9
+      score_fit: 9
+      issue_flags: []
+      quality_signals: ["Professional design", "Social active"]
+      message_type: "email"
+      language: "de"
+      tone: "friendly"
+
+    output:
+      variants:
+        - angle: "problem-focused"
+          subject: "Ihre Google-Platzierung: Schnelle Lösung"
+          body: "Hallo Bella Vista Team,\n\nIch habe Ihr Restaurant bei Google Maps gefunden - tolle Bewertungen! Ein kurzer Check zeigt: Sie könnten bei lokalen Suchen noch 30% mehr Sichtbarkeit erreichen.\n\nMein Vorschlag: 48h-Sprint für bessere lokale Rankings. Keine langen Verträge, nur messbare Ergebnisse.\n\nKurzer Call diese Woche?"
+          cta: "15min Telefonat vereinbaren"
+          tone_used: "friendly"
+          personalization_notes: "Referenced Google Maps presence and reviews"
+
+        - angle: "opportunity-focused"
+          subject: "3 ungenutzte Chancen für mehr Gäste"
+          body: "Hallo,\n\nIhre Online-Präsenz ist stark - Instagram und Website überzeugen. Ich sehe 3 Quick-Wins für 20-30% mehr Online-Reservierungen:\n\n1. Google Business Optimierung\n2. Bewertungs-Strategie\n3. Lokale Content-Tipps\n\nUmsetzung in 2 Tagen möglich. Interesse an Details?"
+          cta: "Kostenlose Analyse anfordern"
+          tone_used: "friendly"
+          personalization_notes: "Acknowledged their strong Instagram presence"
+
+# Settings for LLM call
+temperature: 0.7  # Higher temp for creative writing
+max_tokens: 1500
+model_preference: "outreach"  # Use outreach model from models.yml

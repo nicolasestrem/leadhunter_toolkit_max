@@ -21,10 +21,12 @@ def robots_allowed(url: str) -> bool:
                     rp.parse([])
                 else:
                     rp.parse(r.text.splitlines())
-            except Exception:
+            except (httpx.HTTPError, httpx.ConnectError, httpx.TimeoutException):
+                # Network errors - allow crawling by default
                 rp.parse([])
             rp.set_url(robots_url)
             _cache[base] = rp
         return rp.can_fetch(USER_AGENT, url)
-    except Exception:
+    except (ValueError, AttributeError):
+        # Invalid URL or parsing error - allow crawling by default
         return True
