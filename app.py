@@ -1,6 +1,7 @@
 import streamlit as st
 import asyncio, json, os, datetime, pandas as pd
 from urllib.parse import urlparse
+from pathlib import Path
 from search import ddg_sites
 from google_search import google_sites
 from fetch import fetch_many, text_content, extract_links
@@ -18,6 +19,18 @@ from serp_tracker import SERPTracker
 from site_extractor import SiteExtractor
 from llm_client import LLMClient
 import httpx
+
+# Consulting Pack imports
+from config.loader import ConfigLoader
+from llm.adapter import LLMAdapter
+from leads.classify_score import classify_and_score_lead
+from leads.contacts_extract import extract_from_markdown
+from outreach.compose import compose_outreach
+from dossier.build import build_dossier
+from audit.page_audit import audit_page
+from audit.quick_wins import generate_quick_wins
+from onboarding.wizard import run_onboarding
+import zipfile
 
 BASE = os.path.dirname(__file__)
 SETTINGS_PATH = os.path.join(BASE, "settings.json")
@@ -62,58 +75,130 @@ def save_preset(name: str, data: dict):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-st.set_page_config(page_title="Lead Hunter Toolkit • Max", layout="wide")
-st.title("Lead Hunter Toolkit • Max")
-st.caption("Deeper crawl, presets, classifiers, XLSX export, editable grid, project workspaces, and local LLM helpers.")
+st.set_page_config(page_title="Lead Hunter Toolkit • Consulting Pack v1", layout="wide")
+st.title("Lead Hunter Toolkit • Consulting Pack v1")
+st.caption("Complete SMB consulting solution: Lead generation, AI-powered classification, personalized outreach, client dossiers, and comprehensive site audits.")
 
 # ---- Top docs expander (flat indentation) ----
 with st.expander("📚 Quick Start Guide", expanded=False):
     st.markdown("""
-    ## Lead Hunter Toolkit Features
+    ## Lead Hunter Toolkit • Consulting Pack v1
+
+    ### 🎯 Complete Workflow
+
+    **Step 1: Hunt** → Find leads through web search or paste URLs
+    **Step 2: Classify** → Use AI to score leads (quality, fit, priority)
+    **Step 3: Generate Outreach** → Create personalized messages in 3 variants
+    **Step 4: Build Dossier** → Comprehensive analysis with quick wins
+    **Step 5: Audit Site** → Technical SEO audit with recommendations
+    **Step 6: Export Pack** → One-click export of all materials
+
+    ---
 
     ### 🎯 Hunt Tab
-    **Local Lead Generation**
+    **Lead Generation & Discovery**
     - Search the web (DuckDuckGo or Google Custom Search)
     - Or paste URLs to scan directly
     - Smart BFS crawling with contact/about page prioritization
     - Extract emails, phones, social links automatically
-    - Score and rank leads by data quality
     - Export to CSV, JSON, or XLSX
 
-    ### 🔍 Search Scraper Tab (NEW!)
+    ### 📊 Leads Tab (NEW!)
+    **AI-Powered Classification & Scoring**
+    - Multi-dimensional scoring: Quality, Fit, Priority (0-10)
+    - Business type classification (restaurant, retail, services, etc.)
+    - Issue flags detection (No SSL, thin content, poor mobile)
+    - Quality signals identification
+    - Advanced filtering by score and business type
+    - Export to CSV, JSON, JSONL
+
+    **Workflow:**
+    1. Run Hunt to find leads
+    2. Go to Leads tab
+    3. Click "Classify All Leads" (uses LLM)
+    4. Filter by scores and business type
+    5. Select a lead for detailed actions
+
+    ### ✉️ Outreach Tab (NEW!)
+    **Personalized Message Generation**
+    - Generate 3 message variants (problem, opportunity, quick-win angles)
+    - Support for email, LinkedIn, SMS
+    - Multilingual: English, French, German
+    - Tone presets: Professional, Friendly, Direct
+    - Deliverability checking (spam detection, word count, links)
+    - Copy-to-clipboard buttons
+
+    **Workflow:**
+    1. Select a lead in Leads tab
+    2. Go to Outreach tab
+    3. Choose message type, language, tone
+    4. Add optional dossier summary
+    5. Generate 3 variants
+    6. Review deliverability scores
+    7. Export all variants
+
+    ### 📋 Dossier Tab (NEW!)
+    **RAG-Based Client Analysis**
+    - Company overview with cited sources
+    - Services/products identification
+    - Digital presence analysis
+    - Signals: Positive, Growth, Pain
+    - Issues detected with severity
+    - 48-hour quick wins (5 tasks)
+
+    **Workflow:**
+    1. Select a lead in Leads tab
+    2. Go to Dossier tab
+    3. Enter URLs to crawl OR paste content
+    4. Generate dossier (uses LLM)
+    5. Review all sections
+    6. Export as Markdown or JSON
+
+    ### 🔍 Audit Tab (NEW!)
+    **Site Audits & Quick Wins**
+
+    **Onboarding Wizard:**
+    - Automated: Crawl → Audit → Quick Wins
+    - Configurable page limits
+    - Prioritized recommendations
+
+    **Single Page Audit:**
+    - LLM-enhanced analysis
+    - Scores: Overall, Content, Technical, SEO
+    - Issues by severity (critical, warning, info)
+    - Strengths identification
+    - Quick wins generation
+
+    **Workflow:**
+    1. Enter client domain
+    2. Run Onboarding Wizard
+    3. Review page audits and scores
+    4. Check top quick wins
+    5. Export report
+
+    ### 📦 One-Click Export Pack (NEW!)
+    **Complete Consulting Package**
+    - Lead info (JSON)
+    - Dossier (Markdown)
+    - Outreach variants (Markdown)
+    - Audit report (Markdown)
+    - All packaged in a ZIP file
+
+    **Workflow:**
+    1. Complete Leads, Outreach, Dossier, Audit for a lead
+    2. Go to Leads tab
+    3. Select the lead
+    4. Click "Create Export Pack"
+    5. Share ZIP with client
+
+    ---
+
+    ### 🔍 Search Scraper Tab
     **AI-Powered Web Research**
-
-    **SearchScraper** aggregates information from multiple web sources using AI:
-
-    **Two Modes:**
-    1. **AI Extraction Mode** (default) - Uses your local LLM to:
-       - Search the web for relevant pages
-       - Extract structured insights answering your question
-       - Synthesize information from multiple sources
-       - Provide citations with URLs
-       - Support custom JSON schemas for structured data
-
-    2. **Markdown Mode** - Faster, no AI required:
-       - Converts web pages to clean markdown
-       - Returns all content for manual review
-       - Ideal for content migration and documentation
-
-    **Use Cases:**
-    - Research questions: "What are the latest developments in X?"
-    - Competitive analysis: "Compare features of X vs Y"
-    - Market research: "What are the trends in X industry?"
-    - Data aggregation: Collect information from multiple sources
-    - Content creation: Gather source material for articles
-
-    **How to Use:**
-    1. Go to the "Search Scraper" tab
-    2. Enter your research question or query
-    3. Choose number of sources (3-20)
-    4. Select mode (AI Extraction or Markdown)
-    5. Optionally define a custom JSON schema for structured extraction
-    6. Click "Search & Scrape"
-    7. View results with source attribution
-    8. Export as text or markdown
+    - Search and synthesize information from multiple sources
+    - Two modes: AI Extraction (uses LLM) or Markdown (raw content)
+    - Custom JSON schemas for structured extraction
+    - Source attribution
 
     ### 🌍 Enrich with Places Tab
     - Google Places API integration
@@ -125,30 +210,53 @@ with st.expander("📚 Quick Start Guide", expanded=False):
     - Update status, tags, and notes
     - Summarize leads with LLM
 
-    ### ⚙️ Settings
-    **Search Engines:**
-    - DuckDuckGo (default, no API key needed)
-    - Google Custom Search (requires API key + cx)
+    ### 🛠️ SEO Tools Tab
+    - **Content Audit:** Meta tags, headings, images, links
+    - **SERP Tracker:** Track keyword positions
+    - **Site Extractor:** Convert sites to markdown
 
-    **LLM Integration:**
-    - Works with LM Studio (`http://localhost:1234`)
-    - Works with Ollama (`http://localhost:11434`)
+    ---
+
+    ### ⚙️ Settings
+
+    **LLM Integration (Required for Consulting Features):**
+    - Works with LM Studio: `https://lm.leophir.com/`
+    - Works with Ollama: `http://localhost:11434`
     - Works with any OpenAI-compatible endpoint
     - API key optional for local models
     - Automatic `/v1` path handling
 
-    **Crawl Settings:**
+    **Configuration:**
+    - Project name for organized exports
+    - Language, country, city for localization
     - Concurrency (6-8 recommended)
-    - Fetch timeout
-    - Max pages per site
-    - Deep contact page crawling
+    - Fetch timeout and crawl settings
 
-    ### 💡 Tips
+    **Presets:**
+    - Save/load configurations per niche or location
+    - Vertical presets available in `presets/verticals/`
+
+    ---
+
+    ### 💡 Best Practices
+
+    **For Consultants:**
+    1. Use presets for each vertical (restaurant, retail, services)
+    2. Always classify leads before outreach
+    3. Build dossier before first contact
+    4. Include dossier summary in outreach
+    5. Run audit during discovery call
+    6. Use export pack for client delivery
+
+    **Performance:**
     - Keep concurrency low (6-8) to respect target sites
-    - Use presets to save configurations per niche/city
-    - SearchScraper works best with specific questions
-    - LLM base URL must be set for AI Extraction mode
-    - Markdown mode is faster and doesn't need LLM
+    - Use local LLM for privacy and cost savings
+    - LM Studio recommended for best quality
+
+    **Multilingual:**
+    - Set language in settings (EN, FR, DE)
+    - Outreach will use language-specific tone presets
+    - Dossier and audit work in any language
     """)
 
 # ---- Sidebar ----
@@ -306,12 +414,26 @@ with st.sidebar:
     st.subheader("Export current table")
     exp_placeholder = st.empty()
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Hunt", "Search Scraper", "Enrich with Places", "Review & Edit", "SEO Tools", "Session"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+    "Hunt", "Leads", "Outreach", "Dossier", "Audit",
+    "Search Scraper", "Enrich with Places", "Review & Edit", "SEO Tools", "Session"
+])
 
+# Initialize session state
 if "results" not in st.session_state:
     st.session_state["results"] = []
 if "search_scraper_result" not in st.session_state:
     st.session_state["search_scraper_result"] = None
+if "classified_leads" not in st.session_state:
+    st.session_state["classified_leads"] = []
+if "selected_lead" not in st.session_state:
+    st.session_state["selected_lead"] = None
+if "outreach_result" not in st.session_state:
+    st.session_state["outreach_result"] = None
+if "dossier_result" not in st.session_state:
+    st.session_state["dossier_result"] = None
+if "audit_result" not in st.session_state:
+    st.session_state["audit_result"] = None
 
 # ---------------------- HUNT TAB ----------------------
 with tab1:
@@ -421,8 +543,873 @@ with tab1:
                 path = export_xlsx(results)
                 exp_placeholder.info(f"Saved XLSX at {path}")
 
-# ---------------------- SEARCH SCRAPER TAB ----------------------
+# ---------------------- LEADS TAB ----------------------
 with tab2:
+    st.subheader("Lead Classification & Scoring")
+    st.caption("Classify and score leads with multi-dimensional analysis using LLM")
+
+    # Helper function to create LLM adapter
+    def get_llm_adapter():
+        config_loader = ConfigLoader()
+        config = config_loader.get_merged_config()
+        return LLMAdapter.from_config(config)
+
+    # Check if we have leads from Hunt tab
+    if st.session_state.get("results"):
+        st.info(f"Found {len(st.session_state['results'])} leads from Hunt tab. Classify them below.")
+
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            use_llm_classify = st.checkbox("Use LLM for classification", value=True,
+                                          help="Enable LLM to classify business type and detect issues")
+        with col2:
+            if st.button("Classify All Leads", type="primary"):
+                with st.status("Classifying leads...", expanded=True) as status:
+                    try:
+                        # Get LLM adapter if enabled
+                        adapter = get_llm_adapter() if use_llm_classify else None
+
+                        classified = []
+                        for i, lead in enumerate(st.session_state["results"]):
+                            status.update(label=f"Classifying lead {i+1}/{len(st.session_state['results'])}...")
+
+                            # Get content sample (combine available text)
+                            content_parts = []
+                            if lead.get("name"):
+                                content_parts.append(f"Company: {lead['name']}")
+                            if lead.get("domain"):
+                                content_parts.append(f"Domain: {lead['domain']}")
+                            if lead.get("notes"):
+                                content_parts.append(lead["notes"])
+                            content_sample = " ".join(content_parts)
+
+                            # Classify and score
+                            lead_record = classify_and_score_lead(
+                                lead=lead,
+                                llm_adapter=adapter,
+                                content_sample=content_sample,
+                                use_llm=use_llm_classify
+                            )
+                            classified.append(lead_record.dict())
+
+                        st.session_state["classified_leads"] = classified
+                        status.update(label=f"Classified {len(classified)} leads!", state="complete")
+                        st.success(f"✅ Classified {len(classified)} leads")
+
+                    except Exception as e:
+                        st.error(f"Classification failed: {str(e)}")
+                        status.update(label="Failed", state="error")
+
+    # Display classified leads
+    if st.session_state.get("classified_leads"):
+        df = pd.DataFrame(st.session_state["classified_leads"])
+
+        # Filters
+        st.subheader("Filters")
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            min_quality = st.slider("Min Quality Score", 0.0, 10.0, 0.0)
+        with col2:
+            min_fit = st.slider("Min Fit Score", 0.0, 10.0, 0.0)
+        with col3:
+            min_priority = st.slider("Min Priority Score", 0.0, 10.0, 0.0)
+        with col4:
+            business_types = df["business_type"].unique().tolist() if "business_type" in df.columns else []
+            selected_types = st.multiselect("Business Type", business_types, default=business_types)
+
+        # Apply filters
+        filtered_df = df.copy()
+        if "score_quality" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["score_quality"] >= min_quality]
+        if "score_fit" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["score_fit"] >= min_fit]
+        if "score_priority" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["score_priority"] >= min_priority]
+        if selected_types and "business_type" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["business_type"].isin(selected_types)]
+
+        # Display
+        st.subheader(f"Results ({len(filtered_df)} leads)")
+
+        # Select columns to display
+        display_cols = ["name", "domain", "score_quality", "score_fit", "score_priority",
+                       "business_type", "emails", "phones", "issue_flags", "quality_signals"]
+        display_cols = [col for col in display_cols if col in filtered_df.columns]
+
+        st.dataframe(filtered_df[display_cols], use_container_width=True)
+
+        # Lead selection for detailed actions
+        st.subheader("Lead Actions")
+        lead_names = [f"{row.get('name', 'Unknown')} ({row.get('domain', 'N/A')})"
+                     for _, row in filtered_df.iterrows()]
+
+        if lead_names:
+            selected_idx = st.selectbox("Select lead for detailed actions", range(len(lead_names)),
+                                       format_func=lambda x: lead_names[x])
+            st.session_state["selected_lead"] = filtered_df.iloc[selected_idx].to_dict()
+
+            st.info(f"**Selected:** {lead_names[selected_idx]}")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Quality", f"{st.session_state['selected_lead'].get('score_quality', 0):.1f}/10")
+            with col2:
+                st.metric("Fit", f"{st.session_state['selected_lead'].get('score_fit', 0):.1f}/10")
+            with col3:
+                st.metric("Priority", f"{st.session_state['selected_lead'].get('score_priority', 0):.1f}/10")
+
+            # One-Click Pack Export
+            st.divider()
+            st.markdown("### 📦 One-Click Export Pack")
+            st.caption("Export complete consulting package: Dossier + Audit + Outreach variants")
+
+            if st.button("📦 Create Export Pack", type="primary", use_container_width=True):
+                with st.status("Creating export pack...", expanded=True) as status:
+                    try:
+                        selected_lead = st.session_state["selected_lead"]
+                        project = s.get("project", "default")
+                        timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                        company_slug = selected_lead.get('name', 'unknown').replace(' ', '_')
+
+                        # Create pack directory
+                        pack_dir = Path(OUT_DIR) / project / f"pack_{company_slug}_{timestamp}"
+                        pack_dir.mkdir(parents=True, exist_ok=True)
+
+                        status.update(label="Collecting materials...")
+
+                        # 1. Save lead info
+                        with open(pack_dir / "lead_info.json", "w", encoding="utf-8") as f:
+                            json.dump(selected_lead, f, ensure_ascii=False, indent=2)
+
+                        # 2. Save dossier if available
+                        if st.session_state.get("dossier_result"):
+                            status.update(label="Adding dossier...")
+                            dossier = st.session_state["dossier_result"]
+
+                            # Markdown
+                            dossier_md = f"# Client Dossier: {dossier.company_name}\n\n"
+                            dossier_md += f"**Website:** {dossier.website}\n\n"
+                            dossier_md += f"## Company Overview\n\n{dossier.company_overview}\n\n"
+                            dossier_md += f"## Services & Products\n\n"
+                            for item in dossier.services_products:
+                                dossier_md += f"- {item}\n"
+                            dossier_md += f"\n## Digital Presence\n\n"
+                            dossier_md += f"**Website Quality:** {dossier.digital_presence.website_quality}\n\n"
+                            if dossier.digital_presence.social_platforms:
+                                dossier_md += "**Social Platforms:**\n"
+                                for platform in dossier.digital_presence.social_platforms:
+                                    dossier_md += f"- {platform}\n"
+                            dossier_md += f"\n## Quick Wins\n\n"
+                            for i, qw in enumerate(dossier.quick_wins, 1):
+                                dossier_md += f"### {i}. {qw.title}\n\n"
+                                dossier_md += f"**Action:** {qw.action}\n\n"
+                                dossier_md += f"**Impact:** {qw.impact} | **Effort:** {qw.effort} | **Priority:** {qw.priority:.1f}/10\n\n"
+
+                            with open(pack_dir / "dossier.md", "w", encoding="utf-8") as f:
+                                f.write(dossier_md)
+
+                        # 3. Save outreach if available
+                        if st.session_state.get("outreach_result"):
+                            status.update(label="Adding outreach variants...")
+                            outreach = st.session_state["outreach_result"]
+
+                            outreach_md = f"# Outreach Variants: {outreach.company_name}\n\n"
+                            outreach_md += f"**Type:** {outreach.message_type} | **Language:** {outreach.language} | **Tone:** {outreach.tone}\n\n"
+
+                            for i, variant in enumerate(outreach.variants, 1):
+                                outreach_md += f"## Variant {i}: {variant.angle.title()}\n\n"
+                                if variant.subject:
+                                    outreach_md += f"**Subject:** {variant.subject}\n\n"
+                                outreach_md += f"**Message:**\n\n{variant.body}\n\n"
+                                if variant.cta:
+                                    outreach_md += f"**CTA:** {variant.cta}\n\n"
+                                outreach_md += f"**Deliverability:** {variant.deliverability_score}/100\n\n"
+                                outreach_md += "---\n\n"
+
+                            with open(pack_dir / "outreach_variants.md", "w", encoding="utf-8") as f:
+                                f.write(outreach_md)
+
+                        # 4. Save audit if available
+                        if st.session_state.get("audit_result"):
+                            status.update(label="Adding audit report...")
+                            audit_result = st.session_state["audit_result"]
+
+                            audit_md = f"# Audit Report: {audit_result.domain}\n\n"
+                            audit_md += f"**Crawled:** {len(audit_result.crawled_urls)} pages | **Audited:** {len(audit_result.audits)} pages\n\n"
+
+                            for i, audit in enumerate(audit_result.audits, 1):
+                                audit_md += f"## Page {i}: {audit.url}\n\n"
+                                audit_md += f"**Score:** {audit.score}/100 | **Grade:** {audit.grade}\n\n"
+                                audit_md += f"- Content: {audit.content_score}/100\n"
+                                audit_md += f"- Technical: {audit.technical_score}/100\n"
+                                audit_md += f"- SEO: {audit.seo_score}/100\n\n"
+
+                                if audit.issues:
+                                    audit_md += "**Issues:**\n"
+                                    for issue in audit.issues:
+                                        audit_md += f"- [{issue.severity.upper()}] {issue.description}\n"
+                                    audit_md += "\n"
+
+                            if audit_result.quick_wins:
+                                audit_md += f"## Top {len(audit_result.quick_wins)} Quick Wins\n\n"
+                                for i, task in enumerate(audit_result.quick_wins, 1):
+                                    audit_md += f"### {i}. {task.task.title}\n\n"
+                                    audit_md += f"**Description:** {task.task.description}\n\n"
+                                    audit_md += f"**Impact:** {task.impact:.1f}/10 | **Feasibility:** {task.feasibility:.1f}/10 | **Priority:** {task.priority_score:.1f}/10\n\n"
+
+                            with open(pack_dir / "audit_report.md", "w", encoding="utf-8") as f:
+                                f.write(audit_md)
+
+                        # 5. Create ZIP archive
+                        status.update(label="Creating ZIP archive...")
+                        zip_path = pack_dir.parent / f"{pack_dir.name}.zip"
+
+                        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                            for file in pack_dir.glob("*"):
+                                if file.is_file():
+                                    zipf.write(file, arcname=file.name)
+
+                        status.update(label="✅ Export pack created!", state="complete")
+                        st.success(f"✅ Export pack created: {zip_path.name}")
+                        st.info(f"**Location:** `{zip_path}`")
+
+                        # Show what's included
+                        st.markdown("**Included files:**")
+                        for file in pack_dir.glob("*"):
+                            st.caption(f"- {file.name}")
+
+                    except Exception as e:
+                        st.error(f"Export pack creation failed: {str(e)}")
+                        status.update(label="Failed", state="error")
+
+        # Export options
+        st.divider()
+        st.subheader("Export Classified Leads")
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            if st.button("Export to CSV"):
+                from pathlib import Path
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "leads"
+                out_path.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                csv_path = out_path / f"classified_leads_{timestamp}.csv"
+                filtered_df.to_csv(csv_path, index=False)
+                st.success(f"Saved to {csv_path}")
+
+        with col2:
+            if st.button("Export to JSON"):
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "leads"
+                out_path.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                json_path = out_path / f"classified_leads_{timestamp}.json"
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(filtered_df.to_dict(orient="records"), f, ensure_ascii=False, indent=2)
+                st.success(f"Saved to {json_path}")
+
+        with col3:
+            if st.button("Export to JSONL"):
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "leads"
+                out_path.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                jsonl_path = out_path / f"classified_leads_{timestamp}.jsonl"
+                with open(jsonl_path, "w", encoding="utf-8") as f:
+                    for record in filtered_df.to_dict(orient="records"):
+                        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                st.success(f"Saved to {jsonl_path}")
+    else:
+        st.info("👈 Run Hunt first to find leads, then classify them here.")
+
+# ---------------------- OUTREACH TAB ----------------------
+with tab3:
+    st.subheader("Personalized Outreach Generator")
+    st.caption("Generate 3 message variants with deliverability optimization")
+
+    # Check if we have a selected lead
+    if st.session_state.get("selected_lead"):
+        lead = st.session_state["selected_lead"]
+        st.info(f"**Generating outreach for:** {lead.get('name', 'Unknown')} ({lead.get('domain', 'N/A')})")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            message_type = st.selectbox("Message Type", ["email", "linkedin", "sms"])
+        with col2:
+            language = st.selectbox("Language", ["en", "fr", "de"])
+        with col3:
+            tone = st.selectbox("Tone", ["professional", "friendly", "direct"])
+
+        dossier_summary = st.text_area(
+            "Dossier Summary (optional)",
+            placeholder="Brief company overview from dossier...",
+            help="Include key insights from the dossier to personalize the outreach"
+        )
+
+        if st.button("Generate Outreach Variants", type="primary"):
+            with st.status("Generating outreach...", expanded=True) as status:
+                try:
+                    adapter = get_llm_adapter()
+
+                    status.update(label="Creating personalized variants...")
+
+                    # Prepare output directory
+                    project = s.get("project", "default")
+                    out_path = Path(OUT_DIR) / project / "outreach"
+
+                    # Generate outreach
+                    result = compose_outreach(
+                        lead_data=lead,
+                        llm_adapter=adapter,
+                        dossier_summary=dossier_summary if dossier_summary.strip() else None,
+                        message_type=message_type,
+                        language=language,
+                        tone=tone,
+                        output_dir=out_path
+                    )
+
+                    st.session_state["outreach_result"] = result
+                    status.update(label="✅ Generated 3 variants!", state="complete")
+                    st.success("✅ Outreach variants generated successfully!")
+
+                except Exception as e:
+                    st.error(f"Outreach generation failed: {str(e)}")
+                    status.update(label="Failed", state="error")
+
+    # Display outreach variants
+    if st.session_state.get("outreach_result"):
+        result = st.session_state["outreach_result"]
+
+        st.divider()
+        st.subheader(f"📧 Outreach Variants ({result.message_type.upper()})")
+
+        for i, variant in enumerate(result.variants, 1):
+            with st.expander(f"✉️ Variant {i} - {variant.angle.title()} (Deliverability: {variant.deliverability_score}/100)", expanded=(i==1)):
+                # Subject (for email)
+                if result.message_type == "email" and variant.subject:
+                    st.markdown(f"**Subject:** {variant.subject}")
+                    if st.button(f"📋 Copy Subject", key=f"copy_subj_{i}"):
+                        st.code(variant.subject, language=None)
+                        st.info("Copy the text above to clipboard")
+
+                # Body
+                st.markdown("**Message:**")
+                st.text_area("", variant.body, height=200, key=f"body_{i}", label_visibility="collapsed")
+                if st.button(f"📋 Copy Message", key=f"copy_body_{i}"):
+                    st.code(variant.body, language=None)
+                    st.info("Copy the text above to clipboard")
+
+                # CTA
+                if variant.cta:
+                    st.markdown(f"**CTA:** {variant.cta}")
+
+                # Deliverability analysis
+                if variant.deliverability_score < 80:
+                    st.warning(f"⚠️ Deliverability score: {variant.deliverability_score}/100")
+                    if variant.deliverability_issues:
+                        st.markdown("**Issues:**")
+                        for issue in variant.deliverability_issues:
+                            st.caption(f"- {issue}")
+                else:
+                    st.success(f"✅ Good deliverability: {variant.deliverability_score}/100")
+
+        # Export all variants
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Export All Variants"):
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "outreach"
+                out_path.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+                # Save as markdown
+                md_content = f"# Outreach Variants - {result.company_name}\n\n"
+                md_content += f"**Type:** {result.message_type} | **Language:** {result.language} | **Tone:** {result.tone}\n\n"
+
+                for i, variant in enumerate(result.variants, 1):
+                    md_content += f"## Variant {i}: {variant.angle.title()}\n\n"
+                    if variant.subject:
+                        md_content += f"**Subject:** {variant.subject}\n\n"
+                    md_content += f"**Message:**\n\n{variant.body}\n\n"
+                    if variant.cta:
+                        md_content += f"**CTA:** {variant.cta}\n\n"
+                    md_content += f"**Deliverability Score:** {variant.deliverability_score}/100\n\n"
+                    md_content += "---\n\n"
+
+                md_path = out_path / f"outreach_{result.company_name.replace(' ', '_')}_{timestamp}.md"
+                with open(md_path, "w", encoding="utf-8") as f:
+                    f.write(md_content)
+                st.success(f"Saved to {md_path}")
+
+        with col2:
+            if st.button("📦 Export as JSON"):
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "outreach"
+                out_path.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+                # Convert to dict
+                result_dict = {
+                    "company_name": result.company_name,
+                    "message_type": result.message_type,
+                    "language": result.language,
+                    "tone": result.tone,
+                    "variants": [
+                        {
+                            "angle": v.angle,
+                            "subject": v.subject,
+                            "body": v.body,
+                            "cta": v.cta,
+                            "deliverability_score": v.deliverability_score,
+                            "deliverability_issues": v.deliverability_issues
+                        }
+                        for v in result.variants
+                    ]
+                }
+
+                json_path = out_path / f"outreach_{result.company_name.replace(' ', '_')}_{timestamp}.json"
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(result_dict, f, ensure_ascii=False, indent=2)
+                st.success(f"Saved to {json_path}")
+    else:
+        st.info("👈 Select a lead from the Leads tab first.")
+
+# ---------------------- DOSSIER TAB ----------------------
+with tab4:
+    st.subheader("Client Dossier Builder")
+    st.caption("Generate comprehensive RAG-based client dossiers with cited sources and quick wins")
+
+    # Check if we have a selected lead
+    if st.session_state.get("selected_lead"):
+        lead = st.session_state["selected_lead"]
+        st.info(f"**Building dossier for:** {lead.get('name', 'Unknown')} ({lead.get('domain', 'N/A')})")
+
+        # Input for pages to analyze
+        st.markdown("### Pages to Analyze")
+        st.caption("Provide URLs or paste page content to include in the dossier")
+
+        page_input_mode = st.radio("Input Mode", ["URLs (will crawl)", "Paste Content"])
+
+        pages_data = []
+
+        if page_input_mode == "URLs (will crawl)":
+            urls_input = st.text_area(
+                "URLs (one per line)",
+                placeholder=f"{lead.get('website', 'https://example.com')}\n{lead.get('website', 'https://example.com')}/about",
+                height=150
+            )
+
+            max_pages_crawl = st.slider("Max pages to crawl", 1, 20, 5)
+
+            if st.button("🕷️ Crawl Pages"):
+                if urls_input.strip():
+                    with st.status("Crawling pages...", expanded=True) as status:
+                        try:
+                            urls = [u.strip() for u in urls_input.splitlines() if u.strip().startswith("http")]
+                            status.update(label=f"Crawling {len(urls)} URLs...")
+
+                            # Fetch pages
+                            pages_dict = asyncio.run(fetch_many(
+                                urls,
+                                timeout=int(s.get("fetch_timeout", 15)),
+                                concurrency=int(s.get("concurrency", 8))
+                            ))
+
+                            # Convert to pages data format
+                            for url, html in pages_dict.items():
+                                if html:
+                                    content = text_content(html)
+                                    pages_data.append({"url": url, "content": content})
+
+                            st.session_state["dossier_pages"] = pages_data
+                            status.update(label=f"✅ Crawled {len(pages_data)} pages", state="complete")
+                            st.success(f"✅ Fetched {len(pages_data)} pages")
+
+                        except Exception as e:
+                            st.error(f"Crawl failed: {str(e)}")
+                            status.update(label="Failed", state="error")
+                else:
+                    st.warning("Please enter at least one URL")
+
+        else:  # Paste Content
+            num_pages = st.number_input("Number of pages", min_value=1, max_value=10, value=2)
+
+            for i in range(num_pages):
+                with st.expander(f"Page {i+1}", expanded=(i==0)):
+                    url = st.text_input(f"URL {i+1}", key=f"dossier_url_{i}",
+                                       value=lead.get('website', '') if i == 0 else '')
+                    content = st.text_area(f"Content {i+1}", key=f"dossier_content_{i}",
+                                          height=100, placeholder="Paste page content here...")
+
+                    if url and content.strip():
+                        # Check if already added
+                        existing = next((p for p in pages_data if p['url'] == url), None)
+                        if existing:
+                            existing['content'] = content
+                        else:
+                            pages_data.append({"url": url, "content": content})
+
+            if st.button("Save Pages"):
+                st.session_state["dossier_pages"] = pages_data
+                st.success(f"Saved {len(pages_data)} pages")
+
+        # Show collected pages
+        if st.session_state.get("dossier_pages"):
+            st.divider()
+            st.markdown(f"### Collected Pages ({len(st.session_state['dossier_pages'])})")
+
+            for i, page in enumerate(st.session_state["dossier_pages"], 1):
+                st.caption(f"{i}. {page['url']} ({len(page.get('content', ''))} chars)")
+
+            # Generate dossier
+            if st.button("📋 Generate Dossier", type="primary"):
+                with st.status("Building dossier...", expanded=True) as status:
+                    try:
+                        adapter = get_llm_adapter()
+
+                        status.update(label="Analyzing pages and generating dossier...")
+
+                        # Prepare output directory
+                        project = s.get("project", "default")
+                        out_path = Path(OUT_DIR) / project / "dossiers"
+
+                        # Build dossier
+                        dossier = build_dossier(
+                            lead_data=lead,
+                            pages=st.session_state["dossier_pages"],
+                            llm_adapter=adapter,
+                            output_dir=out_path
+                        )
+
+                        st.session_state["dossier_result"] = dossier
+                        status.update(label="✅ Dossier generated!", state="complete")
+                        st.success("✅ Client dossier generated successfully!")
+
+                    except Exception as e:
+                        st.error(f"Dossier generation failed: {str(e)}")
+                        status.update(label="Failed", state="error")
+
+    # Display dossier
+    if st.session_state.get("dossier_result"):
+        dossier = st.session_state["dossier_result"]
+
+        st.divider()
+        st.subheader(f"📊 Dossier: {dossier.company_name}")
+
+        # Overview
+        with st.expander("🏢 Company Overview", expanded=True):
+            st.markdown(dossier.company_overview)
+            st.caption(f"Website: {dossier.website}")
+            st.caption(f"Pages analyzed: {dossier.pages_analyzed}")
+
+        # Services/Products
+        with st.expander(f"🛍️ Services & Products ({len(dossier.services_products)} items)", expanded=True):
+            for item in dossier.services_products:
+                st.markdown(f"- {item}")
+
+        # Digital Presence
+        with st.expander("🌐 Digital Presence", expanded=True):
+            dp = dossier.digital_presence
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**Website Quality:**")
+                st.write(dp.website_quality or "Not analyzed")
+            with col2:
+                st.markdown("**Social Media:**")
+                if dp.social_platforms:
+                    for platform in dp.social_platforms:
+                        st.caption(f"- {platform}")
+                else:
+                    st.caption("No social platforms detected")
+
+            if dp.online_reviews:
+                st.markdown("**Online Reviews:**")
+                st.write(dp.online_reviews)
+
+        # Signals
+        with st.expander("📡 Signals", expanded=True):
+            signals = dossier.signals
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.markdown("**✅ Positive Signals:**")
+                for sig in signals.positive:
+                    st.caption(f"- {sig}")
+
+            with col2:
+                st.markdown("**📈 Growth Signals:**")
+                for sig in signals.growth:
+                    st.caption(f"- {sig}")
+
+            with col3:
+                st.markdown("**⚠️ Pain Signals:**")
+                for sig in signals.pain:
+                    st.caption(f"- {sig}")
+
+        # Issues
+        if dossier.issues:
+            with st.expander(f"🔍 Issues Detected ({len(dossier.issues)})", expanded=True):
+                for issue in dossier.issues:
+                    severity_icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(issue.severity.lower(), "⚪")
+                    st.markdown(f"{severity_icon} **{issue.category}** - {issue.description}")
+                    st.caption(f"Source: {issue.source}")
+                    st.divider()
+
+        # Quick Wins
+        if dossier.quick_wins:
+            with st.expander(f"⚡ 48-Hour Quick Wins ({len(dossier.quick_wins)})", expanded=True):
+                for i, qw in enumerate(dossier.quick_wins, 1):
+                    st.markdown(f"### {i}. {qw.title}")
+                    st.markdown(f"**Action:** {qw.action}")
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Impact", qw.impact)
+                    with col2:
+                        st.metric("Effort", qw.effort)
+                    with col3:
+                        st.metric("Priority", f"{qw.priority:.1f}/10")
+
+                    st.divider()
+
+        # Sources
+        with st.expander(f"📚 Sources ({len(dossier.sources)})", expanded=False):
+            for i, source in enumerate(dossier.sources, 1):
+                st.markdown(f"{i}. [{source}]({source})")
+
+        # Export
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Export as Markdown"):
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "dossiers"
+                out_path.mkdir(parents=True, exist_ok=True)
+
+                # Dossier should already be saved by build_dossier
+                st.success(f"Dossier saved in {out_path}")
+
+        with col2:
+            if st.button("📦 Export as JSON"):
+                project = s.get("project", "default")
+                out_path = Path(OUT_DIR) / project / "dossiers"
+                out_path.mkdir(parents=True, exist_ok=True)
+
+                # Dossier should already be saved by build_dossier
+                st.success(f"Dossier saved in {out_path}")
+    else:
+        st.info("👈 Select a lead from the Leads tab and collect pages to analyze.")
+
+# ---------------------- AUDIT TAB ----------------------
+with tab5:
+    st.subheader("Client Onboarding & Audit")
+    st.caption("Run comprehensive site audits and generate prioritized quick wins")
+
+    st.markdown("### Onboarding Mode")
+    st.caption("Automated workflow: Crawl → Audit → Quick Wins")
+
+    domain_input = st.text_input("Client Domain", placeholder="https://client-site.com")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        max_crawl_pages_onboard = st.slider("Max pages to crawl", 5, 50, 10, key="onboard_crawl")
+    with col2:
+        max_audit_pages_onboard = st.slider("Pages to audit", 1, 10, 3, key="onboard_audit")
+
+    if st.button("🚀 Run Onboarding Wizard", type="primary"):
+        if domain_input:
+            with st.status("Running onboarding workflow...", expanded=True) as status:
+                try:
+                    adapter = get_llm_adapter()
+
+                    status.update(label="Step 1/4: Crawling site...")
+
+                    # Prepare output directory
+                    project = s.get("project", "default")
+                    out_path = Path(OUT_DIR) / project / "audits"
+
+                    # Run onboarding
+                    result = asyncio.run(run_onboarding(
+                        domain=domain_input,
+                        llm_adapter=adapter,
+                        max_crawl_pages=max_crawl_pages_onboard,
+                        max_audit_pages=max_audit_pages_onboard,
+                        output_dir=out_path,
+                        concurrency=int(s.get("concurrency", 8))
+                    ))
+
+                    st.session_state["audit_result"] = result
+                    status.update(label="✅ Onboarding complete!", state="complete")
+                    st.success("✅ Client onboarding completed successfully!")
+
+                except Exception as e:
+                    st.error(f"Onboarding failed: {str(e)}")
+                    status.update(label="Failed", state="error")
+        else:
+            st.warning("Please enter a domain")
+
+    st.divider()
+    st.markdown("### Single Page Audit")
+    st.caption("Audit a specific page with LLM-enhanced analysis")
+
+    audit_url_single = st.text_input("Page URL", placeholder="https://example.com/page")
+
+    if st.button("🔍 Audit Page"):
+        if audit_url_single:
+            with st.status("Auditing page...", expanded=True) as status:
+                try:
+                    adapter = get_llm_adapter()
+
+                    # Fetch page
+                    status.update(label="Fetching page...")
+                    resp = httpx.get(audit_url_single, timeout=15, follow_redirects=True,
+                                    headers={"User-Agent": "LeadHunter/1.0"})
+                    resp.raise_for_status()
+                    html = resp.text
+
+                    # Audit
+                    status.update(label="Analyzing page...")
+                    page_audit = audit_page(
+                        url=audit_url_single,
+                        html_content=html,
+                        llm_adapter=adapter,
+                        use_llm=True
+                    )
+
+                    # Store in a list for compatibility with onboarding result
+                    st.session_state["single_audit"] = page_audit
+                    status.update(label="✅ Audit complete!", state="complete")
+                    st.success("✅ Page audit completed!")
+
+                except Exception as e:
+                    st.error(f"Audit failed: {str(e)}")
+                    status.update(label="Failed", state="error")
+
+    # Display onboarding results
+    if st.session_state.get("audit_result"):
+        result = st.session_state["audit_result"]
+
+        st.divider()
+        st.subheader(f"📊 Audit Results: {result.domain}")
+
+        st.info(f"Crawled: {len(result.crawled_urls)} pages | Audited: {len(result.audits)} pages")
+
+        # Page audits
+        for i, audit in enumerate(result.audits, 1):
+            with st.expander(f"📄 {audit.url} (Score: {audit.score}/100, Grade: {audit.grade})", expanded=(i==1)):
+                # Score metrics
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Overall", f"{audit.score}/100")
+                with col2:
+                    st.metric("Content", f"{audit.content_score}/100")
+                with col3:
+                    st.metric("Technical", f"{audit.technical_score}/100")
+                with col4:
+                    st.metric("SEO", f"{audit.seo_score}/100")
+
+                # Issues
+                if audit.issues:
+                    st.markdown("**⚠️ Issues:**")
+                    for issue in audit.issues:
+                        severity_color = {"critical": "🔴", "warning": "🟡", "info": "🟢"}.get(issue.severity, "⚪")
+                        st.caption(f"{severity_color} {issue.description}")
+
+                # Strengths
+                if audit.strengths:
+                    st.markdown("**✅ Strengths:**")
+                    for strength in audit.strengths:
+                        st.caption(f"- {strength}")
+
+        # Quick wins
+        if result.quick_wins:
+            st.divider()
+            st.subheader(f"⚡ Top Quick Wins ({len(result.quick_wins)})")
+
+            for i, task in enumerate(result.quick_wins, 1):
+                with st.expander(f"{i}. {task.task.title} (Priority: {task.priority_score:.1f}/10)", expanded=(i<=3)):
+                    st.markdown(f"**Description:** {task.task.description}")
+                    st.markdown(f"**Expected Outcome:** {task.task.expected_outcome}")
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Impact", f"{task.impact:.1f}/10")
+                    with col2:
+                        st.metric("Feasibility", f"{task.feasibility:.1f}/10")
+                    with col3:
+                        st.metric("Priority", f"{task.priority_score:.1f}/10")
+
+    # Display single audit
+    elif st.session_state.get("single_audit"):
+        audit = st.session_state["single_audit"]
+
+        st.divider()
+        st.subheader(f"📊 Audit: {audit.url}")
+
+        # Score metrics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Overall", f"{audit.score}/100")
+            st.caption(f"Grade: {audit.grade}")
+        with col2:
+            st.metric("Content", f"{audit.content_score}/100")
+        with col3:
+            st.metric("Technical", f"{audit.technical_score}/100")
+        with col4:
+            st.metric("SEO", f"{audit.seo_score}/100")
+
+        # Issues
+        if audit.issues:
+            with st.expander(f"⚠️ Issues ({len(audit.issues)})", expanded=True):
+                for issue in audit.issues:
+                    severity_color = {"critical": "🔴", "warning": "🟡", "info": "🟢"}.get(issue.severity, "⚪")
+                    st.markdown(f"{severity_color} **{issue.category}:** {issue.description}")
+
+        # Strengths
+        if audit.strengths:
+            with st.expander(f"✅ Strengths ({len(audit.strengths)})", expanded=False):
+                for strength in audit.strengths:
+                    st.markdown(f"- {strength}")
+
+        # Quick wins
+        if audit.quick_wins:
+            with st.expander(f"⚡ Quick Wins ({len(audit.quick_wins)})", expanded=True):
+                for i, qw in enumerate(audit.quick_wins, 1):
+                    st.markdown(f"**{i}. {qw.title}**")
+                    st.caption(f"Action: {qw.action}")
+                    st.caption(f"Impact: {qw.impact} | Effort: {qw.effort}")
+                    st.divider()
+
+        # Generate prioritized quick wins
+        if st.button("Generate Prioritized Quick Wins"):
+            tasks = generate_quick_wins(audit, max_wins=8)
+            st.session_state["quick_wins_tasks"] = tasks
+            st.success(f"Generated {len(tasks)} prioritized quick wins")
+
+        # Display prioritized tasks
+        if st.session_state.get("quick_wins_tasks"):
+            st.divider()
+            st.subheader("Prioritized Quick Wins")
+
+            for i, task in enumerate(st.session_state["quick_wins_tasks"], 1):
+                with st.expander(f"{i}. {task.task.title} (Priority: {task.priority_score:.1f}/10)", expanded=(i<=3)):
+                    st.markdown(f"**Description:** {task.task.description}")
+                    st.markdown(f"**Expected Outcome:** {task.task.expected_outcome}")
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Impact", f"{task.impact:.1f}/10")
+                    with col2:
+                        st.metric("Feasibility", f"{task.feasibility:.1f}/10")
+                    with col3:
+                        st.metric("Priority", f"{task.priority_score:.1f}/10")
+    else:
+        st.info("Enter a domain to run onboarding or a page URL for single audit.")
+
+# ---------------------- SEARCH SCRAPER TAB ----------------------
+with tab6:
     st.subheader("AI-Powered Web Research")
     st.caption("Search the web and extract insights using AI, or get raw markdown content from multiple sources")
 
@@ -542,7 +1529,7 @@ with tab2:
                     st.success(f"Saved to {path}")
 
 # ---------------------- PLACES TAB ----------------------
-with tab3:
+with tab7:
     st.subheader("Text search on Google Places")
     st.caption("Requires a valid API key. Uses /places:searchText and detail lookups.")
     query_places = st.text_input("Places text query", placeholder="plombier à Toulouse")
@@ -591,7 +1578,7 @@ with tab3:
                 exp_placeholder.info(f"Saved XLSX at {path}")
 
 # ---------------------- REVIEW TAB ----------------------
-with tab4:
+with tab8:
     st.subheader("Review and edit leads")
     df = pd.DataFrame(st.session_state.get("results", []))
     if not df.empty:
@@ -617,7 +1604,7 @@ with tab4:
         st.info("Run Hunt first to get some leads.")
 
 # ---------------------- SEO TOOLS TAB ----------------------
-with tab5:
+with tab9:
     st.subheader("SEO Tools")
     st.caption("Comprehensive SEO analysis, SERP tracking, and site extraction")
 
@@ -873,7 +1860,7 @@ with tab5:
                     st.warning("Please enter a domain URL")
 
 # ---------------------- SESSION TAB ----------------------
-with tab6:
+with tab10:
     st.subheader("Session")
     now = datetime.datetime.utcnow().isoformat()
     st.write(f"UTC now: {now}")
