@@ -120,8 +120,9 @@ def check_link_count(text: str, max_links: int = 1) -> List[DeliverabilityIssue]
     """
     issues = []
 
-    # Count URLs (http/https)
-    url_pattern = re.compile(r'https?://\S+')
+    # Count URLs (http/https, www., and bare domains)
+    # Pattern matches: http://example.com, https://example.com, www.example.com
+    url_pattern = re.compile(r'(?:https?://|www\.)\S+')
     urls = url_pattern.findall(text)
     link_count = len(urls)
 
@@ -136,12 +137,14 @@ def check_link_count(text: str, max_links: int = 1) -> List[DeliverabilityIssue]
     return issues
 
 
-def check_subject_line(subject: str) -> List[DeliverabilityIssue]:
+def check_subject_line(subject: str, min_chars: int = 30, max_chars: int = 60) -> List[DeliverabilityIssue]:
     """
     Check subject line quality
 
     Args:
         subject: Email subject line
+        min_chars: Minimum character count (default: 30)
+        max_chars: Maximum character count (default: 60)
 
     Returns:
         List of issues found
@@ -153,26 +156,26 @@ def check_subject_line(subject: str) -> List[DeliverabilityIssue]:
             severity='critical',
             category='formatting',
             message='Missing subject line',
-            suggestion='Add a compelling subject line (40-60 characters)'
+            suggestion=f'Add a compelling subject line ({min_chars}-{max_chars} characters)'
         ))
         return issues
 
     subject_len = len(subject)
 
     # Check length
-    if subject_len < 30:
+    if subject_len < min_chars:
         issues.append(DeliverabilityIssue(
             severity='warning',
             category='formatting',
             message=f'Subject line too short ({subject_len} chars)',
-            suggestion='Aim for 40-60 characters for optimal engagement'
+            suggestion=f'Aim for {min_chars}-{max_chars} characters for optimal engagement'
         ))
-    elif subject_len > 60:
+    elif subject_len > max_chars:
         issues.append(DeliverabilityIssue(
             severity='warning',
             category='formatting',
             message=f'Subject line too long ({subject_len} chars, may be truncated)',
-            suggestion='Keep subject under 60 characters for mobile display'
+            suggestion=f'Keep subject under {max_chars} characters for mobile display'
         ))
 
     # Check for spam indicators
