@@ -34,6 +34,10 @@ from plugins import load_plugins, get_loaded_plugins, call_plugin_hook
 from models import Lead
 import zipfile
 
+# UI utility modules
+from ui.utils.session_state import init_session_state
+from ui.utils.data_transforms import dict_to_json_safe, dataframe_to_json_safe
+
 BASE = os.path.dirname(__file__)
 SETTINGS_PATH = os.path.join(BASE, "settings.json")
 PRESETS_DIR = os.path.join(BASE, "presets")
@@ -47,71 +51,6 @@ DEFAULT_KEYWORDS = {
     "seo": ["seo", "référencement", "search engine"],
     "mobility": ["mobilité", "mobility", "transport", "vélo"]
 }
-
-def dict_to_json_safe(data):
-    """
-    Convert a dict with pandas/numpy types to JSON-serializable dict.
-
-    Args:
-        data: dict potentially containing Timestamp or numpy types
-
-    Returns:
-        Dict with JSON-serializable values
-    """
-    result = {}
-    for key, value in data.items():
-        # Handle lists and arrays
-        if isinstance(value, (list, tuple)):
-            result[key] = [dict_to_json_safe_value(v) for v in value]
-        else:
-            result[key] = dict_to_json_safe_value(value)
-    return result
-
-def dict_to_json_safe_value(value):
-    """
-    Convert a single value to JSON-safe type.
-
-    Args:
-        value: Any value potentially containing pandas/numpy types
-
-    Returns:
-        JSON-serializable value
-    """
-    # Check for None/NaN (use try/except to avoid array ambiguity)
-    try:
-        if pd.isna(value):
-            return None
-    except (ValueError, TypeError):
-        # Value is an array or non-scalar, continue processing
-        pass
-
-    # Handle specific types
-    if isinstance(value, pd.Timestamp):
-        return value.isoformat()
-    elif isinstance(value, (list, tuple)):
-        return [dict_to_json_safe_value(v) for v in value]
-    elif hasattr(value, 'item'):  # numpy scalar types
-        return value.item()
-    elif isinstance(value, dict):
-        return dict_to_json_safe(value)
-    else:
-        return value
-
-def dataframe_to_json_safe(df):
-    """
-    Convert DataFrame to JSON-serializable dict, handling Timestamps and other pandas types.
-
-    Args:
-        df: pandas DataFrame
-
-    Returns:
-        List of dicts with JSON-serializable values
-    """
-    # Convert to dict with default date format
-    records = df.to_dict(orient="records")
-
-    # Convert any remaining Timestamp objects to ISO strings
-    return [dict_to_json_safe(record) for record in records]
 
 # Lazy loading for heavy optional modules
 _search_scraper_module = None
@@ -651,20 +590,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
 ])
 
 # Initialize session state
-if "results" not in st.session_state:
-    st.session_state["results"] = []
-if "search_scraper_result" not in st.session_state:
-    st.session_state["search_scraper_result"] = None
-if "classified_leads" not in st.session_state:
-    st.session_state["classified_leads"] = []
-if "selected_lead" not in st.session_state:
-    st.session_state["selected_lead"] = None
-if "outreach_result" not in st.session_state:
-    st.session_state["outreach_result"] = None
-if "dossier_result" not in st.session_state:
-    st.session_state["dossier_result"] = None
-if "audit_result" not in st.session_state:
-    st.session_state["audit_result"] = None
+init_session_state()
 
 # ---------------------- HUNT TAB ----------------------
 with tab1:
