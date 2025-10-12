@@ -1,0 +1,84 @@
+# Application-wide Default Settings
+# These values are used as fallbacks when not specified in settings.json
+
+# Locale settings
+locale:
+  language: "en"  # Default language: en, fr, de
+  country: "de"   # Default country code
+  city: "Berlin"  # Default city for local searches
+  timezone: "Europe/Berlin"
+
+# Search and crawl settings
+search:
+  engine: "google"  # Search engine: ddg or google
+  max_sites: 25     # Maximum sites to search
+  max_pages: 5      # Maximum pages to crawl per site
+  deep_contact: true  # Enable deep contact page prioritization
+
+# Network settings
+network:
+  concurrency: 8      # Concurrent requests
+  fetch_timeout: 15   # Timeout in seconds
+  retry_attempts: 3   # Number of retries
+  retry_delay: 1.0    # Initial retry delay in seconds
+
+# Extraction settings
+extraction:
+  emails: true   # Extract email addresses
+  phones: true   # Extract phone numbers
+  social: true   # Extract social media links
+  addresses: true  # Extract physical addresses
+
+# Scoring weights
+scoring:
+  email_weight: 2.0
+  phone_weight: 1.0
+  social_weight: 0.5
+  about_or_contact_weight: 1.0
+  city_match_weight: 1.5
+  country_domain_bonus: 0.5
+
+# Lead quality thresholds
+quality:
+  min_score: 0.0          # Minimum score to include
+  high_quality_score: 5.0  # Threshold for high quality
+  priority_score: 7.0      # Threshold for priority leads
+
+# Export settings
+export:
+  formats: ["csv", "json", "xlsx", "jsonl"]
+  timestamp_format: "%Y%m%d_%H%M%S"
+  default_project: "default"
+
+# LLM settings (can be overridden by settings.json)
+llm:
+  base_url: "https://lm.leophir.com/"
+  model: "openai/gpt-oss-20b"
+  temperature: 0.2
+  max_tokens: 2048
+  timeout: 60  # LLM request timeout in seconds
+
+# Google API settings
+google:
+  places:
+    region: "DE"
+    language: "de"
+    radius_km: 500
+
+# Cache settings
+cache:
+  enabled: true
+  expiration_days: 30
+  max_size_mb: 500
+
+# Multimodal settings (optional features)
+multimodal:
+  screenshots: false  # Enable screenshot capture
+  pdf_ocr: false     # Enable PDF text extraction
+  screenshot_scale: 0.8  # Screenshot scale factor
+
+# UI settings
+ui:
+  page_size: 50  # Number of items per page in tables
+  preview_length: 200  # Character limit for previews
+  theme: "light"  # UI theme: light or dark

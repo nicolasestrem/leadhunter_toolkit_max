@@ -1,0 +1,285 @@
+"""
+Unified LLM adapter for OpenAI-compatible endpoints
+Supports LM Studio, Ollama, and OpenAI with consistent interface
+"""
+
+from typing import List, Dict, Any, Optional, Union
+from openai import OpenAI, AsyncOpenAI
+from retry_utils import retry_with_backoff
+from logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class LLMAdapter:
+    """
+    Unified adapter for OpenAI-compatible LLM endpoints
+
+    Supports:
+    - LM Studio (https://lm.leophir.com/)
+    - Ollama (http://oll.leophir.com/)
+    - OpenAI API
+    - Any OpenAI-compatible endpoint
+    """
+
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        model: str = "openai/gpt-oss-20b",
+        temperature: float = 0.2,
+        max_tokens: Optional[int] = 2048,
+        timeout: int = 60
+    ):
+        """
+        Initialize LLM adapter
+
+        Args:
+            base_url: Base URL for API endpoint (e.g., 'https://lm.leophir.com/')
+                     Auto-appends '/v1' if not present for OpenAI compatibility
+            api_key: API key (defaults to 'not-needed' for local LLMs)
+            model: Model name/ID (e.g., 'openai/gpt-oss-20b', 'qwen/qwen3-4b-2507')
+            temperature: Sampling temperature (0.0-2.0)
+            max_tokens: Maximum tokens in response
+            timeout: Request timeout in seconds
+        """
+        self.api_key = api_key or "not-needed"
+
+        # Ensure base_url ends with /v1 for OpenAI compatibility
+        if base_url:
+            base_url = base_url.rstrip('/')
+            if not base_url.endswith('/v1'):
+                base_url = f"{base_url}/v1"
+
+        self.base_url = base_url
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.timeout = timeout
+
+        logger.debug(
+            f"Initialized LLMAdapter: endpoint={base_url}, model={model}, "
+            f"temp={temperature}, max_tokens={max_tokens}"
+        )
+
+    @retry_with_backoff(max_retries=2, initial_delay=2.0, exceptions=(Exception,))
+    def chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs
+    ) -> str:
+        """
+        Send chat completion request
+
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+                     Example: [{"role": "user", "content": "Hello"}]
+            temperature: Override default temperature
+            max_tokens: Override default max_tokens
+            **kwargs: Additional parameters to pass to the API
+
+        Returns:
+            Response content as string
+        """
+        if not self.base_url:
+            logger.error("No LLM base URL configured")
+            return "Error: No LLM base URL configured. Please set it in settings."
+
+        try:
+            logger.debug(f"Sending chat request with {len(messages)} messages")
+
+            client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url,
+                timeout=self.timeout
+            )
+
+            # Build request parameters
+            request_params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": temperature if temperature is not None else self.temperature,
+                **kwargs
+            }
+
+            # Add max_tokens if specified
+            max_tok = max_tokens if max_tokens is not None else self.max_tokens
+            if max_tok and max_tok > 0:
+                request_params["max_tokens"] = max_tok
+
+            logger.info(f"Calling LLM: {self.base_url} with model {self.model}")
+            response = client.chat.completions.create(**request_params)
+
+            if response and response.choices and len(response.choices) > 0:
+                content = response.choices[0].message.content
+                if content:
+                    logger.info(f"LLM response received ({len(content)} chars)")
+                    return content
+                else:
+                    logger.warning("LLM returned empty content")
+                    return ""
+
+            logger.warning("LLM returned no choices")
+            return ""
+
+        except Exception as e:
+            logger.error(f"Error calling LLM: {e}", exc_info=True)
+            return f"Error calling LLM: {str(e)}"
+
+    def chat_with_system(
+        self,
+        user_message: str,
+        system_message: Optional[str] = None,
+        **kwargs
+    ) -> str:
+        """
+        Simplified chat with optional system message
+
+        Args:
+            user_message: User's message/prompt
+            system_message: Optional system message to set context
+            **kwargs: Additional parameters for chat()
+
+        Returns:
+            Response content as string
+        """
+        messages = []
+
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+
+        messages.append({"role": "user", "content": user_message})
+
+        return self.chat(messages, **kwargs)
+
+    @retry_with_backoff(max_retries=2, initial_delay=2.0, exceptions=(Exception,))
+    async def chat_async(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs
+    ) -> str:
+        """
+        Async version of chat()
+
+        Args:
+            messages: List of message dicts
+            temperature: Override default temperature
+            max_tokens: Override default max_tokens
+            **kwargs: Additional parameters
+
+        Returns:
+            Response content as string
+        """
+        if not self.base_url:
+            logger.error("No LLM base URL configured")
+            return "Error: No LLM base URL configured."
+
+        try:
+            logger.debug(f"Sending async chat request with {len(messages)} messages")
+
+            client = AsyncOpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url,
+                timeout=self.timeout
+            )
+
+            request_params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": temperature if temperature is not None else self.temperature,
+                **kwargs
+            }
+
+            max_tok = max_tokens if max_tokens is not None else self.max_tokens
+            if max_tok and max_tok > 0:
+                request_params["max_tokens"] = max_tok
+
+            logger.info(f"Calling LLM async: {self.base_url}")
+            response = await client.chat.completions.create(**request_params)
+
+            if response and response.choices and len(response.choices) > 0:
+                content = response.choices[0].message.content
+                if content:
+                    logger.info(f"Async LLM response received ({len(content)} chars)")
+                    return content
+                else:
+                    logger.warning("Async LLM returned empty content")
+                    return ""
+
+            logger.warning("Async LLM returned no choices")
+            return ""
+
+        except Exception as e:
+            logger.error(f"Error calling async LLM: {e}", exc_info=True)
+            return f"Error calling LLM: {str(e)}"
+
+    async def chat_with_system_async(
+        self,
+        user_message: str,
+        system_message: Optional[str] = None,
+        **kwargs
+    ) -> str:
+        """
+        Async version of chat_with_system()
+
+        Args:
+            user_message: User's message/prompt
+            system_message: Optional system message
+            **kwargs: Additional parameters
+
+        Returns:
+            Response content as string
+        """
+        messages = []
+
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+
+        messages.append({"role": "user", "content": user_message})
+
+        return await self.chat_async(messages, **kwargs)
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any], model_override: Optional[str] = None) -> 'LLMAdapter':
+        """
+        Create adapter from config dict
+
+        Args:
+            config: Config dict (from config.loader)
+            model_override: Optional model name to override config
+
+        Returns:
+            Configured LLMAdapter instance
+        """
+        llm_config = config.get('llm', {})
+
+        return cls(
+            base_url=llm_config.get('base_url'),
+            api_key=llm_config.get('api_key'),
+            model=model_override or llm_config.get('model', 'openai/gpt-oss-20b'),
+            temperature=llm_config.get('temperature', 0.2),
+            max_tokens=llm_config.get('max_tokens', 2048),
+            timeout=llm_config.get('timeout', 60)
+        )
+
+    @classmethod
+    def from_model_config(cls, model_config: Dict[str, Any]) -> 'LLMAdapter':
+        """
+        Create adapter from model-specific config
+
+        Args:
+            model_config: Model config dict (from models.yml)
+
+        Returns:
+            Configured LLMAdapter instance
+        """
+        return cls(
+            base_url=model_config.get('endpoint'),
+            model=model_config.get('id'),
+            temperature=model_config.get('temperature', 0.2),
+            max_tokens=model_config.get('max_tokens', 2048)
+        )
