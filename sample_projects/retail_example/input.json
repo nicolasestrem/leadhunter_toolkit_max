@@ -1,0 +1,22 @@
+{
+  "domain": "naturkosmetik-mueller.de",
+  "name": "Naturkosmetik Müller",
+  "website": "https://naturkosmetik-mueller.de",
+  "emails": [
+    "shop@naturkosmetik-mueller.de"
+  ],
+  "phones": [
+    "+49 89 7654321"
+  ],
+  "social": {
+    "instagram": "https://instagram.com/naturkosmetik_mueller",
+    "facebook": "https://facebook.com/naturkosmetikmueller"
+  },
+  "address": "Sendlinger Str. 45, 80331 München",
+  "city": "München",
+  "country": "DE",
+  "tags": ["retail", "cosmetics", "local"],
+  "status": "new",
+  "notes": "Local organic cosmetics shop in Munich. Small online presence, focus on in-store experience. Family-owned business.",
+  "content_sample": "Naturkosmetik Müller - Your local organic beauty shop in Munich. We offer carefully selected natural and organic cosmetics, skincare, and wellness products. Visit our store in the heart of Munich for personalized consultations. We believe in sustainable beauty without compromises."
+}

@@ -1,0 +1,130 @@
+{
+  "classification": {
+    "business_type": "restaurant",
+    "score_quality": 9.5,
+    "score_fit": 9.0,
+    "score_priority": 9.2,
+    "issue_flags": [],
+    "quality_signals": [
+      "Multiple contact methods",
+      "Active social presence",
+      "Professional domain",
+      "Complete location info"
+    ],
+    "vertical_applied": "restaurant"
+  },
+  "dossier": {
+    "business_overview": "Authentic Italian restaurant in Berlin's Prenzlauer Berg neighborhood. Focuses on traditional Neapolitan recipes with modern presentation. Active social media presence suggests strong community engagement.",
+    "digital_presence": {
+      "website": "Professional, mobile-responsive",
+      "social_media": "Active on Instagram and Facebook with regular content",
+      "google_business": "Profile exists but optimization opportunities identified"
+    },
+    "opportunities": [
+      "Optimize Google My Business profile for 'Italian restaurant Berlin' searches",
+      "Implement online reservation system integration",
+      "Improve menu SEO for local searches",
+      "Enhanced Instagram Stories for daily specials"
+    ],
+    "target_audience": "Local Berlin residents and tourists seeking authentic Italian cuisine",
+    "competitive_position": "Mid-range positioning in competitive Prenzlauer Berg restaurant scene"
+  },
+  "outreach_variants": [
+    {
+      "angle": "quick-win",
+      "subject": "3 schnelle Verbesserungen für Bella Trattoria",
+      "body": "Hallo Bella Trattoria Team,\\n\\nIhre italienische Küche und Instagram-Präsenz überzeugen! Ich habe 3 Quick-Wins identifiziert, die Ihre Online-Reservierungen in 2-3 Wochen um 20-30% steigern können:\\n\\n1. Google My Business Optimierung (derzeit Seite 2)\\n2. Reservierungs-Button Integration\\n3. Lokale SEO für 'italienisches Restaurant Prenzlauer Berg'\\n\\nUmsetzung dauert 48 Stunden. Interesse an einem kurzen 15-Minuten-Call?",
+      "cta": "Termin vereinbaren",
+      "tone_used": "friendly",
+      "deliverability_score": 95,
+      "vertical_context_used": true
+    },
+    {
+      "angle": "opportunity-focused",
+      "subject": "Bella Trattoria: Potenzial für mehr Reservierungen",
+      "body": "Hallo,\\n\\nIhre Küche und Social-Media-Präsenz sind stark. Ich sehe ungenutztes Potenzial: Mit optimierter Google-Platzierung könnten Sie 25-35% mehr Online-Reservierungen erreichen.\\n\\nSpezialist für Restaurant-Marketing mit Fokus auf:\\n- Google My Business Optimierung\\n- Bewertungs-Strategien\\n- Lokale Content-Optimierung\\n\\nErgebnisse typischerweise in 2-3 Wochen sichtbar. Kurzer Call diese Woche möglich?",
+      "cta": "10-Minuten-Gespräch anfragen",
+      "tone_used": "professional",
+      "deliverability_score": 92,
+      "vertical_context_used": true
+    },
+    {
+      "angle": "problem-focused",
+      "subject": "Ihre Google-Platzierung: Verbesserungspotenzial",
+      "body": "Hallo Bella Trattoria,\\n\\nBei Google Maps 'italienisches Restaurant Berlin' erscheinen Sie aktuell nicht in den Top 3 - dabei haben Sie ausgezeichnete Bewertungen und starke Instagram-Präsenz.\\n\\nMit gezielten Optimierungen (Google Business, lokale Keywords, Bewertungs-Management) typischerweise Top-3-Platzierung in 3-4 Wochen möglich.\\n\\nInteresse an kostenloser Analyse Ihrer aktuellen Position?",
+      "cta": "Kostenlose Analyse anfragen",
+      "tone_used": "direct",
+      "deliverability_score": 88,
+      "vertical_context_used": true
+    }
+  ],
+  "audit_findings": {
+    "priority_issues": [
+      {
+        "category": "local_seo",
+        "severity": "medium",
+        "description": "Google My Business profile incomplete - missing key categories and attributes",
+        "impact": "Reduced visibility in local searches",
+        "quick_win": "Add 'Italian Restaurant', 'Trattoria', 'Pasta' categories and complete attributes (45 minutes)"
+      },
+      {
+        "category": "online_reservations",
+        "severity": "medium",
+        "description": "No integrated reservation system on website",
+        "impact": "Lost conversion opportunities, manual reservation management",
+        "quick_win": "Integrate OpenTable or similar (2-3 hours setup)"
+      },
+      {
+        "category": "menu_visibility",
+        "severity": "low",
+        "description": "Menu not optimized for search engines",
+        "impact": "Missing opportunities for dish-specific searches",
+        "quick_win": "Add structured data markup for menu items (1 hour)"
+      }
+    ],
+    "strengths": [
+      "Strong Instagram presence with regular content",
+      "Multiple contact methods available",
+      "Professional website design",
+      "Good customer reviews"
+    ]
+  },
+  "quick_wins": [
+    {
+      "title": "Google My Business Optimization",
+      "description": "Complete profile with all categories, attributes, and high-quality photos",
+      "estimated_time": "45 minutes",
+      "estimated_impact": "15-25% increase in Google Maps visibility",
+      "steps": [
+        "Add missing business categories",
+        "Upload 10+ high-quality food photos",
+        "Complete all business attributes",
+        "Add Q&A section with common questions"
+      ]
+    },
+    {
+      "title": "Reservation System Integration",
+      "description": "Add online reservation button to website and Google Business",
+      "estimated_time": "2-3 hours",
+      "estimated_impact": "20-30% increase in online reservations",
+      "steps": [
+        "Sign up for OpenTable or similar",
+        "Add reservation widget to website",
+        "Enable reservations in Google My Business",
+        "Test reservation flow"
+      ]
+    },
+    {
+      "title": "Instagram Stories for Daily Specials",
+      "description": "Leverage existing Instagram presence for daily special promotion",
+      "estimated_time": "15 minutes daily",
+      "estimated_impact": "10-15% increase in walk-ins and reservations",
+      "steps": [
+        "Create daily special template",
+        "Post stories at 11 AM daily",
+        "Use location tags and hashtags",
+        "Add swipe-up reservation link"
+      ]
+    }
+  ]
+}
