@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lead",
+  "type": "object",
+  "properties": {
+    "name": { "type": ["string", "null"] },
+    "domain": { "type": ["string", "null"] },
+    "website": { "type": ["string", "null"] },
+    "source_url": { "type": ["string", "null"] },
+    "emails": { "type": "array", "items": { "type": "string" } },
+    "phones": { "type": "array", "items": { "type": "string" } },
+    "social": {
+      "type": "object",
+      "properties": {
+        "facebook": { "type": "string" },
+        "instagram": { "type": "string" },
+        "linkedin": { "type": "string" },
+        "twitter": { "type": "string" },
+        "youtube": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "address": { "type": ["string", "null"] },
+    "city": { "type": ["string", "null"] },
+    "country": { "type": ["string", "null"] },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "score": { "type": "number" },
+    "notes": { "type": ["string", "null"] },
+    "when": { "type": "string", "format": "date-time" }
+  },
+  "required": ["website", "score", "when"]
+}
