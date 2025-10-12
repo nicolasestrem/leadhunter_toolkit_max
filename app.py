@@ -48,6 +48,44 @@ DEFAULT_KEYWORDS = {
     "mobility": ["mobilité", "mobility", "transport", "vélo"]
 }
 
+def dict_to_json_safe(data):
+    """
+    Convert a dict with pandas/numpy types to JSON-serializable dict.
+
+    Args:
+        data: dict potentially containing Timestamp or numpy types
+
+    Returns:
+        Dict with JSON-serializable values
+    """
+    result = {}
+    for key, value in data.items():
+        if pd.isna(value):
+            result[key] = None
+        elif isinstance(value, pd.Timestamp):
+            result[key] = value.isoformat()
+        elif hasattr(value, 'item'):  # numpy types
+            result[key] = value.item()
+        else:
+            result[key] = value
+    return result
+
+def dataframe_to_json_safe(df):
+    """
+    Convert DataFrame to JSON-serializable dict, handling Timestamps and other pandas types.
+
+    Args:
+        df: pandas DataFrame
+
+    Returns:
+        List of dicts with JSON-serializable values
+    """
+    # Convert to dict with default date format
+    records = df.to_dict(orient="records")
+
+    # Convert any remaining Timestamp objects to ISO strings
+    return [dict_to_json_safe(record) for record in records]
+
 def load_settings():
     try:
         return json.load(open(SETTINGS_PATH, "r", encoding="utf-8"))
@@ -676,7 +714,7 @@ with tab1:
 
         for dom, lead in by_domain.items():
             lead["score"] = score_lead(lead, settings)
-            lead["when"] = datetime.datetime.utcnow().isoformat()
+            lead["when"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             results.append(lead)
 
         results = sorted(results, key=lambda r: r.get("score", 0), reverse=True)
@@ -835,7 +873,7 @@ with tab2:
         if lead_names:
             selected_idx = st.selectbox("Select lead for detailed actions", range(len(lead_names)),
                                        format_func=lambda x: lead_names[x])
-            st.session_state["selected_lead"] = filtered_df.iloc[selected_idx].to_dict()
+            st.session_state["selected_lead"] = dict_to_json_safe(filtered_df.iloc[selected_idx].to_dict())
 
             st.info(f"**Selected:** {lead_names[selected_idx]}")
             col1, col2, col3 = st.columns(3)
@@ -856,7 +894,7 @@ with tab2:
                     try:
                         selected_lead = st.session_state["selected_lead"]
                         project = s.get("project", "default")
-                        timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                         company_slug = selected_lead.get('name', 'unknown').replace(' ', '_')
 
                         # Create pack directory
@@ -981,7 +1019,7 @@ with tab2:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "leads"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                 csv_path = out_path / f"classified_leads_{timestamp}.csv"
                 filtered_df.to_csv(csv_path, index=False)
                 st.success(f"Saved to {csv_path}")
@@ -991,10 +1029,10 @@ with tab2:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "leads"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                 json_path = out_path / f"classified_leads_{timestamp}.json"
                 with open(json_path, "w", encoding="utf-8") as f:
-                    json.dump(filtered_df.to_dict(orient="records"), f, ensure_ascii=False, indent=2)
+                    json.dump(dataframe_to_json_safe(filtered_df), f, ensure_ascii=False, indent=2)
                 st.success(f"Saved to {json_path}")
 
         with col3:
@@ -1002,10 +1040,10 @@ with tab2:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "leads"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                 jsonl_path = out_path / f"classified_leads_{timestamp}.jsonl"
                 with open(jsonl_path, "w", encoding="utf-8") as f:
-                    for record in filtered_df.to_dict(orient="records"):
+                    for record in dataframe_to_json_safe(filtered_df):
                         f.write(json.dumps(record, ensure_ascii=False) + "\n")
                 st.success(f"Saved to {jsonl_path}")
     else:
@@ -1135,7 +1173,7 @@ with tab3:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "outreach"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
 
                 # Save as markdown
                 md_content = f"# Outreach Variants - {result.company_name}\n\n"
@@ -1161,7 +1199,7 @@ with tab3:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "outreach"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
 
                 # Convert to dict
                 result_dict = {
@@ -1802,7 +1840,7 @@ with tab6:
 
                 # Export option
                 if st.button("💾 Export as Text"):
-                    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                     filename = f"search_scraper_ai_{timestamp}.txt"
                     path = os.path.join(OUT_DIR, filename)
                     with open(path, "w", encoding="utf-8") as f:
@@ -1819,7 +1857,7 @@ with tab6:
 
                 # Export option
                 if st.button("💾 Export as Markdown"):
-                    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                     filename = f"search_scraper_md_{timestamp}.md"
                     path = os.path.join(OUT_DIR, filename)
                     with open(path, "w", encoding="utf-8") as f:
@@ -2107,7 +2145,7 @@ with tab9:
                             if st.button("Export SERP Snapshot"):
                                 path = tracker.export_to_csv(
                                     [snapshot],
-                                    os.path.join(OUT_DIR, f"serp_{serp_keyword.replace(' ', '_')}_{datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv")
+                                    os.path.join(OUT_DIR, f"serp_{serp_keyword.replace(' ', '_')}_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv")
                                 )
                                 st.success(f"Exported to {path}")
 
