@@ -1,8 +1,11 @@
-import re, tldextract
+import re
+import tldextract
 from urllib.parse import urljoin, urlparse
 
+# Pre-compiled regex patterns for performance
 EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
-PHONE_RE = re.compile(r"(?:\+\d{{1,3}}[\s.-]?)?(?:\(?\d{{2,4}}\)?[\s.-]?){2,4}\d{2,4}")
+PHONE_RE = re.compile(r"(?:\+\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?){2,4}\d{2,4}")
+WHITESPACE_RE = re.compile(r"\s+")
 
 SOCIAL_KEYS = {
     "facebook": ["facebook.com"],
@@ -29,9 +32,20 @@ def find_emails(text: str) -> list[str]:
     return sorted(set(EMAIL_RE.findall(text)))
 
 def find_phones(text: str) -> list[str]:
+    """
+    Extract phone numbers from text
+
+    Args:
+        text: Text to search
+
+    Returns:
+        Sorted list of unique phone numbers
+    """
     phones = set()
     for m in PHONE_RE.finditer(text):
-        s = re.sub(r"\s+", " ", m.group(0)).strip()
+        # Use pre-compiled regex for whitespace normalization
+        s = WHITESPACE_RE.sub(" ", m.group(0)).strip()
+        # Count only digits, require at least 8
         if len(re.sub(r"\D", "", s)) >= 8:
             phones.add(s)
     return sorted(phones)

@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Lead Hunter Toolkit is a local lead generation and web research tool with a Streamlit GUI. It combines:
+Lead Hunter Toolkit is a comprehensive local lead generation, web research, and SEO analysis tool with a Streamlit GUI. It combines:
 1. **Lead Hunting**: Discover and enrich business leads through web crawling, search engines, and Google Places API
 2. **Search Scraper**: AI-powered web research that aggregates information from multiple sources
+3. **SEO Tools**: Content audit, SERP tracking, and site extraction capabilities
 
-Key features: contact extraction (emails, phones, social links), scoring system, LLM-powered insights, and multi-format exports (CSV/JSON/XLSX).
+Key features: contact extraction (emails, phones, social links), scoring system, LLM-powered insights, SEO analysis, SERP position tracking, site-to-markdown extraction, and multi-format exports (CSV/JSON/XLSX).
 
 ## Running the Application
 
@@ -22,7 +23,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The main application is `app.py` (Streamlit GUI). The `app_llm.py` is a legacy entry point and should not be used.
+The main application is `app.py` - a comprehensive Streamlit GUI with tabs for hunting, searching, SEO analysis, and lead management.
 
 ## Architecture
 
@@ -37,16 +38,22 @@ The main application is `app.py` (Streamlit GUI). The `app_llm.py` is a legacy e
 
 ### Key Modules
 
-- **app.py**: Main Streamlit GUI with 5 tabs (Hunt, Search Scraper, Enrich with Places, Review & Edit, Session)
+- **app.py**: Main Streamlit GUI with 6 tabs (Hunt, Search Scraper, Enrich with Places, Review & Edit, SEO Tools, Session)
 - **search_scraper.py**: AI-powered web research tool. Two modes: AI Extraction (LLM-based insights) and Markdown (raw content). Searches web, fetches pages, converts to markdown, optionally extracts structured data via LLM.
+- **seo_audit.py**: Comprehensive SEO content auditor. Analyzes meta tags, headings, images, links, content quality. Optional LLM scoring for content quality assessment.
+- **serp_tracker.py**: SERP position tracker for keywords. Tracks rankings over time, exports snapshots to CSV, supports DDG and Google CSE.
+- **site_extractor.py**: Extract entire websites or sitemaps to markdown files. Supports sitemap.xml parsing and domain crawling.
 - **crawl.py**: BFS crawler with contact/about page prioritization. Respects same-host boundaries.
 - **extract.py**: HTML extraction using selectolax. Extracts emails (including mailto:), phones, social links, company names from title/H1.
 - **scoring.py**: Configurable weighted scoring system (emails, phones, social, city match, country domain bonus)
 - **classify.py**: Simple keyword-based tagging system using DEFAULT_KEYWORDS dict in app.py
 - **fetch.py**: Async HTTP fetching with caching (cache/ dir), concurrency control via semaphore
+- **cache_manager.py**: Cache management with expiration and size limits. Provides cleanup utilities and cache statistics.
 - **robots_util.py**: Robots.txt checker with in-memory cache per base URL
-- **llm_client.py**: OpenAI-compatible client for lead summarization and SearchScraper AI extraction (supports local models via base_url)
+- **llm_client.py**: OpenAI-compatible client with temperature and max_tokens control. Optimized for Qwen and local models.
 - **places.py**: Google Places API integration for text search and detail lookups
+- **logger.py**: Centralized logging module with file and console handlers
+- **retry_utils.py**: Retry decorators with exponential backoff for sync/async functions
 - **exporters.py / exporters_xlsx.py**: Multi-format export handlers
 
 ### Data Models
@@ -54,7 +61,7 @@ The main application is `app.py` (Streamlit GUI). The `app_llm.py` is a legacy e
 **Lead structure** (models.py, schemas/lead.schema.json):
 - name, domain, website, source_url
 - emails[], phones[], social{} (facebook, instagram, linkedin, twitter, youtube)
-- address, city, country, tags[], score, notes, when (timestamp)
+- address, city, country, tags[], status (new/contacted/qualified/rejected), score, notes, when (timestamp)
 
 ### Configuration
 
@@ -64,11 +71,11 @@ The main application is `app.py` (Streamlit GUI). The `app_llm.py` is a legacy e
 - Crawl parameters (max_sites, max_pages, concurrency, fetch_timeout, deep_contact)
 - Extraction toggles (extract_emails, extract_phones, extract_social)
 - Scoring weights (email_weight, phone_weight, social_weight, etc.)
-- LLM settings (llm_base, llm_key, llm_model) for OpenAI-compatible endpoints
+- LLM settings (llm_base, llm_key, llm_model, llm_temperature, llm_max_tokens) for OpenAI-compatible endpoints
 - Project namespace for exports
 - Location context (country, language, city, radius_km)
 
-**Presets**: JSON files in `presets/` directory for saving/loading niche-specific configurations.
+**Presets**: JSON files in `presets/` directory for saving/loading niche-specific configurations. UI controls in sidebar for easy load/save/delete.
 
 ## Important Implementation Details
 
@@ -96,15 +103,45 @@ Lead scores are calculated in scoring.py with these defaults:
 Streamlit session_state["results"] holds the lead list throughout the session. The Review tab uses st.data_editor for inline editing with "Apply changes" button to persist edits.
 
 ### Caching
-- HTML responses cached in `cache/` directory with SHA256-based filenames (fetch.py)
+- HTML responses cached in `cache/` directory with SHA256-based filenames
+- Cache manager (cache_manager.py) provides expiration (30 days default) and size limits (500MB default)
+- Cleanup utilities available: cleanup_expired(), cleanup_by_size(), cleanup_cache()
 - Robots.txt cached in-memory per base URL (robots_util.py:_cache)
+- All fetch operations use cache_manager for consistent expiration and size management
+
+### Error Handling and Retry Logic
+**All core modules now include comprehensive error handling:**
+- **Retry Logic**: Exponential backoff retry for all API and HTTP requests (3 retries with 1s initial delay)
+  - fetch.py: HTTP requests retry on timeout/connection errors
+  - google_search.py: Google CSE API retries on HTTP errors
+  - places.py: Google Places API retries with backoff
+  - llm_client.py: LLM calls retry on failures (2 retries with 2s delay)
+- **Logging**: All modules log to logs/leadhunter.log with console output
+  - DEBUG: Detailed operation traces
+  - INFO: Key operations and results
+  - WARNING: Non-fatal issues
+  - ERROR: Failures with stack traces
+- **Error Recovery**: Graceful degradation on failures (empty results vs crashes)
 
 ### Google APIs
 - **Custom Search**: Requires API key + cx (engine ID) from console.cloud.google.com
 - **Places**: Uses /places:searchText and detail lookups with field masks for efficiency
 
 ### LLM Integration
-LLMClient supports any OpenAI-compatible endpoint (e.g., LM Studio, Ollama). Set llm_base (e.g., "http://localhost:1234" for LM Studio or "http://localhost:11434" for Ollama), and llm_model in settings. The `/v1` path is automatically appended to the base URL if not present. The llm_key is optional and defaults to "not-needed" for local LLMs that don't require authentication. Used for lead summarization in Review tab and SearchScraper AI extraction. The client includes proper error handling and null-safety checks for response parsing.
+LLMClient supports any OpenAI-compatible endpoint (e.g., LM Studio, Ollama). Set llm_base (e.g., "http://localhost:1234" for LM Studio or "http://localhost:11434" for Ollama), llm_model, llm_temperature (0.0-2.0), and llm_max_tokens in settings. The `/v1` path is automatically appended to the base URL if not present. The llm_key is optional and defaults to "not-needed" for local LLMs that don't require authentication.
+
+**Optimized for local models**:
+- Qwen models (qwen/qwen3-4b-2507, etc.)
+- GPT-OSS-20B and other LM Studio models
+- Temperature control for deterministic vs creative outputs
+- Max tokens setting to prevent timeouts with local models
+
+**Use Cases**:
+- Lead summarization in Review tab
+- SearchScraper AI extraction
+- SEO content quality scoring
+
+The client includes proper error handling and null-safety checks for response parsing.
 
 ### SearchScraper Feature
 SearchScraper is an AI-powered web research tool that searches, fetches, and analyzes multiple web pages based on a user's query.
@@ -149,6 +186,55 @@ SearchScraper is an AI-powered web research tool that searches, fetches, and ana
 - Market research: identifying trends
 - Content creation: gathering source material
 - Data collection: structured extraction with custom schemas
+
+### SEO Tools Feature
+Three integrated SEO analysis tools accessible from the SEO Tools tab:
+
+**1. Content Audit** (seo_audit.py):
+- Analyzes meta tags (title, description, OG tags, Twitter cards)
+- Heading structure analysis (H1-H6)
+- Image alt text coverage
+- Internal vs external link analysis
+- Word count and content quality metrics
+- Schema.org structured data detection
+- Technical SEO score (0-100)
+- Optional LLM content quality scoring
+
+**2. SERP Tracker** (serp_tracker.py):
+- Track keyword positions in search results
+- Support for DuckDuckGo and Google Custom Search
+- Historical snapshot storage in serp_data/ directory
+- Domain-specific position tracking
+- CSV export for SERP data
+- Comparison between snapshots to detect ranking changes
+
+**3. Site Extractor** (site_extractor.py):
+- Extract entire websites to markdown files
+- Two modes: Sitemap URL or Domain Crawl
+- Respects robots.txt
+- Individual markdown file per page
+- Combined markdown file for entire site
+- Clean markdown conversion with markdownify
+- Saved to out/site_{domain}/ directory
+
+**GUI Integration** (app.py tab5):
+- Three sub-tabs for each SEO tool
+- Progress indicators and status updates
+- Export options for all data
+- Integration with LLM settings for content scoring
+
+**Use Cases**:
+- SEO audits for client sites
+- Competitor content analysis
+- Keyword rank tracking campaigns
+- Site migration to markdown (e.g., for documentation)
+- Content quality assessment
+
+### Error Handling and Logging
+- **logger.py**: Centralized logging with console and file handlers
+- **retry_utils.py**: Decorators for automatic retry with exponential backoff
+- Comprehensive error handling throughout all new modules
+- Logs stored in logs/ directory
 
 ## Common Development Tasks
 
