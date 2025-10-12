@@ -12,6 +12,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent.parent
 CONFIG_DIR = BASE_DIR / "config"
 SETTINGS_PATH = BASE_DIR / "settings.json"
+VERTICALS_DIR = BASE_DIR / "presets" / "verticals"
 
 
 class ConfigLoader:
@@ -21,6 +22,7 @@ class ConfigLoader:
         self._models_config = None
         self._defaults_config = None
         self._settings = None
+        self._vertical_cache = {}
 
     def load_models(self) -> Dict[str, Any]:
         """Load model configuration from models.yml"""
@@ -81,12 +83,112 @@ class ConfigLoader:
         models = self.load_models()
         return models.get('default_endpoint', 'https://lm.leophir.com/')
 
+    def load_vertical_preset(self, vertical_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Load a vertical preset configuration from YAML
+
+        Args:
+            vertical_name: Name of vertical (e.g., 'restaurant', 'retail', 'professional_services')
+
+        Returns:
+            Dict with vertical configuration or None if not found
+        """
+        if not vertical_name:
+            return None
+
+        # Check cache first
+        if vertical_name in self._vertical_cache:
+            return self._vertical_cache[vertical_name]
+
+        # Try to load from file
+        vertical_path = VERTICALS_DIR / f"{vertical_name}.yml"
+        if vertical_path.exists():
+            try:
+                with open(vertical_path, 'r', encoding='utf-8') as f:
+                    vertical_config = yaml.safe_load(f) or {}
+                self._vertical_cache[vertical_name] = vertical_config
+                return vertical_config
+            except Exception as e:
+                print(f"Error loading vertical preset '{vertical_name}': {e}")
+                return None
+
+        return None
+
+    def get_active_vertical(self) -> Optional[str]:
+        """
+        Get name of currently active vertical preset
+
+        Returns:
+            Vertical name or None if no vertical is active
+        """
+        # Check settings.json first
+        settings = self.load_settings()
+        if 'active_vertical' in settings:
+            return settings['active_vertical']
+
+        # Check defaults.yml
+        defaults = self.load_defaults()
+        if 'vertical' in defaults and 'active' in defaults['vertical']:
+            return defaults['vertical']['active']
+
+        return None
+
+    def apply_vertical_overrides(self, config: Dict[str, Any], vertical: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Apply vertical preset overrides to configuration
+
+        Args:
+            config: Base configuration dict
+            vertical: Vertical preset dict
+
+        Returns:
+            Modified configuration with vertical overrides applied
+        """
+        if not vertical:
+            return config
+
+        # Override scoring weights
+        if 'scoring' in vertical:
+            if 'scoring' not in config:
+                config['scoring'] = {}
+            config['scoring'].update(vertical['scoring'])
+
+        # Store vertical context for later use
+        if 'vertical' not in config:
+            config['vertical'] = {}
+
+        config['vertical']['name'] = vertical.get('vertical')
+        config['vertical']['description'] = vertical.get('description')
+
+        # Store outreach customization
+        if 'outreach' in vertical:
+            config['vertical']['outreach'] = vertical['outreach']
+
+        # Store audit priorities
+        if 'audit' in vertical:
+            config['vertical']['audit'] = vertical['audit']
+
+        # Store fit rules
+        if 'fit_rules' in vertical:
+            config['vertical']['fit_rules'] = vertical['fit_rules']
+
+        # Store quick wins templates
+        if 'quick_wins' in vertical:
+            config['vertical']['quick_wins'] = vertical['quick_wins']
+
+        # Store keywords for classification
+        if 'keywords' in vertical:
+            config['vertical']['keywords'] = vertical['keywords']
+
+        return config
+
     def get_merged_config(self) -> Dict[str, Any]:
         """
         Get merged configuration with precedence:
         1. settings.json (highest priority)
-        2. defaults.yml
-        3. models.yml
+        2. vertical presets (if active)
+        3. defaults.yml
+        4. models.yml
 
         Returns:
             Merged configuration dictionary
@@ -96,6 +198,13 @@ class ConfigLoader:
         # Start with defaults
         defaults = self.load_defaults()
         config.update(defaults)
+
+        # Apply vertical preset overrides if active
+        active_vertical = self.get_active_vertical()
+        if active_vertical:
+            vertical_config = self.load_vertical_preset(active_vertical)
+            if vertical_config:
+                config = self.apply_vertical_overrides(config, vertical_config)
 
         # Merge models info
         models = self.load_models()
@@ -214,6 +323,7 @@ class ConfigLoader:
         self._models_config = None
         self._defaults_config = None
         self._settings = None
+        self._vertical_cache = {}
 
 
 # Global instance

@@ -1,6 +1,10 @@
 # Application-wide Default Settings
 # These values are used as fallbacks when not specified in settings.json
 
+# Vertical preset (optional - can be "restaurant", "retail", "professional_services", or null)
+vertical:
+  active: null  # Set to vertical name to apply preset configurations
+
 # Locale settings
 locale:
   language: "en"  # Default language: en, fr, de

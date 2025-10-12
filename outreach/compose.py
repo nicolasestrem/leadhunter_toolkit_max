@@ -14,7 +14,16 @@ import yaml
 from llm.adapter import LLMAdapter
 from locale.i18n import get_tone_preset, get_language_name
 from outreach.deliverability_checks import check_deliverability, format_deliverability_report
+from config.loader import ConfigLoader
 from logger import get_logger
+
+# Import plugin system
+try:
+    from plugins import call_plugin_hook
+    PLUGINS_AVAILABLE = True
+except ImportError:
+    PLUGINS_AVAILABLE = False
+    call_plugin_hook = lambda *args, **kwargs: []
 
 logger = get_logger(__name__)
 
@@ -56,6 +65,54 @@ def load_outreach_prompt_config() -> Dict:
     return config
 
 
+def _build_vertical_context(vertical: Dict) -> str:
+    """
+    Build vertical-specific context string for outreach prompts
+
+    Args:
+        vertical: Vertical config dict from merged config
+
+    Returns:
+        Formatted context string or empty string if no vertical active
+    """
+    if not vertical or 'name' not in vertical:
+        return ""
+
+    outreach = vertical.get('outreach', {})
+    if not outreach:
+        return ""
+
+    context_lines = ["**Your Context** (optimized for {}):\n".format(
+        vertical.get('description', vertical.get('name', 'this vertical'))
+    )]
+
+    # Focus areas
+    focus_areas = outreach.get('focus_areas', [])
+    if focus_areas:
+        context_lines.append("  - **Focus areas**: {}".format(
+            ', '.join(focus_areas)
+        ))
+
+    # Value propositions
+    value_props = outreach.get('value_props', [])
+    if value_props:
+        context_lines.append("  - **Value propositions**:")
+        for prop in value_props:
+            context_lines.append(f"    • {prop}")
+
+    # Typical issues
+    typical_issues = outreach.get('typical_issues', [])
+    if typical_issues:
+        context_lines.append("  - **Common issues to address**:")
+        for issue in typical_issues:
+            context_lines.append(f"    • {issue}")
+
+    # Add default engagement info
+    context_lines.append("  - **Typical engagement**: 2-5k EUR for first project, no long-term contracts")
+
+    return '\n'.join(context_lines)
+
+
 def format_outreach_prompt(
     lead_data: Dict,
     dossier_summary: str,
@@ -65,6 +122,7 @@ def format_outreach_prompt(
 ) -> tuple[str, str]:
     """
     Format outreach prompts (system + user)
+    Applies vertical preset context if active
 
     Args:
         lead_data: Lead data dict
@@ -77,6 +135,11 @@ def format_outreach_prompt(
         Tuple of (system_prompt, user_prompt)
     """
     config = load_outreach_prompt_config()
+
+    # Load merged config to get vertical context
+    config_loader = ConfigLoader()
+    merged_config = config_loader.get_merged_config()
+    vertical_context = merged_config.get('vertical', {})
 
     # Get tone preset
     tone_preset = get_tone_preset(language, tone)
@@ -97,6 +160,14 @@ def format_outreach_prompt(
         direct_greeting=tones.get('direct', {}).get('greeting', 'Hello')
     )
 
+    # Build vertical-specific context string
+    your_context = _build_vertical_context(vertical_context)
+    if your_context:
+        logger.debug(
+            f"Applying vertical context for '{vertical_context.get('name')}' "
+            f"({vertical_context.get('description')})"
+        )
+
     # Format user prompt
     user_template = config.get('user_prompt_template', '')
     user_prompt = user_template.format(
@@ -114,6 +185,16 @@ def format_outreach_prompt(
         dossier_summary=dossier_summary or 'No dossier available yet',
         message_type=message_type
     )
+
+    # Inject vertical context by replacing the "Your Context" section
+    if your_context:
+        # Replace the default context in the template
+        default_context = """**Your Context**:
+  - Your service: SMB digital consulting (quick-win SEO, web improvements, local marketing)
+  - Your value prop: Tangible results in 48h, no long-term contracts
+  - Typical engagement: 2-5k EUR for first project"""
+
+        user_prompt = user_prompt.replace(default_context, your_context)
 
     return system_prompt, user_prompt
 
@@ -196,6 +277,19 @@ def compose_outreach(
     """
     logger.info(f"Composing {message_type} outreach for {lead_data.get('name', 'Unknown')}")
 
+    # Call before_outreach hook (allow plugins to modify lead_data)
+    if PLUGINS_AVAILABLE:
+        try:
+            logger.debug("Calling before_outreach hook")
+            hook_results = call_plugin_hook('before_outreach', lead_data, message_type)
+
+            # If any plugin returned modified data, use the last one
+            if hook_results and hook_results[-1]:
+                lead_data = hook_results[-1]
+                logger.debug("Applied plugin modifications to lead data")
+        except Exception as e:
+            logger.warning(f"Error in before_outreach hook: {e}")
+
     # Get prompts
     system_prompt, user_prompt = format_outreach_prompt(
         lead_data=lead_data,
@@ -244,6 +338,31 @@ def compose_outreach(
         lead_name=lead_data.get('name', 'Unknown'),
         deliverability_passed=all_passed
     )
+
+    # Call after_outreach hook (allow plugins to modify or log results)
+    if PLUGINS_AVAILABLE:
+        try:
+            logger.debug("Calling after_outreach hook")
+            # Convert result to dict for plugins
+            result_dict = {
+                'variants': [
+                    {
+                        'angle': v.angle,
+                        'subject': v.subject,
+                        'body': v.body,
+                        'cta': v.cta,
+                        'tone_used': v.tone_used,
+                        'deliverability_score': v.deliverability_score
+                    }
+                    for v in variants
+                ],
+                'message_type': message_type,
+                'language': language,
+                'lead_name': lead_data.get('name', 'Unknown')
+            }
+            call_plugin_hook('after_outreach', result_dict, lead_data)
+        except Exception as e:
+            logger.warning(f"Error in after_outreach hook: {e}")
 
     # Save to file if output_dir provided
     if output_dir:

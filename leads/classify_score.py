@@ -8,47 +8,69 @@ from typing import Dict, Any, Optional
 from models import LeadRecord, Lead, Social
 from llm.adapter import LLMAdapter
 from llm.prompt_loader import get_classification_prompt
+from config.loader import ConfigLoader
 from logger import get_logger
+
+# Import plugin system
+try:
+    from plugins import call_plugin_hook
+    PLUGINS_AVAILABLE = True
+except ImportError:
+    PLUGINS_AVAILABLE = False
+    call_plugin_hook = lambda *args, **kwargs: []
 
 logger = get_logger(__name__)
 
 
-def calculate_quality_score(lead_data: Dict[str, Any]) -> float:
+def calculate_quality_score(lead_data: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> float:
     """
     Calculate data quality score based on completeness
+    Applies vertical preset weights if configured
 
     Args:
         lead_data: Lead data dict
+        config: Optional config dict with scoring weights (uses vertical if active)
 
     Returns:
         Quality score (0-10)
     """
+    # Load config if not provided
+    if config is None:
+        config_loader = ConfigLoader()
+        config = config_loader.get_merged_config()
+
+    # Get scoring weights from config (includes vertical overrides)
+    scoring_config = config.get('scoring', {})
+    email_weight = scoring_config.get('email_weight', 3.0)
+    phone_weight = scoring_config.get('phone_weight', 2.0)
+    social_weight = scoring_config.get('social_weight', 2.0)
+
     score = 0.0
 
-    # Email presence and count (0-3 points)
+    # Email presence and count
     emails = lead_data.get('emails', [])
     if len(emails) >= 2:
-        score += 3.0
+        score += email_weight
     elif len(emails) == 1:
-        score += 2.0
+        score += email_weight * 0.67
 
-    # Phone presence and count (0-2 points)
+    # Phone presence and count
     phones = lead_data.get('phones', [])
     if len(phones) >= 2:
-        score += 2.0
+        score += phone_weight
     elif len(phones) == 1:
-        score += 1.5
+        score += phone_weight * 0.75
 
-    # Social media presence (0-2 points)
+    # Social media presence
     social = lead_data.get('social', {})
     if isinstance(social, dict):
         social_count = len([v for v in social.values() if v])
         if social_count >= 3:
-            score += 2.0
+            score += social_weight
         elif social_count == 2:
-            score += 1.5
+            score += social_weight * 0.75
         elif social_count == 1:
-            score += 1.0
+            score += social_weight * 0.5
 
     # Address/location (0-1 point)
     if lead_data.get('address') or lead_data.get('city'):
@@ -208,6 +230,14 @@ def classify_and_score_lead(
     lead_data = lead.dict()
     lead_data['content_sample'] = content_sample
 
+    # Call before_classification hook
+    if PLUGINS_AVAILABLE:
+        try:
+            logger.debug("Calling before_classification hook")
+            call_plugin_hook('before_classification', lead_data)
+        except Exception as e:
+            logger.warning(f"Error in before_classification hook: {e}")
+
     # Calculate quality score (heuristic)
     quality_score = calculate_quality_score(lead_data)
 
@@ -256,6 +286,24 @@ def classify_and_score_lead(
         f"Scoring complete: quality={quality_score:.1f}, "
         f"fit={record.score_fit:.1f}, priority={priority_score:.1f}"
     )
+
+    # Call after_classification hook (allow plugins to modify record)
+    if PLUGINS_AVAILABLE:
+        try:
+            logger.debug("Calling after_classification hook")
+            record_dict = record.dict()
+            hook_results = call_plugin_hook('after_classification', record_dict)
+
+            # If any plugin returned modified data, use the last one
+            if hook_results and hook_results[-1]:
+                modified = hook_results[-1]
+                # Update record with modifications
+                for key, value in modified.items():
+                    if hasattr(record, key):
+                        setattr(record, key, value)
+                logger.debug("Applied plugin modifications to lead record")
+        except Exception as e:
+            logger.warning(f"Error in after_classification hook: {e}")
 
     return record
 
