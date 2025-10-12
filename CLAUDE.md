@@ -23,7 +23,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The main application is `app.py` (Streamlit GUI). The `app_llm.py` is a legacy entry point and should not be used.
+The main application is `app.py` - a comprehensive Streamlit GUI with tabs for hunting, searching, SEO analysis, and lead management.
 
 ## Architecture
 
@@ -103,10 +103,25 @@ Lead scores are calculated in scoring.py with these defaults:
 Streamlit session_state["results"] holds the lead list throughout the session. The Review tab uses st.data_editor for inline editing with "Apply changes" button to persist edits.
 
 ### Caching
-- HTML responses cached in `cache/` directory with SHA256-based filenames (fetch.py)
+- HTML responses cached in `cache/` directory with SHA256-based filenames
 - Cache manager (cache_manager.py) provides expiration (30 days default) and size limits (500MB default)
 - Cleanup utilities available: cleanup_expired(), cleanup_by_size(), cleanup_cache()
 - Robots.txt cached in-memory per base URL (robots_util.py:_cache)
+- All fetch operations use cache_manager for consistent expiration and size management
+
+### Error Handling and Retry Logic
+**All core modules now include comprehensive error handling:**
+- **Retry Logic**: Exponential backoff retry for all API and HTTP requests (3 retries with 1s initial delay)
+  - fetch.py: HTTP requests retry on timeout/connection errors
+  - google_search.py: Google CSE API retries on HTTP errors
+  - places.py: Google Places API retries with backoff
+  - llm_client.py: LLM calls retry on failures (2 retries with 2s delay)
+- **Logging**: All modules log to logs/leadhunter.log with console output
+  - DEBUG: Detailed operation traces
+  - INFO: Key operations and results
+  - WARNING: Non-fatal issues
+  - ERROR: Failures with stack traces
+- **Error Recovery**: Graceful degradation on failures (empty results vs crashes)
 
 ### Google APIs
 - **Custom Search**: Requires API key + cx (engine ID) from console.cloud.google.com

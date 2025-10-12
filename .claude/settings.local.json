@@ -8,7 +8,13 @@
       "Bash(git push:*)",
       "Bash(git restore:*)",
       "WebFetch(domain:docs.scrapegraphai.com)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(find:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python:*)",
+      "Bash(.venv/Scripts/python.exe -m py_compile:*)",
+      "Bash(python3:*)",
+      "Bash(.venv/Scripts/python.exe:*)"
     ],
     "deny": [],
     "ask": []
