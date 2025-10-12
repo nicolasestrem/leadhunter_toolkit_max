@@ -18,25 +18,27 @@ from ui.components.export_buttons import render_export_buttons
 from ui.utils.session_state import get_results, set_results
 
 
-def render_hunt_tab(settings: dict, default_keywords: dict, max_sites: int, max_pages: int,
-                    fetch_timeout: int, concurrency: int, extract_emails: bool,
-                    extract_phones: bool, extract_social: bool, city: str, deep_contact: bool):
+def render_hunt_tab(settings: dict, default_keywords: dict):
     """
     Render the Hunt tab
 
     Args:
         settings: Application settings dict
         default_keywords: Default keyword categories for classification
-        max_sites: Maximum number of sites to search
-        max_pages: Maximum pages to crawl per site
-        fetch_timeout: Fetch timeout in seconds
-        concurrency: Number of concurrent requests
-        extract_emails: Whether to extract emails
-        extract_phones: Whether to extract phones
-        extract_social: Whether to extract social links
-        city: City name for location matching
-        deep_contact: Whether to enable deep contact crawling
     """
+    # Extract parameters from settings
+    from constants import DEFAULT_MAX_SITES, DEFAULT_MAX_PAGES, DEFAULT_FETCH_TIMEOUT, DEFAULT_CONCURRENCY
+
+    max_sites = int(settings.get("max_sites", DEFAULT_MAX_SITES))
+    max_pages = int(settings.get("max_pages", DEFAULT_MAX_PAGES))
+    fetch_timeout = int(settings.get("fetch_timeout", DEFAULT_FETCH_TIMEOUT))
+    concurrency = int(settings.get("concurrency", DEFAULT_CONCURRENCY))
+    extract_emails = bool(settings.get("extract_emails", True))
+    extract_phones = bool(settings.get("extract_phones", True))
+    extract_social = bool(settings.get("extract_social", True))
+    city = settings.get("city", "")
+    deep_contact = bool(settings.get("deep_contact", True))
+
     st.subheader("Search and extract")
     q = st.text_input("Query example: plombier Toulouse site:.fr", placeholder="restaurants Berlin vegan")
     url_list = st.text_area("Or paste URLs to scan (one per line)")

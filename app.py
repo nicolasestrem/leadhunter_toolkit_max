@@ -112,19 +112,19 @@ def main():
         render_hunt_tab(settings, DEFAULT_KEYWORDS)
 
     with tab2:
-        render_leads_tab(settings, DEFAULT_KEYWORDS)
+        render_leads_tab(settings, OUT_DIR)
 
     with tab3:
-        render_outreach_tab(settings)
+        render_outreach_tab(settings, OUT_DIR)
 
     with tab4:
-        render_dossier_tab(settings)
+        render_dossier_tab(settings, OUT_DIR)
 
     with tab5:
-        render_audit_tab(settings)
+        render_audit_tab(settings, OUT_DIR)
 
     with tab6:
-        render_search_scraper_tab(settings)
+        render_search_scraper_tab(settings, OUT_DIR)
 
     with tab7:
         render_places_tab(settings)
@@ -133,7 +133,7 @@ def main():
         render_review_tab(settings)
 
     with tab9:
-        render_seo_tools_tab(settings)
+        render_seo_tools_tab(settings, OUT_DIR)
 
     with tab10:
         render_session_tab(settings, OUT_DIR)
