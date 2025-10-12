@@ -6,7 +6,7 @@ Handles phone numbers, currency, dates, and other locale-specific formats
 import re
 from datetime import datetime
 from typing import Optional, Dict
-from locale.i18n import get_language_config
+from localization.i18n import get_language_config
 
 
 def format_phone(phone: str, country: str = 'de') -> str:

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yaml
 from llm.adapter import LLMAdapter
-from locale.i18n import get_tone_preset, get_language_name
+from localization.i18n import get_tone_preset, get_language_name
 from outreach.deliverability_checks import check_deliverability, format_deliverability_report
 from config.loader import ConfigLoader
 from logger import get_logger

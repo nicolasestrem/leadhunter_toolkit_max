@@ -4,7 +4,7 @@ Tests for locale formatting functions
 
 import pytest
 from datetime import datetime
-from locale.formats import (
+from localization.formats import (
     format_phone,
     format_currency,
     format_date,

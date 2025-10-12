@@ -8,7 +8,7 @@ from outreach.deliverability_checks import (
     check_word_count,
     check_spam_words,
     check_exclamation_marks,
-    check_links,
+    check_link_count,
     check_subject_line,
     check_deliverability,
     DeliverabilityIssue
@@ -120,26 +120,26 @@ class TestLinks:
     def test_no_links(self):
         """Message without links should pass"""
         text = "Hello, I'd like to discuss your business needs."
-        issues = check_links(text)
+        issues = check_link_count(text)
         assert len(issues) == 0
 
     def test_one_link(self):
         """Single link should pass"""
         text = "Check out my profile: https://example.com"
-        issues = check_links(text, max_links=1)
+        issues = check_link_count(text, max_links=1)
         assert len(issues) == 0
 
     def test_excessive_links(self):
         """Multiple links should trigger warning"""
         text = "Visit https://example.com or https://test.com or https://demo.com"
-        issues = check_links(text, max_links=1)
+        issues = check_link_count(text, max_links=1)
         assert len(issues) >= 1
         assert issues[0].category == 'links'
 
     def test_link_detection(self):
         """Should detect various link formats"""
         text = "Visit http://example.com and www.test.com"
-        issues = check_links(text, max_links=1)
+        issues = check_link_count(text, max_links=1)
         assert len(issues) >= 1
 
 
