@@ -191,14 +191,15 @@ def render_audit_tab(settings: dict, out_dir: str):
 
             for i, task in enumerate(result.all_quick_wins, 1):
                 with st.expander(f"{i}. {task.task.title} (Priority: {task.priority_score:.1f}/10)", expanded=(i<=3)):
-                    st.markdown(f"**Description:** {task.task.description}")
-                    st.markdown(f"**Expected Outcome:** {task.task.expected_outcome}")
+                    st.markdown(f"**Action:** {task.task.action}")
+                    st.markdown(f"**Expected Impact:** {task.task.impact}")
+                    st.markdown(f"**Effort:** {task.task.effort}")
 
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        st.metric("Impact", f"{task.impact:.1f}/10")
+                        st.metric("Impact Score", f"{task.impact}/10")
                     with col2:
-                        st.metric("Feasibility", f"{task.feasibility:.1f}/10")
+                        st.metric("Feasibility", f"{task.feasibility}/10")
                     with col3:
                         st.metric("Priority", f"{task.priority_score:.1f}/10")
 

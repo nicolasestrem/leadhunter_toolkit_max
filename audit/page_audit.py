@@ -225,7 +225,11 @@ def parse_audit_response(response: str, url: str) -> PageAudit:
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse audit response: {e}")
-        logger.error(f"Response was: {response[:500]}")
+        # Log response with Unicode escape to avoid encoding errors
+        try:
+            logger.error(f"Response was: {response[:500]}")
+        except Exception:
+            logger.error(f"Response was: {response[:500].encode('unicode-escape').decode('ascii')}")
 
         # Return minimal audit
         return PageAudit(
@@ -297,12 +301,13 @@ def audit_page(
     # Get prompts
     system_prompt, user_prompt = format_audit_prompt(url, html_content)
 
-    # Call LLM
+    # Call LLM with increased max_tokens for full audit response
     logger.debug(f"Calling LLM for page audit")
     response = llm_adapter.chat_with_system(
         user_message=user_prompt,
         system_message=system_prompt,
-        temperature=0.1  # Low temp for consistent analysis
+        temperature=0.1,  # Low temp for consistent analysis
+        max_tokens=4096  # High token limit to avoid truncating audit JSON
     )
 
     # Parse response
