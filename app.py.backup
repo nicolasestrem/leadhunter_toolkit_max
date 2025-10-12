@@ -13,25 +13,30 @@ from utils_html import domain_of
 from places import text_search as places_text_search, get_details as places_details
 from crawl import crawl_site
 from classify import classify_lead
-from search_scraper import SearchScraper
-from seo_audit import SEOAuditor
-from serp_tracker import SERPTracker
-from site_extractor import SiteExtractor
 from llm_client import LLMClient
 import httpx
+from constants import *
+
+# Lazy-loaded imports (loaded on first use to improve startup time)
+# SearchScraper, SEOAuditor, SERPTracker, SiteExtractor
 
 # Consulting Pack imports
 from config.loader import ConfigLoader
 from llm.adapter import LLMAdapter
 from leads.classify_score import classify_and_score_lead
-from leads.contacts_extract import extract_from_markdown
+from leads.contacts_extract import extract_contacts_from_markdown
 from outreach.compose import compose_outreach
 from dossier.build import build_dossier
 from audit.page_audit import audit_page
 from audit.quick_wins import generate_quick_wins
 from onboarding.wizard import run_onboarding
 from plugins import load_plugins, get_loaded_plugins, call_plugin_hook
+from models import Lead
 import zipfile
+
+# UI utility modules
+from ui.utils.session_state import init_session_state
+from ui.utils.data_transforms import dict_to_json_safe, dataframe_to_json_safe
 
 BASE = os.path.dirname(__file__)
 SETTINGS_PATH = os.path.join(BASE, "settings.json")
@@ -46,6 +51,44 @@ DEFAULT_KEYWORDS = {
     "seo": ["seo", "référencement", "search engine"],
     "mobility": ["mobilité", "mobility", "transport", "vélo"]
 }
+
+# Lazy loading for heavy optional modules
+_search_scraper_module = None
+_seo_auditor_module = None
+_serp_tracker_module = None
+_site_extractor_module = None
+
+def get_search_scraper():
+    """Lazy load SearchScraper module"""
+    global _search_scraper_module
+    if _search_scraper_module is None:
+        from search_scraper import SearchScraper
+        _search_scraper_module = SearchScraper
+    return _search_scraper_module
+
+def get_seo_auditor():
+    """Lazy load SEOAuditor module"""
+    global _seo_auditor_module
+    if _seo_auditor_module is None:
+        from seo_audit import SEOAuditor
+        _seo_auditor_module = SEOAuditor
+    return _seo_auditor_module
+
+def get_serp_tracker():
+    """Lazy load SERPTracker module"""
+    global _serp_tracker_module
+    if _serp_tracker_module is None:
+        from serp_tracker import SERPTracker
+        _serp_tracker_module = SERPTracker
+    return _serp_tracker_module
+
+def get_site_extractor():
+    """Lazy load SiteExtractor module"""
+    global _site_extractor_module
+    if _site_extractor_module is None:
+        from site_extractor import SiteExtractor
+        _site_extractor_module = SiteExtractor
+    return _site_extractor_module
 
 def load_settings():
     try:
@@ -287,12 +330,12 @@ with st.sidebar:
     country = st.text_input("Country code", s.get("country", "fr"))
     language = st.text_input("Language", s.get("language", "fr-FR"))
     city = st.text_input("City focus", s.get("city", "Toulouse"))
-    radius_km = st.number_input("Radius km", min_value=0, max_value=500, value=int(s.get("radius_km", 50)))
-    max_sites = st.slider("Max sites to scan (per query)", 1, 200, int(s.get("max_sites", 25)))
-    fetch_timeout = st.slider("Fetch timeout seconds", 5, 60, int(s.get("fetch_timeout", 15)))
-    concurrency = st.slider("Concurrency", 1, 32, int(s.get("concurrency", 8)))
+    radius_km = st.number_input("Radius km", min_value=MIN_RADIUS_KM, max_value=MAX_RADIUS_KM, value=int(s.get("radius_km", DEFAULT_RADIUS_KM)))
+    max_sites = st.slider("Max sites to scan (per query)", MIN_MAX_SITES, MAX_MAX_SITES, int(s.get("max_sites", DEFAULT_MAX_SITES)))
+    fetch_timeout = st.slider("Fetch timeout seconds", MIN_FETCH_TIMEOUT, MAX_FETCH_TIMEOUT, int(s.get("fetch_timeout", DEFAULT_FETCH_TIMEOUT)))
+    concurrency = st.slider("Concurrency", MIN_CONCURRENCY, MAX_CONCURRENCY, int(s.get("concurrency", DEFAULT_CONCURRENCY)))
     deep_contact = st.checkbox("Deep crawl contact/about pages", value=bool(s.get("deep_contact", True)))
-    max_pages = st.slider("Max pages per site", 1, 20, int(s.get("max_pages", 5)))
+    max_pages = st.slider("Max pages per site", MIN_MAX_PAGES, MAX_MAX_PAGES, int(s.get("max_pages", DEFAULT_MAX_PAGES)))
     extract_emails = st.checkbox("Extract emails", value=bool(s.get("extract_emails", True)))
     extract_phones = st.checkbox("Extract phones", value=bool(s.get("extract_phones", True)))
     extract_social = st.checkbox("Extract social links", value=bool(s.get("extract_social", True)))
@@ -314,9 +357,9 @@ with st.sidebar:
     with st.expander("Advanced LLM Settings"):
         llm_temperature = st.slider(
             "Temperature",
-            min_value=0.0,
-            max_value=2.0,
-            value=float(s.get("llm_temperature", 0.2)),
+            min_value=MIN_LLM_TEMPERATURE,
+            max_value=MAX_LLM_TEMPERATURE,
+            value=float(s.get("llm_temperature", DEFAULT_LLM_TEMPERATURE)),
             step=0.1,
             help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
         )
@@ -536,7 +579,9 @@ with st.sidebar:
         st.error(f"Cache error: {e}")
 
     st.divider()
-    st.subheader("Export current table")
+    # Advanced Export Section
+    from export_sidebar import render_export_sidebar
+    render_export_sidebar(project)
     exp_placeholder = st.empty()
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
@@ -545,20 +590,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
 ])
 
 # Initialize session state
-if "results" not in st.session_state:
-    st.session_state["results"] = []
-if "search_scraper_result" not in st.session_state:
-    st.session_state["search_scraper_result"] = None
-if "classified_leads" not in st.session_state:
-    st.session_state["classified_leads"] = []
-if "selected_lead" not in st.session_state:
-    st.session_state["selected_lead"] = None
-if "outreach_result" not in st.session_state:
-    st.session_state["outreach_result"] = None
-if "dossier_result" not in st.session_state:
-    st.session_state["dossier_result"] = None
-if "audit_result" not in st.session_state:
-    st.session_state["audit_result"] = None
+init_session_state()
 
 # ---------------------- HUNT TAB ----------------------
 with tab1:
@@ -624,7 +656,7 @@ with tab1:
             except Exception as e:
                 st.warning(f"Crawl error on {u}: {e}")
 
-        st.toast(f"Crawled {len(all_pages)} pages from {total_sites} sites", icon="✓")
+        st.toast(f"Crawled {len(all_pages)} pages from {total_sites} sites", icon="✅")
 
         # Phase 2: Extracting and classifying
         status_text.text(f"📊 Extracting contact information from {len(all_pages)} pages...")
@@ -673,7 +705,7 @@ with tab1:
 
         for dom, lead in by_domain.items():
             lead["score"] = score_lead(lead, settings)
-            lead["when"] = datetime.datetime.utcnow().isoformat()
+            lead["when"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             results.append(lead)
 
         results = sorted(results, key=lambda r: r.get("score", 0), reverse=True)
@@ -758,9 +790,15 @@ with tab2:
                             content_parts.append(lead["notes"])
                         content_sample = " ".join(content_parts)
 
-                        # Classify and score
+                        # Classify and score (convert dict to Lead object)
+                        try:
+                            lead_obj = Lead(**lead)
+                        except Exception as e:
+                            st.warning(f"Invalid lead data: {e}")
+                            continue
+
                         lead_record = classify_and_score_lead(
-                            lead=lead,
+                            lead=lead_obj,
                             llm_adapter=adapter,
                             content_sample=content_sample,
                             use_llm=use_llm_classify
@@ -773,7 +811,7 @@ with tab2:
                     status_text.text(f"✓ Classification complete!")
                     elapsed_total = (datetime.datetime.now() - start_time).total_seconds()
                     st.success(f"✅ Classified {len(classified)} leads in {elapsed_total:.1f}s (avg {elapsed_total/len(classified):.1f}s per lead)")
-                    st.toast(f"Classified {len(classified)} leads", icon="✓")
+                    st.toast(f"Classified {len(classified)} leads", icon="✅")
 
                 except Exception as e:
                     st.error(f"Classification failed: {str(e)}")
@@ -788,11 +826,11 @@ with tab2:
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            min_quality = st.slider("Min Quality Score", 0.0, 10.0, 0.0)
+            min_quality = st.slider("Min Quality Score", MIN_SCORE, MAX_SCORE, DEFAULT_MIN_QUALITY)
         with col2:
-            min_fit = st.slider("Min Fit Score", 0.0, 10.0, 0.0)
+            min_fit = st.slider("Min Fit Score", MIN_SCORE, MAX_SCORE, DEFAULT_MIN_FIT)
         with col3:
-            min_priority = st.slider("Min Priority Score", 0.0, 10.0, 0.0)
+            min_priority = st.slider("Min Priority Score", MIN_SCORE, MAX_SCORE, DEFAULT_MIN_PRIORITY)
         with col4:
             business_types = df["business_type"].unique().tolist() if "business_type" in df.columns else []
             selected_types = st.multiselect("Business Type", business_types, default=business_types)
@@ -826,7 +864,7 @@ with tab2:
         if lead_names:
             selected_idx = st.selectbox("Select lead for detailed actions", range(len(lead_names)),
                                        format_func=lambda x: lead_names[x])
-            st.session_state["selected_lead"] = filtered_df.iloc[selected_idx].to_dict()
+            st.session_state["selected_lead"] = dict_to_json_safe(filtered_df.iloc[selected_idx].to_dict())
 
             st.info(f"**Selected:** {lead_names[selected_idx]}")
             col1, col2, col3 = st.columns(3)
@@ -847,7 +885,7 @@ with tab2:
                     try:
                         selected_lead = st.session_state["selected_lead"]
                         project = s.get("project", "default")
-                        timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                         company_slug = selected_lead.get('name', 'unknown').replace(' ', '_')
 
                         # Create pack directory
@@ -914,7 +952,7 @@ with tab2:
                             audit_result = st.session_state["audit_result"]
 
                             audit_md = f"# Audit Report: {audit_result.domain}\n\n"
-                            audit_md += f"**Crawled:** {len(audit_result.crawled_urls)} pages | **Audited:** {len(audit_result.audits)} pages\n\n"
+                            audit_md += f"**Crawled:** {audit_result.pages_crawled} pages | **Audited:** {audit_result.pages_audited} pages\n\n"
 
                             for i, audit in enumerate(audit_result.audits, 1):
                                 audit_md += f"## Page {i}: {audit.url}\n\n"
@@ -929,9 +967,9 @@ with tab2:
                                         audit_md += f"- [{issue.severity.upper()}] {issue.description}\n"
                                     audit_md += "\n"
 
-                            if audit_result.quick_wins:
-                                audit_md += f"## Top {len(audit_result.quick_wins)} Quick Wins\n\n"
-                                for i, task in enumerate(audit_result.quick_wins, 1):
+                            if audit_result.all_quick_wins:
+                                audit_md += f"## Top {len(audit_result.all_quick_wins)} Quick Wins\n\n"
+                                for i, task in enumerate(audit_result.all_quick_wins, 1):
                                     audit_md += f"### {i}. {task.task.title}\n\n"
                                     audit_md += f"**Description:** {task.task.description}\n\n"
                                     audit_md += f"**Impact:** {task.impact:.1f}/10 | **Feasibility:** {task.feasibility:.1f}/10 | **Priority:** {task.priority_score:.1f}/10\n\n"
@@ -972,7 +1010,7 @@ with tab2:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "leads"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                 csv_path = out_path / f"classified_leads_{timestamp}.csv"
                 filtered_df.to_csv(csv_path, index=False)
                 st.success(f"Saved to {csv_path}")
@@ -982,10 +1020,10 @@ with tab2:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "leads"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                 json_path = out_path / f"classified_leads_{timestamp}.json"
                 with open(json_path, "w", encoding="utf-8") as f:
-                    json.dump(filtered_df.to_dict(orient="records"), f, ensure_ascii=False, indent=2)
+                    json.dump(dataframe_to_json_safe(filtered_df), f, ensure_ascii=False, indent=2)
                 st.success(f"Saved to {json_path}")
 
         with col3:
@@ -993,10 +1031,10 @@ with tab2:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "leads"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                 jsonl_path = out_path / f"classified_leads_{timestamp}.jsonl"
                 with open(jsonl_path, "w", encoding="utf-8") as f:
-                    for record in filtered_df.to_dict(orient="records"):
+                    for record in dataframe_to_json_safe(filtered_df):
                         f.write(json.dumps(record, ensure_ascii=False) + "\n")
                 st.success(f"Saved to {jsonl_path}")
     else:
@@ -1126,7 +1164,7 @@ with tab3:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "outreach"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
 
                 # Save as markdown
                 md_content = f"# Outreach Variants - {result.company_name}\n\n"
@@ -1152,7 +1190,7 @@ with tab3:
                 project = s.get("project", "default")
                 out_path = Path(OUT_DIR) / project / "outreach"
                 out_path.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
 
                 # Convert to dict
                 result_dict = {
@@ -1205,7 +1243,7 @@ with tab4:
                 height=150
             )
 
-            max_pages_crawl = st.slider("Max pages to crawl", 1, 20, 5)
+            max_pages_crawl = st.slider("Max pages to crawl", MIN_DOSSIER_CRAWL_PAGES, MAX_DOSSIER_CRAWL_PAGES, DEFAULT_DOSSIER_CRAWL_PAGES)
 
             if st.button("🕷️ Crawl Pages"):
                 if urls_input.strip():
@@ -1239,7 +1277,7 @@ with tab4:
                         progress_bar.progress(1.0)
                         status_text.text(f"✓ Crawled {len(pages_data)} pages")
                         st.success(f"✅ Fetched {len(pages_data)} pages with {sum(len(p.get('content', '')) for p in pages_data)} total characters")
-                        st.toast(f"Crawled {len(pages_data)} pages", icon="✓")
+                        st.toast(f"Crawled {len(pages_data)} pages", icon="✅")
 
                     except Exception as e:
                         st.error(f"Crawl failed: {str(e)}")
@@ -1248,7 +1286,7 @@ with tab4:
                     st.warning("Please enter at least one URL")
 
         else:  # Paste Content
-            num_pages = st.number_input("Number of pages", min_value=1, max_value=10, value=2)
+            num_pages = st.number_input("Number of pages", min_value=MIN_DOSSIER_NUM_PAGES, max_value=MAX_DOSSIER_NUM_PAGES, value=DEFAULT_DOSSIER_NUM_PAGES)
 
             for i in range(num_pages):
                 with st.expander(f"Page {i+1}", expanded=(i==0)):
@@ -1454,9 +1492,9 @@ with tab5:
 
     col1, col2 = st.columns(2)
     with col1:
-        max_crawl_pages_onboard = st.slider("Max pages to crawl", 5, 50, 10, key="onboard_crawl")
+        max_crawl_pages_onboard = st.slider("Max pages to crawl", MIN_ONBOARD_CRAWL_PAGES, MAX_ONBOARD_CRAWL_PAGES, DEFAULT_ONBOARD_CRAWL_PAGES, key="onboard_crawl")
     with col2:
-        max_audit_pages_onboard = st.slider("Pages to audit", 1, 10, 3, key="onboard_audit")
+        max_audit_pages_onboard = st.slider("Pages to audit", MIN_ONBOARD_AUDIT_PAGES, MAX_ONBOARD_AUDIT_PAGES, DEFAULT_ONBOARD_AUDIT_PAGES, key="onboard_audit")
 
     if st.button("🚀 Run Onboarding Wizard", type="primary"):
         if domain_input:
@@ -1504,7 +1542,7 @@ with tab5:
 
                 progress_bar.progress(1.0)
                 status_text.text("✓ Onboarding workflow complete!")
-                st.success(f"✅ Audited {len(result.audits)} pages, generated {len(result.quick_wins)} prioritized quick wins")
+                st.success(f"✅ Audited {len(result.audits)} pages, generated {len(result.all_quick_wins)} prioritized quick wins")
                 st.toast("Audit complete!", icon="🔍")
 
             except Exception as e:
@@ -1556,7 +1594,7 @@ with tab5:
                 progress_bar.progress(1.0)
                 status_text.text("✓ Audit complete!")
                 st.success(f"✅ Page audit complete! Score: {page_audit.score}/100, Grade: {page_audit.grade}")
-                st.toast("Page analyzed!", icon="✓")
+                st.toast("Page analyzed!", icon="✅")
 
             except Exception as e:
                 st.error(f"Audit failed: {str(e)}")
@@ -1569,7 +1607,7 @@ with tab5:
         st.divider()
         st.subheader(f"📊 Audit Results: {result.domain}")
 
-        st.info(f"Crawled: {len(result.crawled_urls)} pages | Audited: {len(result.audits)} pages")
+        st.info(f"Crawled: {result.pages_crawled} pages | Audited: {result.pages_audited} pages")
 
         # Page audits
         for i, audit in enumerate(result.audits, 1):
@@ -1599,11 +1637,11 @@ with tab5:
                         st.caption(f"- {strength}")
 
         # Quick wins
-        if result.quick_wins:
+        if result.all_quick_wins:
             st.divider()
-            st.subheader(f"⚡ Top Quick Wins ({len(result.quick_wins)})")
+            st.subheader(f"⚡ Top Quick Wins ({len(result.all_quick_wins)})")
 
-            for i, task in enumerate(result.quick_wins, 1):
+            for i, task in enumerate(result.all_quick_wins, 1):
                 with st.expander(f"{i}. {task.task.title} (Priority: {task.priority_score:.1f}/10)", expanded=(i<=3)):
                     st.markdown(f"**Description:** {task.task.description}")
                     st.markdown(f"**Expected Outcome:** {task.task.expected_outcome}")
@@ -1696,7 +1734,7 @@ with tab6:
             height=100
         )
     with col2:
-        num_sources = st.slider("Number of sources", 3, 20, 5)
+        num_sources = st.slider("Number of sources", MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES)
         extraction_mode = st.selectbox(
             "Mode",
             ["AI Extraction", "Markdown"],
@@ -1726,7 +1764,7 @@ with tab6:
 
         try:
             # Create SearchScraper instance with current settings
-            scraper = SearchScraper(
+            scraper = get_search_scraper()(
                 llm_base=s.get("llm_base", ""),
                 llm_key=s.get("llm_key", ""),
                 llm_model=s.get("llm_model", "gpt-4o-mini"),
@@ -1793,7 +1831,7 @@ with tab6:
 
                 # Export option
                 if st.button("💾 Export as Text"):
-                    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                     filename = f"search_scraper_ai_{timestamp}.txt"
                     path = os.path.join(OUT_DIR, filename)
                     with open(path, "w", encoding="utf-8") as f:
@@ -1810,7 +1848,7 @@ with tab6:
 
                 # Export option
                 if st.button("💾 Export as Markdown"):
-                    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                     filename = f"search_scraper_md_{timestamp}.md"
                     path = os.path.join(OUT_DIR, filename)
                     with open(path, "w", encoding="utf-8") as f:
@@ -1826,7 +1864,7 @@ with tab7:
     st.subheader("Text search on Google Places")
     st.caption("Requires a valid API key. Uses /places:searchText and detail lookups.")
     query_places = st.text_input("Places text query", placeholder="plombier à Toulouse")
-    maxp = st.slider("Max places", 1, 100, 20)
+    maxp = st.slider("Max places", MIN_MAX_PLACES, MAX_MAX_PLACES, DEFAULT_MAX_PLACES)
     go_places = st.button("Search Places")
     places_rows = []
 
@@ -1956,7 +1994,7 @@ with tab9:
                             max_tokens=int(s.get("llm_max_tokens", 0)) or None
                         )
 
-                    auditor = SEOAuditor(llm_client=llm_client)
+                    auditor = get_seo_auditor()(llm_client=llm_client)
 
                     # Run audit
                     status_text.text("📊 Analyzing meta tags, headings, images...")
@@ -2051,7 +2089,7 @@ with tab9:
         with col1:
             serp_engine = st.selectbox("Search Engine", ["ddg", "google"], key="serp_engine")
         with col2:
-            serp_results = st.slider("Number of results", 10, 50, 20)
+            serp_results = st.slider("Number of results", MIN_SERP_RESULTS, MAX_SERP_RESULTS, DEFAULT_SERP_RESULTS)
 
         track_domain = st.text_input("Track specific domain (optional)", placeholder="example.com")
 
@@ -2059,7 +2097,7 @@ with tab9:
             if serp_keyword:
                 with st.spinner(f"🔍 Tracking SERP positions for '{serp_keyword}'..."):
                     try:
-                        tracker = SERPTracker(
+                        tracker = get_serp_tracker()(
                             google_api_key=s.get("google_cse_key", ""),
                             google_cx=s.get("google_cse_cx", "")
                         )
@@ -2098,7 +2136,7 @@ with tab9:
                             if st.button("Export SERP Snapshot"):
                                 path = tracker.export_to_csv(
                                     [snapshot],
-                                    os.path.join(OUT_DIR, f"serp_{serp_keyword.replace(' ', '_')}_{datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv")
+                                    os.path.join(OUT_DIR, f"serp_{serp_keyword.replace(' ', '_')}_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv")
                                 )
                                 st.success(f"Exported to {path}")
 
@@ -2116,7 +2154,7 @@ with tab9:
 
         if extraction_mode == "Sitemap URL":
             sitemap_url = st.text_input("Sitemap URL", placeholder="https://example.com/sitemap.xml")
-            max_sitemap_pages = st.number_input("Max pages", min_value=1, max_value=1000, value=50)
+            max_sitemap_pages = st.number_input("Max pages", min_value=MIN_SITEMAP_PAGES, max_value=MAX_SITEMAP_PAGES, value=DEFAULT_SITEMAP_PAGES)
 
             if st.button("Extract from Sitemap", type="primary"):
                 if sitemap_url:
@@ -2124,7 +2162,7 @@ with tab9:
                     status_text = st.empty()
 
                     try:
-                        extractor = SiteExtractor(
+                        extractor = get_site_extractor()(
                             timeout=int(s.get("fetch_timeout", 15)),
                             concurrency=int(s.get("concurrency", 8))
                         )
@@ -2163,46 +2201,60 @@ with tab9:
 
         else:  # Domain Crawl
             domain_url = st.text_input("Domain URL", placeholder="https://example.com")
-            max_crawl_pages = st.number_input("Max pages to crawl", min_value=1, max_value=200, value=50)
+            max_crawl_pages = st.number_input("Max pages to crawl", min_value=MIN_SITE_CRAWL_PAGES, max_value=MAX_SITE_CRAWL_PAGES, value=DEFAULT_SITE_CRAWL_PAGES)
             deep_crawl_site = st.checkbox("Deep crawl (slower, more thorough)", value=True)
 
             if st.button("Extract from Domain", type="primary"):
                 if domain_url:
-                    with st.status("Crawling domain...", expanded=True) as status:
-                        try:
-                            extractor = SiteExtractor(
-                                timeout=int(s.get("fetch_timeout", 15)),
-                                concurrency=int(s.get("concurrency", 8))
-                            )
+                    progress_bar = st.progress(0.0)
+                    status_text = st.empty()
 
-                            status.update(label="Crawling and extracting pages...")
-                            pages = extractor.sync_extract_domain(
-                                domain_url,
-                                max_pages=max_crawl_pages,
-                                deep_crawl=deep_crawl_site
-                            )
+                    try:
+                        extractor = get_site_extractor()(
+                            timeout=int(s.get("fetch_timeout", 15)),
+                            concurrency=int(s.get("concurrency", 8))
+                        )
 
-                            if pages:
-                                status.update(label="Saving markdown files...")
-                                domain = urlparse(domain_url).netloc
-                                output_dir = extractor.save_to_files(pages, domain)
+                        status_text.text("🕷️ Starting domain crawl...")
+                        progress_bar.progress(0.1)
 
-                                status.update(label="Extraction complete!", state="complete")
-                                st.success(f"Extracted {len(pages)} pages to {output_dir}")
-                                st.info(f"Files saved in: `{output_dir}`")
-                            else:
-                                st.warning("No pages extracted from domain")
+                        status_text.text(f"🌐 Crawling up to {max_crawl_pages} pages...")
+                        progress_bar.progress(0.3)
 
-                        except Exception as e:
-                            st.error(f"Extraction failed: {str(e)}")
-                            status.update(label="Failed", state="error")
+                        status_text.text("📄 Converting HTML to markdown...")
+                        progress_bar.progress(0.6)
+
+                        pages = extractor.sync_extract_domain(
+                            domain_url,
+                            max_pages=max_crawl_pages,
+                            deep_crawl=deep_crawl_site
+                        )
+
+                        if pages:
+                            status_text.text("💾 Saving markdown files...")
+                            progress_bar.progress(0.85)
+
+                            domain = urlparse(domain_url).netloc
+                            output_dir = extractor.save_to_files(pages, domain)
+
+                            progress_bar.progress(1.0)
+                            status_text.text("✓ Domain extraction complete!")
+                            st.success(f"✅ Extracted {len(pages)} pages from {domain}")
+                            st.info(f"📁 Files saved in: `{output_dir}`")
+                            st.toast(f"Extracted {len(pages)} pages", icon="🕷️")
+                        else:
+                            st.warning("No pages extracted from domain")
+
+                    except Exception as e:
+                        st.error(f"Extraction failed: {str(e)}")
+                        status_text.text("❌ Extraction failed")
                 else:
                     st.warning("Please enter a domain URL")
 
 # ---------------------- SESSION TAB ----------------------
 with tab10:
     st.subheader("Session")
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     st.write(f"UTC now: {now}")
     st.write(f"Project: {s.get('project', 'default')}")
     st.write(f"Out folder: {OUT_DIR}")

@@ -86,5 +86,10 @@ MAX_SITE_CRAWL_PAGES = 200
 DEFAULT_HTTP_TIMEOUT = 15
 AUDIT_HTTP_TIMEOUT = 15
 
+# Directory paths
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PRESETS_DIR = os.path.join(BASE_DIR, "presets")
+
 # User agent
 USER_AGENT = "LeadHunter/1.0"
