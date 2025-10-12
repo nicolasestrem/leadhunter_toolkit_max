@@ -18,14 +18,16 @@ SOCIAL_KEYS = {
 def normalize_url(base, link):
     try:
         return urljoin(base, link)
-    except Exception:
+    except (ValueError, TypeError):
+        # Invalid URL format or None values
         return link
 
 def domain_of(url: str) -> str:
     try:
         ext = tldextract.extract(url)
         return ".".join(part for part in [ext.domain, ext.suffix] if part)
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
+        # Invalid URL, None value, or extraction failure
         return ""
 
 def find_emails(text: str) -> list[str]:

@@ -224,8 +224,11 @@ class ConfigLoader:
                 vertical_config = yaml.safe_load(f) or {}
             self._vertical_cache[vertical_name] = vertical_config
             return vertical_config
-        except Exception as e:
-            print(f"Error loading vertical preset '{vertical_name}': {e}")
+        except (OSError, IOError) as e:
+            print(f"Error reading vertical preset file '{vertical_name}': {e}")
+            return None
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML in vertical preset '{vertical_name}': {e}")
             return None
 
     def get_active_vertical(self) -> Optional[str]:
