@@ -4,6 +4,7 @@ Supports LM Studio, Ollama, and OpenAI with consistent interface
 Includes vision/multimodal support for image analysis
 """
 
+import os
 from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
 from openai import OpenAI, AsyncOpenAI
@@ -11,6 +12,25 @@ from retry_utils import retry_with_backoff
 from logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def mask_api_key(api_key: str) -> str:
+    """
+    Mask API key for safe logging
+
+    Args:
+        api_key: API key to mask
+
+    Returns:
+        Masked key showing only first/last 4 chars (or less for short keys)
+    """
+    if not api_key or api_key == "not-needed":
+        return "not-needed"
+
+    if len(api_key) <= 8:
+        return "***"
+
+    return f"{api_key[:4]}...{api_key[-4:]}"
 
 
 class LLMAdapter:
@@ -39,13 +59,19 @@ class LLMAdapter:
         Args:
             base_url: Base URL for API endpoint (e.g., 'https://lm.leophir.com/')
                      Auto-appends '/v1' if not present for OpenAI compatibility
-            api_key: API key (defaults to 'not-needed' for local LLMs)
+            api_key: API key (defaults to env var LLM_API_KEY, then 'not-needed')
             model: Model name/ID (e.g., 'openai/gpt-oss-20b', 'qwen/qwen3-4b-2507')
             temperature: Sampling temperature (0.0-2.0)
             max_tokens: Maximum tokens in response
             timeout: Request timeout in seconds
         """
-        self.api_key = api_key or "not-needed"
+        # API key fallback chain: param -> env var -> default
+        self.api_key = api_key or os.environ.get('LLM_API_KEY', "not-needed")
+
+        # Validate API key is not exposed in plain text
+        if self.api_key and self.api_key != "not-needed":
+            if len(self.api_key) < 8:
+                logger.warning("API key appears to be too short (< 8 chars). May be invalid.")
 
         # Ensure base_url ends with /v1 for OpenAI compatibility
         if base_url:
@@ -59,9 +85,10 @@ class LLMAdapter:
         self.max_tokens = max_tokens
         self.timeout = timeout
 
+        # Log configuration with masked API key
         logger.debug(
             f"Initialized LLMAdapter: endpoint={base_url}, model={model}, "
-            f"temp={temperature}, max_tokens={max_tokens}"
+            f"api_key={mask_api_key(self.api_key)}, temp={temperature}, max_tokens={max_tokens}"
         )
 
     @retry_with_backoff(max_retries=2, initial_delay=2.0, exceptions=(Exception,))

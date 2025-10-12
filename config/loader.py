@@ -14,9 +14,75 @@ CONFIG_DIR = BASE_DIR / "config"
 SETTINGS_PATH = BASE_DIR / "settings.json"
 VERTICALS_DIR = BASE_DIR / "presets" / "verticals"
 
+# Security limits
+MAX_CONFIG_FILE_SIZE = 10 * 1024 * 1024  # 10MB max for config files
+MAX_PRESET_FILE_SIZE = 1 * 1024 * 1024   # 1MB max for preset files
+
+
+def validate_safe_path(base_dir: Path, filename: str, allowed_extensions: list = None) -> Optional[Path]:
+    """
+    Validate that a filename is safe and doesn't attempt path traversal
+
+    Args:
+        base_dir: Base directory that file must reside within
+        filename: Filename to validate (should not contain path separators)
+        allowed_extensions: Optional list of allowed file extensions (e.g., ['.yml', '.yaml'])
+
+    Returns:
+        Resolved Path object if safe, None if validation fails
+    """
+    # Reject empty filenames
+    if not filename or not filename.strip():
+        return None
+
+    # Reject path traversal attempts
+    if '..' in filename or '/' in filename or '\\' in filename:
+        return None
+
+    # Reject hidden files (starting with .)
+    if filename.startswith('.'):
+        return None
+
+    # Check extension if specified
+    if allowed_extensions:
+        if not any(filename.endswith(ext) for ext in allowed_extensions):
+            return None
+
+    # Construct the full path
+    try:
+        full_path = (base_dir / filename).resolve()
+    except (ValueError, OSError):
+        return None
+
+    # Ensure the resolved path is still within base_dir
+    try:
+        full_path.relative_to(base_dir.resolve())
+    except ValueError:
+        # Path is outside base_dir
+        return None
+
+    return full_path
+
+
+def safe_file_size(file_path: Path, max_size: int) -> bool:
+    """
+    Check if file size is within acceptable limits
+
+    Args:
+        file_path: Path to file
+        max_size: Maximum allowed size in bytes
+
+    Returns:
+        True if file size is acceptable, False otherwise
+    """
+    try:
+        return file_path.stat().st_size <= max_size
+    except (OSError, FileNotFoundError):
+        return False
+
 
 class ConfigLoader:
-    """Load and manage application configuration"""
+    """Load and manage application configuration with cache invalidation"""
 
     def __init__(self):
         self._models_config = None
@@ -24,36 +90,72 @@ class ConfigLoader:
         self._settings = None
         self._vertical_cache = {}
 
+        # Track file modification times for cache invalidation
+        self._file_mtimes = {}
+
+    def _is_file_modified(self, file_path: Path) -> bool:
+        """
+        Check if file has been modified since last load
+
+        Args:
+            file_path: Path to file to check
+
+        Returns:
+            True if file was modified or not seen before, False otherwise
+        """
+        if not file_path.exists():
+            return False
+
+        try:
+            current_mtime = file_path.stat().st_mtime
+            cached_mtime = self._file_mtimes.get(str(file_path))
+
+            if cached_mtime is None or current_mtime > cached_mtime:
+                self._file_mtimes[str(file_path)] = current_mtime
+                return True
+
+            return False
+        except (OSError, FileNotFoundError):
+            return False
+
     def load_models(self) -> Dict[str, Any]:
-        """Load model configuration from models.yml"""
-        if self._models_config is None:
-            models_path = CONFIG_DIR / "models.yml"
+        """Load model configuration from models.yml with cache invalidation"""
+        models_path = CONFIG_DIR / "models.yml"
+
+        # Reload if file was modified or not cached yet
+        if self._models_config is None or self._is_file_modified(models_path):
             if models_path.exists():
                 with open(models_path, 'r', encoding='utf-8') as f:
                     self._models_config = yaml.safe_load(f) or {}
             else:
                 self._models_config = {}
+
         return self._models_config
 
     def load_defaults(self) -> Dict[str, Any]:
-        """Load default settings from defaults.yml"""
-        if self._defaults_config is None:
-            defaults_path = CONFIG_DIR / "defaults.yml"
+        """Load default settings from defaults.yml with cache invalidation"""
+        defaults_path = CONFIG_DIR / "defaults.yml"
+
+        # Reload if file was modified or not cached yet
+        if self._defaults_config is None or self._is_file_modified(defaults_path):
             if defaults_path.exists():
                 with open(defaults_path, 'r', encoding='utf-8') as f:
                     self._defaults_config = yaml.safe_load(f) or {}
             else:
                 self._defaults_config = {}
+
         return self._defaults_config
 
     def load_settings(self) -> Dict[str, Any]:
-        """Load runtime settings from settings.json"""
-        if self._settings is None:
+        """Load runtime settings from settings.json with cache invalidation"""
+        # Reload if file was modified or not cached yet
+        if self._settings is None or self._is_file_modified(SETTINGS_PATH):
             if SETTINGS_PATH.exists():
                 with open(SETTINGS_PATH, 'r', encoding='utf-8') as f:
                     self._settings = json.load(f)
             else:
                 self._settings = {}
+
         return self._settings
 
     def get_model_config(self, model_name: str) -> Optional[Dict[str, Any]]:
@@ -85,34 +187,46 @@ class ConfigLoader:
 
     def load_vertical_preset(self, vertical_name: str) -> Optional[Dict[str, Any]]:
         """
-        Load a vertical preset configuration from YAML
+        Load a vertical preset configuration from YAML with security validation
 
         Args:
             vertical_name: Name of vertical (e.g., 'restaurant', 'retail', 'professional_services')
 
         Returns:
-            Dict with vertical configuration or None if not found
+            Dict with vertical configuration or None if not found/invalid
         """
         if not vertical_name:
             return None
 
-        # Check cache first
-        if vertical_name in self._vertical_cache:
+        # Validate path security first
+        filename = f"{vertical_name}.yml"
+        vertical_path = validate_safe_path(VERTICALS_DIR, filename, allowed_extensions=['.yml', '.yaml'])
+
+        if not vertical_path:
+            print(f"Security: Rejected invalid vertical preset name '{vertical_name}'")
+            return None
+
+        # Check file exists and size is acceptable
+        if not vertical_path.exists():
+            return None
+
+        # Check cache and file modification time
+        if vertical_name in self._vertical_cache and not self._is_file_modified(vertical_path):
             return self._vertical_cache[vertical_name]
 
-        # Try to load from file
-        vertical_path = VERTICALS_DIR / f"{vertical_name}.yml"
-        if vertical_path.exists():
-            try:
-                with open(vertical_path, 'r', encoding='utf-8') as f:
-                    vertical_config = yaml.safe_load(f) or {}
-                self._vertical_cache[vertical_name] = vertical_config
-                return vertical_config
-            except Exception as e:
-                print(f"Error loading vertical preset '{vertical_name}': {e}")
-                return None
+        if not safe_file_size(vertical_path, MAX_PRESET_FILE_SIZE):
+            print(f"Security: Vertical preset '{vertical_name}' exceeds size limit")
+            return None
 
-        return None
+        # Load and cache
+        try:
+            with open(vertical_path, 'r', encoding='utf-8') as f:
+                vertical_config = yaml.safe_load(f) or {}
+            self._vertical_cache[vertical_name] = vertical_config
+            return vertical_config
+        except Exception as e:
+            print(f"Error loading vertical preset '{vertical_name}': {e}")
+            return None
 
     def get_active_vertical(self) -> Optional[str]:
         """
