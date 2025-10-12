@@ -153,7 +153,8 @@ class SearchScraper:
                 result.extracted_data = await self._ai_extract(prompt, markdown_pages, schema)
             else:
                 # Markdown Mode: Return concatenated markdown
-                result.markdown_content = "\n\n" + "="*80 + "\n\n".join(markdown_pages)
+                separator = "\n\n" + "=" * 80 + "\n\n"
+                result.markdown_content = separator.join(markdown_pages)
 
         except Exception as e:
             result.error = f"Error during search and scrape: {str(e)}"

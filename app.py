@@ -1,5 +1,6 @@
 import streamlit as st
 import asyncio, json, os, datetime, pandas as pd
+from urllib.parse import urlparse
 from search import ddg_sites
 from google_search import google_sites
 from fetch import fetch_many, text_content, extract_links
@@ -12,6 +13,11 @@ from places import text_search as places_text_search, get_details as places_deta
 from crawl import crawl_site
 from classify import classify_lead
 from search_scraper import SearchScraper
+from seo_audit import SEOAuditor
+from serp_tracker import SERPTracker
+from site_extractor import SiteExtractor
+from llm_client import LLMClient
+import httpx
 
 BASE = os.path.dirname(__file__)
 SETTINGS_PATH = os.path.join(BASE, "settings.json")
@@ -184,6 +190,23 @@ with st.sidebar:
     llm_key = st.text_input("LLM API key", value=s.get("llm_key", ""), type="password")
     llm_model = st.text_input("LLM model", s.get("llm_model", "gpt-4o-mini"))
 
+    with st.expander("Advanced LLM Settings"):
+        llm_temperature = st.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=2.0,
+            value=float(s.get("llm_temperature", 0.2)),
+            step=0.1,
+            help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
+        )
+        llm_max_tokens = st.number_input(
+            "Max tokens (0 = unlimited)",
+            min_value=0,
+            max_value=128000,
+            value=int(s.get("llm_max_tokens", 0)),
+            help="Maximum tokens in LLM response. Important for local models to prevent timeouts."
+        )
+
     if st.button("Save settings"):
         s.update({
             "search_engine": search_engine,
@@ -207,15 +230,56 @@ with st.sidebar:
             "google_cse_cx": g_cx,
             "llm_base": llm_base,
             "llm_key": llm_key,
-            "llm_model": llm_model
+            "llm_model": llm_model,
+            "llm_temperature": llm_temperature,
+            "llm_max_tokens": llm_max_tokens
         })
         save_settings(s)
         st.success("Saved.")
+
+    st.divider()
+    st.subheader("Presets")
+    st.caption("Save/load configurations per niche or location")
+
+    presets = list_presets()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_preset = st.selectbox("Load preset", [""] + presets)
+    with col2:
+        if selected_preset:
+            if st.button("Load"):
+                preset_data = load_preset(selected_preset)
+                if preset_data:
+                    s.update(preset_data)
+                    save_settings(s)
+                    st.success(f"Loaded preset: {selected_preset}")
+                    st.rerun()
+
+    preset_name = st.text_input("Save as preset", placeholder="berlin_plumbers")
+    if st.button("Save preset"):
+        if preset_name:
+            save_preset(preset_name, s)
+            st.success(f"Saved preset: {preset_name}")
+        else:
+            st.warning("Please enter a preset name")
+
+    if selected_preset:
+        if st.button("Delete preset", type="secondary"):
+            try:
+                preset_path = os.path.join(PRESETS_DIR, selected_preset + ".json")
+                if os.path.exists(preset_path):
+                    os.remove(preset_path)
+                    st.success(f"Deleted preset: {selected_preset}")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Error deleting preset: {e}")
+
     st.divider()
     st.subheader("Export current table")
     exp_placeholder = st.empty()
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Hunt", "Search Scraper", "Enrich with Places", "Review & Edit", "Session"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Hunt", "Search Scraper", "Enrich with Places", "Review & Edit", "SEO Tools", "Session"])
 
 if "results" not in st.session_state:
     st.session_state["results"] = []
@@ -513,14 +577,276 @@ with tab4:
         with csum2:
             if st.button("Summarize with LLM"):
                 from llm_client import LLMClient
-                cl = LLMClient(api_key=s.get("llm_key",""), base_url=s.get("llm_base",""), model=s.get("llm_model","gpt-4o-mini"))
+                cl = LLMClient(
+                    api_key=s.get("llm_key", ""),
+                    base_url=s.get("llm_base", ""),
+                    model=s.get("llm_model", "gpt-4o-mini"),
+                    temperature=float(s.get("llm_temperature", 0.2)),
+                    max_tokens=int(s.get("llm_max_tokens", 0)) or None
+                )
                 text = cl.summarize_leads(st.session_state.get("results", []))
                 st.text_area("LLM summary", value=text, height=200)
     else:
         st.info("Run Hunt first to get some leads.")
 
-# ---------------------- SESSION TAB ----------------------
+# ---------------------- SEO TOOLS TAB ----------------------
 with tab5:
+    st.subheader("SEO Tools")
+    st.caption("Comprehensive SEO analysis, SERP tracking, and site extraction")
+
+    seo_tab1, seo_tab2, seo_tab3 = st.tabs(["Content Audit", "SERP Tracker", "Site Extractor"])
+
+    # --- Content Audit Sub-tab ---
+    with seo_tab1:
+        st.markdown("### SEO Content Audit")
+        st.caption("Analyze a web page for SEO quality with optional LLM scoring")
+
+        audit_url = st.text_input("URL to audit", placeholder="https://example.com")
+        use_llm_scoring = st.checkbox("Use LLM content scoring", value=True)
+
+        if st.button("Run SEO Audit", type="primary"):
+            if audit_url:
+                with st.status("Auditing page...", expanded=True) as status:
+                    try:
+                        # Fetch page
+                        status.update(label="Fetching page...")
+                        resp = httpx.get(audit_url, timeout=15, follow_redirects=True, headers={"User-Agent": "LeadHunter/1.0"})
+                        resp.raise_for_status()
+                        html = resp.text
+
+                        # Create auditor
+                        llm_client = None
+                        if use_llm_scoring and s.get("llm_base"):
+                            llm_client = LLMClient(
+                                api_key=s.get("llm_key", ""),
+                                base_url=s.get("llm_base", ""),
+                                model=s.get("llm_model", "gpt-4o-mini"),
+                                temperature=float(s.get("llm_temperature", 0.2)),
+                                max_tokens=int(s.get("llm_max_tokens", 0)) or None
+                            )
+
+                        auditor = SEOAuditor(llm_client=llm_client)
+
+                        # Run audit
+                        status.update(label="Analyzing SEO...")
+                        result = auditor.audit_url(audit_url, html)
+
+                        status.update(label="Audit complete!", state="complete")
+
+                        # Display results
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("SEO Score", f"{result.seo_score:.0f}/100")
+                        with col2:
+                            st.metric("Word Count", result.word_count)
+                        with col3:
+                            st.metric("Total Issues", len(result.issues))
+
+                        # Meta tags
+                        with st.expander("📝 Meta Tags", expanded=True):
+                            st.write(f"**Title:** {result.title}")
+                            st.caption(f"Length: {result.title_length} chars (optimal: 50-60)")
+
+                            st.write(f"**Meta Description:** {result.meta_description}")
+                            st.caption(f"Length: {result.meta_description_length} chars (optimal: 150-160)")
+
+                            if result.canonical_url:
+                                st.write(f"**Canonical:** {result.canonical_url}")
+
+                            if result.og_tags:
+                                st.write("**Open Graph Tags:**")
+                                for key, val in result.og_tags.items():
+                                    st.caption(f"- {key}: {val}")
+
+                        # Headings
+                        with st.expander(f"📑 Headings ({sum(result.heading_structure.values())} total)"):
+                            st.write("**H1 Tags:**", result.h1_tags if result.h1_tags else "None")
+                            st.write("**H2 Tags:**", result.h2_tags if result.h2_tags else "None")
+                            st.write("**Structure:**", result.heading_structure)
+
+                        # Images
+                        with st.expander(f"🖼️ Images ({result.total_images} total, {result.image_alt_coverage:.1f}% with alt)"):
+                            st.write(f"Images with alt text: {result.images_with_alt}")
+                            st.write(f"Images missing alt text: {result.images_without_alt}")
+
+                        # Links
+                        with st.expander(f"🔗 Links ({result.total_links} total)"):
+                            st.write(f"Internal links: {result.internal_links}")
+                            st.write(f"External links: {result.external_links}")
+                            st.write(f"Nofollow links: {result.nofollow_links}")
+
+                        # Content
+                        with st.expander(f"📄 Content ({result.word_count} words)"):
+                            st.write(f"Paragraphs: {result.paragraph_count}")
+                            st.write(f"Avg paragraph length: {result.avg_paragraph_length:.1f} words")
+
+                        # Issues
+                        if result.issues:
+                            with st.expander(f"⚠️ Issues ({len(result.issues)})", expanded=True):
+                                for issue in result.issues:
+                                    st.warning(issue)
+
+                        # LLM Feedback
+                        if result.llm_score is not None:
+                            with st.expander("🤖 LLM Content Analysis", expanded=True):
+                                st.metric("LLM Quality Score", f"{result.llm_score:.0f}/100")
+                                if result.llm_feedback:
+                                    st.markdown(result.llm_feedback)
+
+                    except Exception as e:
+                        st.error(f"Audit failed: {str(e)}")
+                        status.update(label="Audit failed", state="error")
+            else:
+                st.warning("Please enter a URL to audit")
+
+    # --- SERP Tracker Sub-tab ---
+    with seo_tab2:
+        st.markdown("### SERP Position Tracker")
+        st.caption("Track keyword rankings in search results")
+
+        serp_keyword = st.text_input("Keyword to track", placeholder="seo tools")
+        col1, col2 = st.columns(2)
+        with col1:
+            serp_engine = st.selectbox("Search Engine", ["ddg", "google"], key="serp_engine")
+        with col2:
+            serp_results = st.slider("Number of results", 10, 50, 20)
+
+        track_domain = st.text_input("Track specific domain (optional)", placeholder="example.com")
+
+        if st.button("Track SERP", type="primary"):
+            if serp_keyword:
+                with st.status("Tracking SERP positions...", expanded=True) as status:
+                    try:
+                        tracker = SERPTracker(
+                            google_api_key=s.get("google_cse_key", ""),
+                            google_cx=s.get("google_cse_cx", "")
+                        )
+
+                        snapshot = tracker.track_keyword(
+                            serp_keyword,
+                            engine=serp_engine,
+                            max_results=serp_results
+                        )
+
+                        status.update(label="Tracking complete!", state="complete")
+
+                        st.success(f"Tracked {len(snapshot.results)} results for '{serp_keyword}'")
+
+                        # Display results
+                        if snapshot.results:
+                            results_data = []
+                            for r in snapshot.results:
+                                results_data.append({
+                                    "Position": r.position,
+                                    "Title": r.title,
+                                    "URL": r.url,
+                                    "Snippet": r.snippet[:100] + "..." if len(r.snippet) > 100 else r.snippet
+                                })
+
+                            st.dataframe(pd.DataFrame(results_data), use_container_width=True)
+
+                            # Domain position check
+                            if track_domain:
+                                domain_pos = next((r.position for r in snapshot.results if track_domain in r.url), None)
+                                if domain_pos:
+                                    st.info(f"✅ Domain '{track_domain}' found at position {domain_pos}")
+                                else:
+                                    st.warning(f"❌ Domain '{track_domain}' not found in top {len(snapshot.results)} results")
+
+                            # Export
+                            if st.button("Export SERP Snapshot"):
+                                path = tracker.export_to_csv(
+                                    [snapshot],
+                                    os.path.join(OUT_DIR, f"serp_{serp_keyword.replace(' ', '_')}_{datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv")
+                                )
+                                st.success(f"Exported to {path}")
+
+                    except Exception as e:
+                        st.error(f"SERP tracking failed: {str(e)}")
+                        status.update(label="Failed", state="error")
+            else:
+                st.warning("Please enter a keyword to track")
+
+    # --- Site Extractor Sub-tab ---
+    with seo_tab3:
+        st.markdown("### Site to Markdown Extractor")
+        st.caption("Extract entire websites or sitemaps to markdown files")
+
+        extraction_mode = st.radio("Extraction Mode", ["Sitemap URL", "Domain Crawl"])
+
+        if extraction_mode == "Sitemap URL":
+            sitemap_url = st.text_input("Sitemap URL", placeholder="https://example.com/sitemap.xml")
+            max_sitemap_pages = st.number_input("Max pages", min_value=1, max_value=1000, value=50)
+
+            if st.button("Extract from Sitemap", type="primary"):
+                if sitemap_url:
+                    with st.status("Extracting from sitemap...", expanded=True) as status:
+                        try:
+                            extractor = SiteExtractor(
+                                timeout=int(s.get("fetch_timeout", 15)),
+                                concurrency=int(s.get("concurrency", 8))
+                            )
+
+                            status.update(label="Fetching sitemap and pages...")
+                            pages = extractor.sync_extract_sitemap(sitemap_url, max_pages=max_sitemap_pages)
+
+                            if pages:
+                                status.update(label="Saving markdown files...")
+                                domain = urlparse(sitemap_url).netloc
+                                output_dir = extractor.save_to_files(pages, domain)
+
+                                status.update(label="Extraction complete!", state="complete")
+                                st.success(f"Extracted {len(pages)} pages to {output_dir}")
+                                st.info(f"Files saved in: `{output_dir}`")
+                            else:
+                                st.warning("No pages extracted from sitemap")
+
+                        except Exception as e:
+                            st.error(f"Extraction failed: {str(e)}")
+                            status.update(label="Failed", state="error")
+                else:
+                    st.warning("Please enter a sitemap URL")
+
+        else:  # Domain Crawl
+            domain_url = st.text_input("Domain URL", placeholder="https://example.com")
+            max_crawl_pages = st.number_input("Max pages to crawl", min_value=1, max_value=200, value=50)
+            deep_crawl_site = st.checkbox("Deep crawl (slower, more thorough)", value=True)
+
+            if st.button("Extract from Domain", type="primary"):
+                if domain_url:
+                    with st.status("Crawling domain...", expanded=True) as status:
+                        try:
+                            extractor = SiteExtractor(
+                                timeout=int(s.get("fetch_timeout", 15)),
+                                concurrency=int(s.get("concurrency", 8))
+                            )
+
+                            status.update(label="Crawling and extracting pages...")
+                            pages = extractor.sync_extract_domain(
+                                domain_url,
+                                max_pages=max_crawl_pages,
+                                deep_crawl=deep_crawl_site
+                            )
+
+                            if pages:
+                                status.update(label="Saving markdown files...")
+                                domain = urlparse(domain_url).netloc
+                                output_dir = extractor.save_to_files(pages, domain)
+
+                                status.update(label="Extraction complete!", state="complete")
+                                st.success(f"Extracted {len(pages)} pages to {output_dir}")
+                                st.info(f"Files saved in: `{output_dir}`")
+                            else:
+                                st.warning("No pages extracted from domain")
+
+                        except Exception as e:
+                            st.error(f"Extraction failed: {str(e)}")
+                            status.update(label="Failed", state="error")
+                else:
+                    st.warning("Please enter a domain URL")
+
+# ---------------------- SESSION TAB ----------------------
+with tab6:
     st.subheader("Session")
     now = datetime.datetime.utcnow().isoformat()
     st.write(f"UTC now: {now}")
