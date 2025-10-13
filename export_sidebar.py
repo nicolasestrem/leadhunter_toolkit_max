@@ -78,7 +78,7 @@ def render_export_sidebar(project: str):
         # Tags filter
         all_tags = set()
         for lead in export_leads:
-            all_tags.update(lead.get('tags', []))
+            all_tags.update(lead.get('tags') or [])
         if all_tags:
             filter_tags = st.multiselect("Tags (any match)", sorted(all_tags), key="exp_tags")
         else:
