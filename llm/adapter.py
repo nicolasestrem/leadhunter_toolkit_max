@@ -50,6 +50,8 @@ class LLMAdapter:
         api_key: Optional[str] = None,
         model: str = "openai/gpt-oss-20b",
         temperature: float = 0.2,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
         max_tokens: Optional[int] = 2048,
         timeout: int = 60
     ):
@@ -62,6 +64,8 @@ class LLMAdapter:
             api_key: API key (defaults to env var LLM_API_KEY, then 'not-needed')
             model: Model name/ID (e.g., 'openai/gpt-oss-20b', 'qwen/qwen3-4b-2507')
             temperature: Sampling temperature (0.0-2.0)
+            top_k: Top-K sampling (limits vocabulary to top K tokens)
+            top_p: Nucleus sampling (cumulative probability threshold, 0.0-1.0)
             max_tokens: Maximum tokens in response
             timeout: Request timeout in seconds
         """
@@ -82,13 +86,16 @@ class LLMAdapter:
         self.base_url = base_url
         self.model = model
         self.temperature = temperature
+        self.top_k = top_k
+        self.top_p = top_p
         self.max_tokens = max_tokens
         self.timeout = timeout
 
         # Log configuration with masked API key
         logger.debug(
             f"Initialized LLMAdapter: endpoint={base_url}, model={model}, "
-            f"api_key={mask_api_key(self.api_key)}, temp={temperature}, max_tokens={max_tokens}"
+            f"api_key={mask_api_key(self.api_key)}, temp={temperature}, "
+            f"top_k={top_k}, top_p={top_p}, max_tokens={max_tokens}"
         )
 
     @retry_with_backoff(max_retries=2, initial_delay=2.0, exceptions=(Exception,))
@@ -137,6 +144,14 @@ class LLMAdapter:
             max_tok = max_tokens if max_tokens is not None else self.max_tokens
             if max_tok and max_tok > 0:
                 request_params["max_tokens"] = max_tok
+
+            # Add top_k if specified (OpenAI-compatible parameter)
+            if self.top_k is not None:
+                request_params["top_k"] = self.top_k
+
+            # Add top_p if specified (nucleus sampling)
+            if self.top_p is not None:
+                request_params["top_p"] = self.top_p
 
             logger.info(f"Calling LLM: {self.base_url} with model {self.model}")
             response = client.chat.completions.create(**request_params)
@@ -227,6 +242,14 @@ class LLMAdapter:
             if max_tok and max_tok > 0:
                 request_params["max_tokens"] = max_tok
 
+            # Add top_k if specified (OpenAI-compatible parameter)
+            if self.top_k is not None:
+                request_params["top_k"] = self.top_k
+
+            # Add top_p if specified (nucleus sampling)
+            if self.top_p is not None:
+                request_params["top_p"] = self.top_p
+
             logger.info(f"Calling LLM async: {self.base_url}")
             response = await client.chat.completions.create(**request_params)
 
@@ -291,6 +314,8 @@ class LLMAdapter:
             api_key=llm_config.get('api_key'),
             model=model_override or llm_config.get('model', 'openai/gpt-oss-20b'),
             temperature=llm_config.get('temperature', 0.2),
+            top_k=llm_config.get('top_k'),
+            top_p=llm_config.get('top_p'),
             max_tokens=llm_config.get('max_tokens', 2048),
             timeout=llm_config.get('timeout', 60)
         )
@@ -310,6 +335,8 @@ class LLMAdapter:
             base_url=model_config.get('endpoint'),
             model=model_config.get('id'),
             temperature=model_config.get('temperature', 0.2),
+            top_k=model_config.get('top_k'),
+            top_p=model_config.get('top_p'),
             max_tokens=model_config.get('max_tokens', 2048)
         )
 

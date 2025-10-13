@@ -9,7 +9,9 @@ from constants import (
     MIN_FETCH_TIMEOUT, MAX_FETCH_TIMEOUT, DEFAULT_FETCH_TIMEOUT,
     MIN_CONCURRENCY, MAX_CONCURRENCY, DEFAULT_CONCURRENCY,
     MIN_MAX_PAGES, MAX_MAX_PAGES, DEFAULT_MAX_PAGES,
-    MIN_LLM_TEMPERATURE, MAX_LLM_TEMPERATURE, DEFAULT_LLM_TEMPERATURE
+    MIN_LLM_TEMPERATURE, MAX_LLM_TEMPERATURE, DEFAULT_LLM_TEMPERATURE,
+    MIN_LLM_TOP_K, MAX_LLM_TOP_K, DEFAULT_LLM_TOP_K,
+    MIN_LLM_TOP_P, MAX_LLM_TOP_P, DEFAULT_LLM_TOP_P
 )
 
 
@@ -140,6 +142,22 @@ def render_settings_section(settings: dict, save_callback) -> dict:
             step=0.1,
             help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
         )
+        llm_top_k = st.slider(
+            "Top-K",
+            min_value=MIN_LLM_TOP_K,
+            max_value=MAX_LLM_TOP_K,
+            value=int(settings.get("llm_top_k", DEFAULT_LLM_TOP_K)),
+            step=1,
+            help="Limits vocabulary to top K tokens. Lower = more focused, Higher = more diverse. Typical range: 30-50"
+        )
+        llm_top_p = st.slider(
+            "Top-P (Nucleus Sampling)",
+            min_value=MIN_LLM_TOP_P,
+            max_value=MAX_LLM_TOP_P,
+            value=float(settings.get("llm_top_p", DEFAULT_LLM_TOP_P)),
+            step=0.05,
+            help="Cumulative probability threshold. 0.9 = consider tokens with 90% cumulative prob. Typical range: 0.8-0.95"
+        )
         llm_max_tokens = st.number_input(
             "Max tokens (0 = unlimited)",
             min_value=0,
@@ -174,6 +192,8 @@ def render_settings_section(settings: dict, save_callback) -> dict:
             "llm_key": llm_key,
             "llm_model": llm_model,
             "llm_temperature": llm_temperature,
+            "llm_top_k": llm_top_k,
+            "llm_top_p": llm_top_p,
             "llm_max_tokens": llm_max_tokens
         }
         settings.update(updated_settings)
