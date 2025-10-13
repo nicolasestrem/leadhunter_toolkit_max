@@ -33,12 +33,12 @@ def render_review_tab(settings: dict):
 
         with col2:
             if st.button("Summarize with LLM"):
-                # Initialize LLM client with large_model for advanced reasoning
+                # Initialize LLM client with user's configured model
                 cl = LLMClient(
                     api_key=settings.get("llm_key", ""),
                     base_url=settings.get("llm_base", ""),
-                    model="meta-llama-3-8b-instruct.gguf",  # Use large_model for quality summarization
-                    temperature=0.6,  # Balanced for analysis
+                    model=settings.get("llm_model", "gpt-4o-mini"),  # Respect user's model choice
+                    temperature=float(settings.get("llm_temperature", 0.6)),
                     top_p=float(settings.get("llm_top_p", 0.9)),
                     max_tokens=int(settings.get("llm_max_tokens", 2048)) or None
                 )

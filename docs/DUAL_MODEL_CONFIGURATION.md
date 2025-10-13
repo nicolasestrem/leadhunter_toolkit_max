@@ -7,93 +7,49 @@ Lead Hunter Toolkit now supports a **dual-model architecture** for granular cont
 - **Small Model (Mistral 7B)**: Fast extraction, structured analysis, and categorization
 - **Large Model (Llama 3 8B)**: Creative writing, advanced reasoning, and complex synthesis
 
-## ⚠️ Important: LM Studio Multi-Model Limitation
+## ⚠️ Important: How LM Studio Handles Multiple Models
 
-**LM Studio can only serve ONE model at a time.** This is a fundamental limitation of LM Studio's architecture - while you can have multiple models downloaded, only one can be loaded into memory and served through the API endpoint.
+**LM Studio uses JIT (Just-In-Time) model loading** - it automatically switches models based on your sidebar settings. While LM Studio can only keep one model active at a time, it will automatically load a different model when you change settings.
 
-### Solutions for True Dual-Model Operation
+### How It Works
 
-To achieve simultaneous dual-model operation, you have several options:
+1. **You control the model** via the sidebar "LLM model" setting
+2. When you save settings with a new model, **LM Studio automatically loads it** (visible in logs as `[JIT] Requested model...`)
+3. There's a brief loading delay (10-30 seconds depending on model size), but this isn't a problem for private use
+4. All tabs now **respect your sidebar settings** instead of forcing specific models
 
-#### ✅ **Option 1: LM Studio + Ollama (Recommended)**
+### Recommended Workflow
 
-Use two different model servers:
-- **LM Studio** (`https://lm.leophir.com/`) → Mistral 7B (small_model) for fast extraction
-- **Ollama** (`http://oll.leophir.com/`) → Llama 3 8B (large_model) for creative tasks
+#### For Mixed Workloads (Extraction + Creative Writing):
 
-**Setup**:
-1. In LM Studio: Load `mistralai/mistral-7b-instruct-v0.3`
-2. In Ollama: Pull and serve `llama3:8b` model
-3. The configuration in `config/models.yml` already uses this split
+1. **Download both models in LM Studio**:
+   - `mistralai/mistral-7b-instruct-v0.3` (for fast extraction)
+   - `meta-llama-3-8b-instruct.gguf` (for quality creative work)
 
-**Pros**: True simultaneous operation, no manual switching
-**Cons**: Requires running two servers, more resource intensive
+2. **Set model per task** via sidebar:
+   - When doing **SEO audits, classification, extraction**: Set sidebar to Mistral 7B, save settings
+   - When doing **outreach, dossiers, summarization**: Set sidebar to Llama 3 8B, save settings
 
-#### Option 2: Single Model (Simplified)
+3. **LM Studio auto-switches**: No manual intervention needed in LM Studio itself
 
-Use only one model for all tasks:
-- Choose **Mistral 7B** if speed is priority
-- Choose **Llama 3 8B** if quality is priority
+#### For Single-Focus Sessions:
 
-**Setup**: Update all tasks in `config/models.yml` to use the same model
+If you're only doing one type of work (e.g., just SEO audits all day):
+1. Set the appropriate model in sidebar once
+2. LM Studio loads it
+3. No switching needed - all tabs use your chosen model
 
-**Pros**: Simple, lower resource usage
-**Cons**: No task-specific optimization
+### What Changed
 
-#### Option 3: Manual Model Switching
+**Old behavior** (problematic):
+- Each tab hardcoded a specific model
+- Tabs would force LM Studio to switch models mid-session
+- Your sidebar settings were ignored
 
-Keep the current configuration but manually switch models in LM Studio based on your workflow:
-- Load **Mistral 7B** when doing SEO audits, classification, extraction
-- Load **Llama 3 8B** when doing outreach, dossiers, creative writing
-
-**Pros**: Flexibility, full optimization
-**Cons**: Requires manual intervention, models not available simultaneously
-
-### Current Configuration
-
-The default configuration uses **Option 1 (LM Studio + Ollama)**:
-- Small model tasks → LM Studio endpoint
-- Large model tasks → Ollama endpoint
-
-If your Ollama endpoint is offline, the application will fall back to whatever model is currently loaded in LM Studio.
-
-### Setting Up Ollama (for Option 1)
-
-If you want to use the recommended LM Studio + Ollama setup:
-
-1. **Install Ollama**:
-   ```bash
-   # Linux
-   curl -fsSL https://ollama.com/install.sh | sh
-
-   # macOS
-   brew install ollama
-
-   # Windows: Download from https://ollama.com/download
-   ```
-
-2. **Pull Llama 3 8B model**:
-   ```bash
-   ollama pull llama3:8b
-   ```
-
-3. **Serve Ollama** (if not auto-started):
-   ```bash
-   ollama serve
-   ```
-   By default, Ollama serves on `http://localhost:11434`
-
-4. **Update endpoint** (if using localhost instead of `oll.leophir.com`):
-   Edit `config/models.yml` and update the Ollama endpoint:
-   ```yaml
-   large_model:
-     endpoint: "http://localhost:11434"
-   ```
-
-5. **Verify it's working**:
-   ```bash
-   curl http://localhost:11434/api/tags
-   ```
+**New behavior** (fixed):
+- All tabs respect your sidebar `llm_model` setting
+- You control which model to use
+- LM Studio only switches when YOU change settings
 
 ## Architecture
 
@@ -118,11 +74,9 @@ If you want to use the recommended LM Studio + Ollama setup:
 - Structured JSON output
 - Fast analytical tasks
 
-#### Large Model: `llama3:8b` (via Ollama)
+#### Large Model: `meta-llama-3-8b-instruct.gguf`
 
 **Optimized for**: Quality and creative reasoning
-
-**Note**: The large model is served via Ollama (not LM Studio) to enable true simultaneous dual-model operation.
 
 | Parameter | Value | Purpose |
 |-----------|-------|---------|

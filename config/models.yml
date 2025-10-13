@@ -19,12 +19,12 @@ models:
     description: "Mistral 7B - Fast extraction, SEO audit, categorization (configure top_k=30 in LM Studio)"
 
   large_model:
-    id: "llama3"  # Ollama model name
-    endpoint: "http://oll.leophir.com/"  # Use Ollama for large model
+    id: "meta-llama-3-8b-instruct.gguf"
+    endpoint: "https://lm.leophir.com/"
     temperature: 0.7  # For creative writing
     top_p: 0.9
     max_tokens: 8192
-    description: "Llama 3 8B via Ollama - French writing, outreach, advanced reasoning. Using Ollama allows simultaneous dual-model operation with LM Studio."
+    description: "Llama 3 8B - French writing, outreach, advanced reasoning (configure top_k=40 in LM Studio). LM Studio auto-loads via JIT when requested."
 
   # Legacy models (preserved for compatibility)
   gpt-oss-20b:
@@ -58,20 +58,20 @@ models:
     description: "Optimized for lead classification (uses small_model, set top_k=30 in LM Studio)"
 
   outreach:
-    id: "llama3"
-    endpoint: "http://oll.leophir.com/"  # Use Ollama
+    id: "meta-llama-3-8b-instruct.gguf"
+    endpoint: "https://lm.leophir.com/"
     temperature: 0.7  # Higher temp for creative writing
     top_p: 0.9
     max_tokens: 1024
-    description: "Optimized for personalized outreach drafts (uses large_model via Ollama)"
+    description: "Optimized for personalized outreach drafts (uses large_model, set top_k=40 in LM Studio)"
 
   dossier:
-    id: "llama3"
-    endpoint: "http://oll.leophir.com/"  # Use Ollama
+    id: "meta-llama-3-8b-instruct.gguf"
+    endpoint: "https://lm.leophir.com/"
     temperature: 0.6  # Balanced for analysis
     top_p: 0.9
     max_tokens: 3072
-    description: "Optimized for dossier building (uses large_model via Ollama)"
+    description: "Optimized for dossier building (uses large_model, set top_k=40 in LM Studio)"
 
   audit:
     id: "mistralai/mistral-7b-instruct-v0.3"

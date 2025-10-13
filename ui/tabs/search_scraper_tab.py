@@ -64,11 +64,11 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
         status_text = st.empty()
 
         try:
-            # Create SearchScraper instance with small_model for fast extraction
+            # Create SearchScraper instance with user's configured model
             scraper = get_search_scraper()(
                 llm_base=settings.get("llm_base", ""),
                 llm_key=settings.get("llm_key", ""),
-                llm_model="mistralai/mistral-7b-instruct-v0.3",  # Use small_model for fast extraction
+                llm_model=settings.get("llm_model", "gpt-4o-mini"),  # Respect user's model choice
                 search_engine=settings.get("search_engine", "ddg"),
                 google_api_key=settings.get("google_cse_key", ""),
                 google_cx=settings.get("google_cse_cx", "")
