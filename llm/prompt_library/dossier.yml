@@ -69,7 +69,9 @@ user_prompt_template: |
   **Pages Analyzed** ({page_count} pages):
   {pages_content}
 
-  Please generate a dossier following the structure:
+  **IMPORTANT**: Respond with ONLY valid JSON. Do not include explanatory text, markdown, or any text before or after the JSON.
+
+  Generate a dossier in this exact JSON structure:
   {{
     "company_overview": "2-3 sentence overview",
     "services_products": ["Service 1", "Service 2", ...],
