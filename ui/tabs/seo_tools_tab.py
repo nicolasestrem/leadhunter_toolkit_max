@@ -78,7 +78,6 @@ def render_seo_tools_tab(settings: dict, out_dir: str):
                             base_url=settings.get("llm_base", ""),
                             model="mistralai/mistral-7b-instruct-v0.3",  # Use small_model for fast SEO analysis
                             temperature=0.4,  # Lower temperature for consistent analysis
-                            top_k=int(settings.get("llm_top_k", 30)),
                             top_p=float(settings.get("llm_top_p", 0.9)),
                             max_tokens=int(settings.get("llm_max_tokens", 2048)) or None
                         )

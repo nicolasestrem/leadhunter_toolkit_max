@@ -143,12 +143,12 @@ def render_settings_section(settings: dict, save_callback) -> dict:
             help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
         )
         llm_top_k = st.slider(
-            "Top-K",
+            "Top-K (LM Studio only - not sent via API)",
             min_value=MIN_LLM_TOP_K,
             max_value=MAX_LLM_TOP_K,
             value=int(settings.get("llm_top_k", DEFAULT_LLM_TOP_K)),
             step=1,
-            help="Limits vocabulary to top K tokens. Lower = more focused, Higher = more diverse. Typical range: 30-50"
+            help="⚠️ REFERENCE ONLY: Configure top_k directly in LM Studio model settings. OpenAI-compatible APIs don't support this parameter via API calls. Recommended: 30 for small_model, 40 for large_model."
         )
         llm_top_p = st.slider(
             "Top-P (Nucleus Sampling)",

@@ -164,10 +164,12 @@ Streamlit session_state["results"] holds the lead list throughout the session. T
 ```
 
 **Sampling Parameters**:
-- **Temperature**: Controls randomness (0.0=deterministic, 2.0=creative)
-- **Top-K**: Limits vocabulary to top K tokens (30-50 typical)
-- **Top-P**: Nucleus sampling threshold (0.8-0.95 typical)
-- **Max Tokens**: Maximum response length
+- **Temperature**: Controls randomness (0.0=deterministic, 2.0=creative) - Sent via API ✅
+- **Top-K**: Limits vocabulary to top K tokens - ⚠️ Configure in LM Studio (not API parameter)
+- **Top-P**: Nucleus sampling threshold (0.8-0.95 typical) - Sent via API ✅
+- **Max Tokens**: Maximum response length - Sent via API ✅
+
+**Important**: Top-K is NOT supported by OpenAI-compatible APIs. Configure it directly in LM Studio model settings (30 for Mistral 7B, 40 for Llama 3 8B).
 
 **Unified Adapters**:
 - **llm/adapter.py**: Modern adapter with full parameter support, async, and vision capabilities

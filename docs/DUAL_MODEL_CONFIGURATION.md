@@ -231,7 +231,11 @@ Controls randomness in token selection:
 - Analysis/Summarization: 0.5-0.7
 - Creative Writing: 0.7-0.9
 
+**API Support**: ✅ Sent via OpenAI-compatible API
+
 ### Top-K
+
+⚠️ **IMPORTANT**: Top-K is **NOT supported** by OpenAI-compatible APIs (including LM Studio's endpoint). You must configure this parameter **directly in LM Studio's model settings**.
 
 Limits vocabulary to top K most probable tokens:
 - **Lower (10-30)**: More focused, consistent output
@@ -239,9 +243,17 @@ Limits vocabulary to top K most probable tokens:
 - **Higher (50-100)**: More diverse vocabulary
 
 **Recommendations**:
-- Structured output (JSON): 20-30
+- Structured output (JSON): 20-30 → **Configure in LM Studio for Mistral 7B**
 - General tasks: 30-50
-- Creative writing: 40-60
+- Creative writing: 40-60 → **Configure in LM Studio for Llama 3 8B**
+
+**API Support**: ❌ Must be configured in LM Studio model settings (not sent via API)
+
+**How to Configure in LM Studio**:
+1. Load your model in LM Studio
+2. Click on model settings/parameters
+3. Set "Top-K" to desired value (30 for Mistral 7B, 40 for Llama 3 8B)
+4. Save model configuration
 
 ### Top-P (Nucleus Sampling)
 
@@ -254,6 +266,8 @@ Cumulative probability threshold:
 - Most tasks: 0.9
 - Extraction/Classification: 0.8-0.9
 - Creative tasks: 0.9-0.95
+
+**API Support**: ✅ Sent via OpenAI-compatible API
 
 ## Workflow Examples
 
@@ -327,6 +341,22 @@ client = LLMClient(
 - Optimal: RTX 4090 24GB (both models in VRAM simultaneously)
 
 ## Troubleshooting
+
+### Issue: "Unexpected keyword argument 'top_k'"
+
+**Symptom**: `TypeError: Completions.create() got an unexpected keyword argument 'top_k'`
+
+**Cause**: OpenAI-compatible APIs (including LM Studio) don't support `top_k` as an API parameter.
+
+**Solution**:
+1. ✅ **Already Fixed**: Latest version doesn't send `top_k` via API
+2. Configure `top_k` directly in LM Studio:
+   - Open LM Studio
+   - Load your model
+   - Go to Model Settings
+   - Set Top-K: 30 for Mistral 7B, 40 for Llama 3 8B
+   - Save configuration
+3. The UI slider is for **reference only** - it documents the recommended value but doesn't send it to the API
 
 ### Issue: Model Not Found
 

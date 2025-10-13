@@ -145,13 +145,12 @@ class LLMAdapter:
             if max_tok and max_tok > 0:
                 request_params["max_tokens"] = max_tok
 
-            # Add top_k if specified (OpenAI-compatible parameter)
-            if self.top_k is not None:
-                request_params["top_k"] = self.top_k
-
-            # Add top_p if specified (nucleus sampling)
+            # Add top_p if specified (nucleus sampling - OpenAI API standard)
             if self.top_p is not None:
                 request_params["top_p"] = self.top_p
+
+            # Note: top_k is NOT part of OpenAI API standard and not supported by LM Studio's OpenAI-compatible endpoint
+            # Configure top_k directly in LM Studio's model settings instead
 
             logger.info(f"Calling LLM: {self.base_url} with model {self.model}")
             response = client.chat.completions.create(**request_params)
@@ -242,13 +241,12 @@ class LLMAdapter:
             if max_tok and max_tok > 0:
                 request_params["max_tokens"] = max_tok
 
-            # Add top_k if specified (OpenAI-compatible parameter)
-            if self.top_k is not None:
-                request_params["top_k"] = self.top_k
-
-            # Add top_p if specified (nucleus sampling)
+            # Add top_p if specified (nucleus sampling - OpenAI API standard)
             if self.top_p is not None:
                 request_params["top_p"] = self.top_p
+
+            # Note: top_k is NOT part of OpenAI API standard and not supported by LM Studio's OpenAI-compatible endpoint
+            # Configure top_k directly in LM Studio's model settings instead
 
             logger.info(f"Calling LLM async: {self.base_url}")
             response = await client.chat.completions.create(**request_params)

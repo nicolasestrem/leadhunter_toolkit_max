@@ -39,7 +39,6 @@ def render_review_tab(settings: dict):
                     base_url=settings.get("llm_base", ""),
                     model="meta-llama-3-8b-instruct.gguf",  # Use large_model for quality summarization
                     temperature=0.6,  # Balanced for analysis
-                    top_k=int(settings.get("llm_top_k", 40)),
                     top_p=float(settings.get("llm_top_p", 0.9)),
                     max_tokens=int(settings.get("llm_max_tokens", 2048)) or None
                 )

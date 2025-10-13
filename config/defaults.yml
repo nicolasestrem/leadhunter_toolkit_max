@@ -59,10 +59,10 @@ llm:
   base_url: "https://lm.leophir.com/"
   model: "mistralai/mistral-7b-instruct-v0.3"  # Default to small_model for speed
   temperature: 0.4
-  top_k: 40  # Sampling parameter: limits vocabulary to top K tokens
-  top_p: 0.9  # Nucleus sampling: cumulative probability threshold
+  top_p: 0.9  # Nucleus sampling: cumulative probability threshold (OpenAI API standard)
   max_tokens: 2048
   timeout: 60  # LLM request timeout in seconds
+  # Note: top_k is NOT supported by OpenAI-compatible APIs (configure in LM Studio model settings directly)
 
 # Google API settings
 google:
