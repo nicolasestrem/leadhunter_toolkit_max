@@ -187,13 +187,19 @@ class LLMAdapter:
 
         Returns:
             Response content as string
+
+        Note:
+            For Mistral compatibility, system messages are prepended to user messages
+            instead of using a separate system role (Mistral only supports user/assistant roles)
         """
-        messages = []
-
+        # Prepend system message to user message for Mistral compatibility
+        # Mistral's Jinja template only supports user and assistant roles
         if system_message:
-            messages.append({"role": "system", "content": system_message})
+            combined_message = f"{system_message}\n\n{user_message}"
+        else:
+            combined_message = user_message
 
-        messages.append({"role": "user", "content": user_message})
+        messages = [{"role": "user", "content": combined_message}]
 
         return self.chat(messages, **kwargs)
 
@@ -283,13 +289,19 @@ class LLMAdapter:
 
         Returns:
             Response content as string
+
+        Note:
+            For Mistral compatibility, system messages are prepended to user messages
+            instead of using a separate system role (Mistral only supports user/assistant roles)
         """
-        messages = []
-
+        # Prepend system message to user message for Mistral compatibility
+        # Mistral's Jinja template only supports user and assistant roles
         if system_message:
-            messages.append({"role": "system", "content": system_message})
+            combined_message = f"{system_message}\n\n{user_message}"
+        else:
+            combined_message = user_message
 
-        messages.append({"role": "user", "content": user_message})
+        messages = [{"role": "user", "content": combined_message}]
 
         return await self.chat_async(messages, **kwargs)
 

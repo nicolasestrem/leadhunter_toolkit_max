@@ -358,6 +358,23 @@ client = LLMClient(
    - Save configuration
 3. The UI slider is for **reference only** - it documents the recommended value but doesn't send it to the API
 
+### Issue: "Only user and assistant roles are supported!"
+
+**Symptom**: `Error rendering prompt with jinja template: "Only user and assistant roles are supported!"`
+
+**Cause**: Mistral 7B's Jinja prompt template only accepts `user` and `assistant` roles, not `system` role. This is a model-specific constraint.
+
+**Solution**:
+1. ✅ **Already Fixed**: Latest version prepends system messages to user messages instead of using separate system role
+2. The fix automatically combines system and user messages into a single user message
+3. No configuration changes needed - the adapter handles this transparently
+4. Both `chat_with_system()` and `chat_with_system_async()` now compatible with Mistral
+
+**Technical Details**:
+- Old behavior: `[{"role": "system", "content": "..."}, {"role": "user", "content": "..."}]`
+- New behavior: `[{"role": "user", "content": "system_msg\n\nuser_msg"}]`
+- This maintains the same context while being compatible with Mistral's template constraints
+
 ### Issue: Model Not Found
 
 **Symptom**: `Model 'mistralai/mistral-7b-instruct-v0.3' not found`
