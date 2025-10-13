@@ -549,9 +549,9 @@ def _format_audit_markdown(audit_result) -> str:
         md += f"## Top Quick Wins\n\n"
         for i, task in enumerate(audit_result.quick_wins, 1):
             md += f"### {i}. {task.task.title}\n\n"
-            md += f"**Description:** {task.task.description}\n\n"
-            md += f"**Expected Outcome:** {task.task.expected_outcome}\n\n"
-            md += f"**Impact:** {task.impact:.1f}/10 | **Feasibility:** {task.feasibility:.1f}/10 | **Priority:** {task.priority_score:.1f}/10\n\n"
+            md += f"**Action:** {task.task.action}\n\n"
+            md += f"**Expected Impact:** {task.task.impact}\n\n"
+            md += f"**Impact Score:** {task.impact:.1f}/10 | **Feasibility:** {task.feasibility:.1f}/10 | **Priority:** {task.priority_score:.1f}/10\n\n"
 
     return md
 

@@ -54,7 +54,7 @@ def render_dossier_tab(settings: dict, out_dir: str):
 
             max_pages_crawl = st.slider("Max pages to crawl", MIN_DOSSIER_CRAWL_PAGES, MAX_DOSSIER_CRAWL_PAGES, DEFAULT_DOSSIER_CRAWL_PAGES)
 
-            if st.button("🕷️ Crawl Pages"):
+            if st.button("🕷️ Crawl Pages", key="dossier_crawl_pages"):
                 if urls_input.strip():
                     progress_bar = st.progress(0.0)
                     status_text = st.empty()
@@ -113,7 +113,7 @@ def render_dossier_tab(settings: dict, out_dir: str):
                         else:
                             pages_data.append({"url": url, "content": content})
 
-            if st.button("Save Pages"):
+            if st.button("Save Pages", key="dossier_save_pages"):
                 st.session_state["dossier_pages"] = pages_data
                 st.success(f"Saved {len(pages_data)} pages")
 
@@ -126,7 +126,7 @@ def render_dossier_tab(settings: dict, out_dir: str):
                 st.caption(f"{i}. {page['url']} ({len(page.get('content', ''))} chars)")
 
             # Generate dossier
-            if st.button("📋 Generate Dossier", type="primary"):
+            if st.button("📋 Generate Dossier", type="primary", key="dossier_generate"):
                 progress_bar = st.progress(0.0)
                 status_text = st.empty()
 
@@ -267,7 +267,7 @@ def render_dossier_tab(settings: dict, out_dir: str):
         st.divider()
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("💾 Export as Markdown"):
+            if st.button("💾 Export as Markdown", key="dossier_export_markdown"):
                 project = settings.get("project", "default")
                 out_path = Path(out_dir) / project / "dossiers"
                 out_path.mkdir(parents=True, exist_ok=True)
@@ -276,7 +276,7 @@ def render_dossier_tab(settings: dict, out_dir: str):
                 st.success(f"Dossier saved in {out_path}")
 
         with col2:
-            if st.button("📦 Export as JSON"):
+            if st.button("📦 Export as JSON", key="dossier_export_json"):
                 project = settings.get("project", "default")
                 out_path = Path(out_dir) / project / "dossiers"
                 out_path.mkdir(parents=True, exist_ok=True)

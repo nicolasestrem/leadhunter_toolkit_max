@@ -339,6 +339,10 @@ class ConfigLoader:
             config['llm']['model'] = settings['llm_model']
         if 'llm_temperature' in settings:
             config['llm']['temperature'] = settings['llm_temperature']
+        if 'llm_top_k' in settings:
+            config['llm']['top_k'] = settings['llm_top_k']
+        if 'llm_top_p' in settings:
+            config['llm']['top_p'] = settings['llm_top_p']
         if 'llm_max_tokens' in settings:
             config['llm']['max_tokens'] = settings['llm_max_tokens']
         if 'llm_key' in settings:

@@ -76,9 +76,10 @@ def render_seo_tools_tab(settings: dict, out_dir: str):
                         llm_client = LLMClient(
                             api_key=settings.get("llm_key", ""),
                             base_url=settings.get("llm_base", ""),
-                            model=settings.get("llm_model", "gpt-4o-mini"),
-                            temperature=float(settings.get("llm_temperature", 0.2)),
-                            max_tokens=int(settings.get("llm_max_tokens", 0)) or None
+                            model=settings.get("llm_model", "gpt-4o-mini"),  # Respect user's model choice
+                            temperature=float(settings.get("llm_temperature", 0.4)),
+                            top_p=float(settings.get("llm_top_p", 0.9)),
+                            max_tokens=int(settings.get("llm_max_tokens", 2048)) or None
                         )
 
                     auditor = get_seo_auditor()(llm_client=llm_client)

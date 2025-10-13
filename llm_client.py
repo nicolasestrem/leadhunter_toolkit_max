@@ -22,6 +22,8 @@ class LLMClient:
         base_url: str = "",
         model: str = "gpt-4o-mini",
         temperature: float = 0.2,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
         max_tokens: Optional[int] = None
     ):
         """
@@ -32,6 +34,8 @@ class LLMClient:
             base_url: Base URL for API endpoint (auto-appends /v1 if needed)
             model: Model name/ID
             temperature: Sampling temperature (0.0-2.0, default 0.2)
+            top_k: Top-K sampling (limits vocabulary to top K tokens)
+            top_p: Nucleus sampling (cumulative probability threshold, 0.0-1.0)
             max_tokens: Maximum tokens in response (None = unlimited)
         """
         self.api_key = api_key or "not-needed"  # Default for local LLMs like LM Studio
@@ -44,6 +48,8 @@ class LLMClient:
         self.base_url = base_url or None
         self.model = model
         self.temperature = temperature
+        self.top_k = top_k
+        self.top_p = top_p
         self.max_tokens = max_tokens
 
     @retry_with_backoff(max_retries=2, initial_delay=2.0, exceptions=(Exception,))
@@ -85,6 +91,13 @@ class LLMClient:
             # Add max_tokens if specified (important for local models)
             if self.max_tokens:
                 request_params["max_tokens"] = self.max_tokens
+
+            # Add top_p if specified (nucleus sampling - OpenAI API standard)
+            if self.top_p is not None:
+                request_params["top_p"] = self.top_p
+
+            # Note: top_k is NOT part of OpenAI API standard and not supported by LM Studio's OpenAI-compatible endpoint
+            # Configure top_k directly in LM Studio's model settings instead
 
             logger.info(f"Calling LLM endpoint: {self.base_url}")
             resp = client.chat.completions.create(**request_params)

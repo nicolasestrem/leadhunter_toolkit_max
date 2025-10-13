@@ -213,14 +213,31 @@ def parse_dossier_response(response: str, lead_data: Dict, pages: List[Dict]) ->
         Dossier object
     """
     try:
-        # Clean response
+        # Clean response - handle various formats
         response_clean = response.strip()
+
+        # Remove markdown code blocks
         if response_clean.startswith('```json'):
             response_clean = response_clean[7:]
         elif response_clean.startswith('```'):
             response_clean = response_clean[3:]
         if response_clean.endswith('```'):
             response_clean = response_clean[:-3]
+        response_clean = response_clean.strip()
+
+        # Remove conversational prefix (e.g., "Here is the generated dossier:")
+        # Find the first { which marks the start of JSON
+        json_start = response_clean.find('{')
+        if json_start > 0:
+            logger.debug(f"Removing conversational prefix ({json_start} chars)")
+            response_clean = response_clean[json_start:]
+
+        # Remove any trailing text after the JSON
+        # Find the last } which marks the end of JSON
+        json_end = response_clean.rfind('}')
+        if json_end > 0 and json_end < len(response_clean) - 1:
+            response_clean = response_clean[:json_end + 1]
+
         response_clean = response_clean.strip()
 
         # Parse JSON

@@ -9,7 +9,24 @@ ollama_endpoint: "http://oll.leophir.com/"
 
 # Model aliases - map friendly names to actual model IDs
 models:
-  # LM Studio models
+  # Primary models - dual configuration for performance vs quality
+  small_model:
+    id: "mistralai/mistral-7b-instruct-v0.3"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.4
+    top_p: 0.9
+    max_tokens: 4096
+    description: "Mistral 7B - Fast extraction, SEO audit, categorization (configure top_k=30 in LM Studio)"
+
+  large_model:
+    id: "meta-llama-3-8b-instruct.gguf"
+    endpoint: "https://lm.leophir.com/"
+    temperature: 0.7  # For creative writing
+    top_p: 0.9
+    max_tokens: 8192
+    description: "Llama 3 8B - French writing, outreach, advanced reasoning (configure top_k=40 in LM Studio). LM Studio auto-loads via JIT when requested."
+
+  # Legacy models (preserved for compatibility)
   gpt-oss-20b:
     id: "openai/gpt-oss-20b"
     endpoint: "https://lm.leophir.com/"
@@ -33,32 +50,36 @@ models:
 
   # Task-specific presets
   classification:
-    id: "openai/gpt-oss-20b"
+    id: "mistralai/mistral-7b-instruct-v0.3"
     endpoint: "https://lm.leophir.com/"
-    temperature: 0.1  # Low temp for consistent classification
+    temperature: 0.4
+    top_p: 0.9
     max_tokens: 1024
-    description: "Optimized for lead classification"
+    description: "Optimized for lead classification (uses small_model, set top_k=30 in LM Studio)"
 
   outreach:
-    id: "openai/gpt-oss-20b"
+    id: "meta-llama-3-8b-instruct.gguf"
     endpoint: "https://lm.leophir.com/"
     temperature: 0.7  # Higher temp for creative writing
+    top_p: 0.9
     max_tokens: 1024
-    description: "Optimized for personalized outreach drafts"
+    description: "Optimized for personalized outreach drafts (uses large_model, set top_k=40 in LM Studio)"
 
   dossier:
-    id: "openai/gpt-oss-20b"
+    id: "meta-llama-3-8b-instruct.gguf"
     endpoint: "https://lm.leophir.com/"
-    temperature: 0.2
+    temperature: 0.6  # Balanced for analysis
+    top_p: 0.9
     max_tokens: 3072
-    description: "Optimized for dossier building"
+    description: "Optimized for dossier building (uses large_model, set top_k=40 in LM Studio)"
 
   audit:
-    id: "openai/gpt-oss-20b"
+    id: "mistralai/mistral-7b-instruct-v0.3"
     endpoint: "https://lm.leophir.com/"
-    temperature: 0.1
+    temperature: 0.4
+    top_p: 0.9
     max_tokens: 2048
-    description: "Optimized for SEO audits"
+    description: "Optimized for SEO audits (uses small_model, set top_k=30 in LM Studio)"
 
 # Ollama models (for future use when endpoint is online)
 ollama_models:
