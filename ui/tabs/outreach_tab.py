@@ -121,7 +121,7 @@ def render_outreach_tab(settings: dict, out_dir: str):
 
                 # Body
                 st.markdown("**Message:**")
-                st.text_area("", variant.body, height=200, key=f"body_{i}", label_visibility="collapsed")
+                st.text_area("Message preview", variant.body, height=200, key=f"body_{i}", label_visibility="collapsed")
                 if st.button(f"📋 Copy Message", key=f"copy_body_{i}"):
                     st.code(variant.body, language=None)
                     st.info("Copy the text above to clipboard")

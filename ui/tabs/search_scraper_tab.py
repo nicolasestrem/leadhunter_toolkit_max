@@ -57,7 +57,7 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
             except json.JSONDecodeError:
                 st.warning("Invalid JSON schema. Will use default extraction.")
 
-    run_scraper = st.button("🔍 Search & Scrape", type="primary", use_container_width=True)
+    run_scraper = st.button("🔍 Search & Scrape", type="primary", width='stretch')
 
     if run_scraper and scraper_prompt.strip():
         progress_bar = st.progress(0.0)

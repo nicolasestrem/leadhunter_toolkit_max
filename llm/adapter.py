@@ -126,10 +126,14 @@ class LLMAdapter:
         try:
             logger.debug(f"Sending chat request with {len(messages)} messages")
 
+            # Create httpx client explicitly without proxies to avoid compatibility issues
+            import httpx
+            http_client = httpx.Client(timeout=self.timeout, follow_redirects=True)
+
             client = OpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
-                timeout=self.timeout
+                http_client=http_client
             )
 
             # Build request parameters
@@ -230,10 +234,14 @@ class LLMAdapter:
         try:
             logger.debug(f"Sending async chat request with {len(messages)} messages")
 
+            # Create async httpx client explicitly without proxies
+            import httpx
+            http_client = httpx.AsyncClient(timeout=self.timeout, follow_redirects=True)
+
             client = AsyncOpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
-                timeout=self.timeout
+                http_client=http_client
             )
 
             request_params = {

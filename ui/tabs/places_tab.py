@@ -75,7 +75,7 @@ def render_places_tab(settings: dict):
 
     # Display results
     if places_rows:
-        st.dataframe(pd.DataFrame(places_rows), use_container_width=True)
+        st.dataframe(pd.DataFrame(places_rows), width='stretch')
 
         # Export buttons
         render_export_buttons(

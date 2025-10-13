@@ -210,7 +210,7 @@ def render_seo_tools_tab(settings: dict, out_dir: str):
                                     "Snippet": r.snippet[:100] + "..." if len(r.snippet) > 100 else r.snippet
                                 })
 
-                            st.dataframe(pd.DataFrame(results_data), use_container_width=True)
+                            st.dataframe(pd.DataFrame(results_data), width='stretch')
 
                             # Domain position check
                             if track_domain:

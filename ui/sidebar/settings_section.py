@@ -14,6 +14,42 @@ from constants import (
     MIN_LLM_TOP_P, MAX_LLM_TOP_P, DEFAULT_LLM_TOP_P
 )
 
+# Model presets with recommended settings
+MODEL_PRESETS = {
+    "jacobcarajo/mistral-7b-instruct-v0.3": {
+        "name": "Mistral 7B (jacobcarajo)",
+        "temperature": 0.4,
+        "top_k": 30,
+        "top_p": 0.9,
+        "max_tokens": 4096,
+        "description": "⚡ Fast extraction & structured analysis"
+    },
+    "mistralai/mistral-7b-instruct-v0.3": {
+        "name": "Mistral 7B (official)",
+        "temperature": 0.4,
+        "top_k": 30,
+        "top_p": 0.9,
+        "max_tokens": 4096,
+        "description": "⚡ Fast extraction & structured analysis"
+    },
+    "meta-llama-3-8b-instruct.gguf": {
+        "name": "Llama 3 8B",
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9,
+        "max_tokens": 8192,
+        "description": "✨ Creative writing & complex reasoning"
+    },
+    "openai/gpt-oss-20b": {
+        "name": "GPT OSS 20B",
+        "temperature": 0.8,
+        "top_k": 40,
+        "top_p": 0.9,
+        "max_tokens": 8192,
+        "description": "🚀 Balanced performance & quality"
+    }
+}
+
 
 def render_settings_section(settings: dict, save_callback) -> dict:
     """
@@ -120,25 +156,46 @@ def render_settings_section(settings: dict, save_callback) -> dict:
     st.subheader("LLM")
     llm_base = st.text_input(
         "LLM base URL (OpenAI compatible)",
-        settings.get("llm_base", "")
+        settings.get("llm_base", "https://lm.leophir.com/v1/")
     )
     llm_key = st.text_input(
         "LLM API key",
-        value=settings.get("llm_key", ""),
+        value=settings.get("llm_key", "not-needed"),
         type="password"
     )
-    llm_model = st.text_input(
-        "LLM model",
-        settings.get("llm_model", "gpt-4o-mini")
+
+    # Model selector with presets
+    model_options = list(MODEL_PRESETS.keys())
+    current_model = settings.get("llm_model", model_options[0])
+    if current_model not in model_options:
+        # If settings has a custom model, use first preset
+        current_model = model_options[0]
+
+    selected_model = st.selectbox(
+        "LLM Model",
+        model_options,
+        index=model_options.index(current_model),
+        format_func=lambda x: MODEL_PRESETS[x]["name"],
+        help=MODEL_PRESETS[current_model]["description"]
     )
 
-    # Advanced LLM settings
+    # Show model description
+    st.caption(f"{MODEL_PRESETS[selected_model]['description']}")
+
+    # Advanced LLM settings with auto-applied presets
+    preset = MODEL_PRESETS[selected_model]
+    model_changed = selected_model != settings.get("llm_model")
+
     with st.expander("Advanced LLM Settings"):
+        # Show preset info if model changed
+        if model_changed:
+            st.info(f"🔄 Applied {preset['name']} preset: temp={preset['temperature']}, max_tokens={preset['max_tokens']}")
+
         llm_temperature = st.slider(
             "Temperature",
             min_value=MIN_LLM_TEMPERATURE,
             max_value=MAX_LLM_TEMPERATURE,
-            value=float(settings.get("llm_temperature", DEFAULT_LLM_TEMPERATURE)),
+            value=float(preset["temperature"] if model_changed else settings.get("llm_temperature", preset["temperature"])),
             step=0.1,
             help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
         )
@@ -146,7 +203,7 @@ def render_settings_section(settings: dict, save_callback) -> dict:
             "Top-K (LM Studio only - not sent via API)",
             min_value=MIN_LLM_TOP_K,
             max_value=MAX_LLM_TOP_K,
-            value=int(settings.get("llm_top_k", DEFAULT_LLM_TOP_K)),
+            value=int(preset["top_k"] if model_changed else settings.get("llm_top_k", preset["top_k"])),
             step=1,
             help="⚠️ REFERENCE ONLY: Configure top_k directly in LM Studio model settings. OpenAI-compatible APIs don't support this parameter via API calls. Recommended: 30 for small_model, 40 for large_model."
         )
@@ -154,7 +211,7 @@ def render_settings_section(settings: dict, save_callback) -> dict:
             "Top-P (Nucleus Sampling)",
             min_value=MIN_LLM_TOP_P,
             max_value=MAX_LLM_TOP_P,
-            value=float(settings.get("llm_top_p", DEFAULT_LLM_TOP_P)),
+            value=float(preset["top_p"] if model_changed else settings.get("llm_top_p", preset["top_p"])),
             step=0.05,
             help="Cumulative probability threshold. 0.9 = consider tokens with 90% cumulative prob. Typical range: 0.8-0.95"
         )
@@ -162,7 +219,7 @@ def render_settings_section(settings: dict, save_callback) -> dict:
             "Max tokens (0 = unlimited)",
             min_value=0,
             max_value=128000,
-            value=int(settings.get("llm_max_tokens", 0)),
+            value=int(preset["max_tokens"] if model_changed else settings.get("llm_max_tokens", preset["max_tokens"])),
             help="Maximum tokens in LLM response. Important for local models to prevent timeouts."
         )
 
@@ -190,7 +247,7 @@ def render_settings_section(settings: dict, save_callback) -> dict:
             "google_cse_cx": g_cx,
             "llm_base": llm_base,
             "llm_key": llm_key,
-            "llm_model": llm_model,
+            "llm_model": selected_model,
             "llm_temperature": llm_temperature,
             "llm_top_k": llm_top_k,
             "llm_top_p": llm_top_p,

@@ -21,7 +21,7 @@ def render_review_tab(settings: dict):
 
     if not df.empty:
         # Editable data table
-        edited = st.data_editor(df, use_container_width=True, num_rows="dynamic")
+        edited = st.data_editor(df, width='stretch', num_rows="dynamic")
 
         # Action buttons
         col1, col2 = st.columns(2)

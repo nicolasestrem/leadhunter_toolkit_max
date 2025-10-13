@@ -53,7 +53,7 @@ def render_export_buttons(
     # CSV Export
     if show_csv:
         with cols[col_idx]:
-            if st.button(f"{label_prefix} CSV", use_container_width=True):
+            if st.button(f"{label_prefix} CSV", width='stretch'):
                 try:
                     path = export_csv(data)
                     st.success(f"✓ Saved to {path}")
@@ -64,7 +64,7 @@ def render_export_buttons(
     # JSON Export
     if show_json:
         with cols[col_idx]:
-            if st.button(f"{label_prefix} JSON", use_container_width=True):
+            if st.button(f"{label_prefix} JSON", width='stretch'):
                 try:
                     path = export_json(data)
                     st.success(f"✓ Saved to {path}")
@@ -75,7 +75,7 @@ def render_export_buttons(
     # XLSX Export
     if show_xlsx:
         with cols[col_idx]:
-            if st.button(f"{label_prefix} XLSX", use_container_width=True):
+            if st.button(f"{label_prefix} XLSX", width='stretch'):
                 try:
                     path = export_xlsx(data)
                     st.success(f"✓ Saved to {path}")

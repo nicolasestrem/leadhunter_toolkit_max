@@ -46,8 +46,17 @@ def render_dossier_tab(settings: dict, out_dir: str):
         pages_data = []
 
         if page_input_mode == "URLs (will crawl)":
+            # Pre-fill URLs from lead data
+            default_urls = []
+            if lead.get('website'):
+                default_urls.append(lead['website'])
+                default_urls.append(f"{lead['website']}/about")
+            elif lead.get('source_url'):
+                default_urls.append(lead['source_url'])
+
             urls_input = st.text_area(
                 "URLs (one per line)",
+                value="\n".join(default_urls) if default_urls else "",
                 placeholder=f"{lead.get('website', 'https://example.com')}\n{lead.get('website', 'https://example.com')}/about",
                 height=150
             )

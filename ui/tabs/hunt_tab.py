@@ -164,7 +164,7 @@ def render_hunt_tab(settings: dict, default_keywords: dict):
         st.balloons()
 
     if results:
-        st.dataframe(pd.DataFrame(results), use_container_width=True)
+        st.dataframe(pd.DataFrame(results), width='stretch')
 
         # Use export buttons component
         st.subheader("Export Results")

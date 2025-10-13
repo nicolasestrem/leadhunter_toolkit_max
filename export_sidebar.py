@@ -108,7 +108,7 @@ def render_export_sidebar(project: str):
         )
 
     # Preview button
-    if st.button("Preview Export", use_container_width=True):
+    if st.button("Preview Export", width='stretch'):
         # Build filter
         export_filter = ExportFilter(
             min_score=filter_min_score,
@@ -171,7 +171,7 @@ def render_export_sidebar(project: str):
 
         # Sample records (compact view)
         with st.expander(f"Sample ({len(preview)} shown)", expanded=False):
-            st.dataframe(pd.DataFrame(preview), use_container_width=True)
+            st.dataframe(pd.DataFrame(preview), width='stretch')
 
     # Export format selection and buttons
     st.divider()
@@ -183,7 +183,7 @@ def render_export_sidebar(project: str):
 
     col1, col2 = st.columns([2, 1])
     with col1:
-        if st.button("Export Leads", type="primary", use_container_width=True):
+        if st.button("Export Leads", type="primary", width='stretch'):
             # Build filter
             export_filter = ExportFilter(
                 min_score=filter_min_score,
@@ -226,14 +226,14 @@ def render_export_sidebar(project: str):
                             "XLSX": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             "Markdown": "text/markdown"
                         }[export_format],
-                        use_container_width=True
+                        width='stretch'
                     )
             except Exception as e:
                 st.error(f"Export failed: {e}")
 
     with col2:
         # Quick export all (no filters)
-        if st.button("Export All", use_container_width=True):
+        if st.button("Export All", width='stretch'):
             try:
                 with st.spinner("Exporting..."):
                     path, count = export_filtered_csv(

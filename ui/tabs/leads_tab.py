@@ -146,7 +146,7 @@ def render_leads_tab(settings: dict, out_dir: str):
                        "business_type", "emails", "phones", "issue_flags", "quality_signals"]
         display_cols = [col for col in display_cols if col in filtered_df.columns]
 
-        st.dataframe(filtered_df[display_cols], use_container_width=True)
+        st.dataframe(filtered_df[display_cols], width='stretch')
 
         # Lead selection for detailed actions
         st.subheader("Lead Actions")
@@ -172,7 +172,7 @@ def render_leads_tab(settings: dict, out_dir: str):
             st.markdown("### 📦 One-Click Export Pack")
             st.caption("Export complete consulting package: Dossier + Audit + Outreach variants")
 
-            if st.button("📦 Create Export Pack", type="primary", use_container_width=True):
+            if st.button("📦 Create Export Pack", type="primary", width='stretch'):
                 with st.status("Creating export pack...", expanded=True) as status:
                     try:
                         selected_lead = st.session_state["selected_lead"]
@@ -222,8 +222,8 @@ def render_leads_tab(settings: dict, out_dir: str):
                             status.update(label="Adding outreach variants...")
                             outreach = st.session_state["outreach_result"]
 
-                            outreach_md = f"# Outreach Variants: {outreach.company_name}\n\n"
-                            outreach_md += f"**Type:** {outreach.message_type} | **Language:** {outreach.language} | **Tone:** {outreach.tone}\n\n"
+                            outreach_md = f"# Outreach Variants: {outreach.lead_name}\n\n"
+                            outreach_md += f"**Type:** {outreach.message_type} | **Language:** {outreach.language}\n\n"
 
                             for i, variant in enumerate(outreach.variants, 1):
                                 outreach_md += f"## Variant {i}: {variant.angle.title()}\n\n"
