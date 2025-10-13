@@ -7,6 +7,94 @@ Lead Hunter Toolkit now supports a **dual-model architecture** for granular cont
 - **Small Model (Mistral 7B)**: Fast extraction, structured analysis, and categorization
 - **Large Model (Llama 3 8B)**: Creative writing, advanced reasoning, and complex synthesis
 
+## ⚠️ Important: LM Studio Multi-Model Limitation
+
+**LM Studio can only serve ONE model at a time.** This is a fundamental limitation of LM Studio's architecture - while you can have multiple models downloaded, only one can be loaded into memory and served through the API endpoint.
+
+### Solutions for True Dual-Model Operation
+
+To achieve simultaneous dual-model operation, you have several options:
+
+#### ✅ **Option 1: LM Studio + Ollama (Recommended)**
+
+Use two different model servers:
+- **LM Studio** (`https://lm.leophir.com/`) → Mistral 7B (small_model) for fast extraction
+- **Ollama** (`http://oll.leophir.com/`) → Llama 3 8B (large_model) for creative tasks
+
+**Setup**:
+1. In LM Studio: Load `mistralai/mistral-7b-instruct-v0.3`
+2. In Ollama: Pull and serve `llama3:8b` model
+3. The configuration in `config/models.yml` already uses this split
+
+**Pros**: True simultaneous operation, no manual switching
+**Cons**: Requires running two servers, more resource intensive
+
+#### Option 2: Single Model (Simplified)
+
+Use only one model for all tasks:
+- Choose **Mistral 7B** if speed is priority
+- Choose **Llama 3 8B** if quality is priority
+
+**Setup**: Update all tasks in `config/models.yml` to use the same model
+
+**Pros**: Simple, lower resource usage
+**Cons**: No task-specific optimization
+
+#### Option 3: Manual Model Switching
+
+Keep the current configuration but manually switch models in LM Studio based on your workflow:
+- Load **Mistral 7B** when doing SEO audits, classification, extraction
+- Load **Llama 3 8B** when doing outreach, dossiers, creative writing
+
+**Pros**: Flexibility, full optimization
+**Cons**: Requires manual intervention, models not available simultaneously
+
+### Current Configuration
+
+The default configuration uses **Option 1 (LM Studio + Ollama)**:
+- Small model tasks → LM Studio endpoint
+- Large model tasks → Ollama endpoint
+
+If your Ollama endpoint is offline, the application will fall back to whatever model is currently loaded in LM Studio.
+
+### Setting Up Ollama (for Option 1)
+
+If you want to use the recommended LM Studio + Ollama setup:
+
+1. **Install Ollama**:
+   ```bash
+   # Linux
+   curl -fsSL https://ollama.com/install.sh | sh
+
+   # macOS
+   brew install ollama
+
+   # Windows: Download from https://ollama.com/download
+   ```
+
+2. **Pull Llama 3 8B model**:
+   ```bash
+   ollama pull llama3:8b
+   ```
+
+3. **Serve Ollama** (if not auto-started):
+   ```bash
+   ollama serve
+   ```
+   By default, Ollama serves on `http://localhost:11434`
+
+4. **Update endpoint** (if using localhost instead of `oll.leophir.com`):
+   Edit `config/models.yml` and update the Ollama endpoint:
+   ```yaml
+   large_model:
+     endpoint: "http://localhost:11434"
+   ```
+
+5. **Verify it's working**:
+   ```bash
+   curl http://localhost:11434/api/tags
+   ```
+
 ## Architecture
 
 ### Model Definitions
@@ -30,9 +118,11 @@ Lead Hunter Toolkit now supports a **dual-model architecture** for granular cont
 - Structured JSON output
 - Fast analytical tasks
 
-#### Large Model: `meta-llama-3-8b-instruct.gguf`
+#### Large Model: `llama3:8b` (via Ollama)
 
 **Optimized for**: Quality and creative reasoning
+
+**Note**: The large model is served via Ollama (not LM Studio) to enable true simultaneous dual-model operation.
 
 | Parameter | Value | Purpose |
 |-----------|-------|---------|
