@@ -263,7 +263,7 @@ def render_leads_tab(settings: dict, out_dir: str):
                                 audit_md += f"## Top {len(audit_result.all_quick_wins)} Quick Wins\n\n"
                                 for i, task in enumerate(audit_result.all_quick_wins, 1):
                                     audit_md += f"### {i}. {task.task.title}\n\n"
-                                    audit_md += f"**Description:** {task.task.description}\n\n"
+                                    audit_md += f"**Action:** {task.task.action}\n\n"
                                     audit_md += f"**Impact:** {task.impact:.1f}/10 | **Feasibility:** {task.feasibility:.1f}/10 | **Priority:** {task.priority_score:.1f}/10\n\n"
 
                             with open(pack_dir / "audit_report.md", "w", encoding="utf-8") as f:

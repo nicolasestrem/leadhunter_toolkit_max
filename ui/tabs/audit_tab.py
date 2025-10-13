@@ -257,8 +257,8 @@ def render_audit_tab(settings: dict, out_dir: str):
 
             for i, task in enumerate(st.session_state["quick_wins_tasks"], 1):
                 with st.expander(f"{i}. {task.task.title} (Priority: {task.priority_score:.1f}/10)", expanded=(i<=3)):
-                    st.markdown(f"**Description:** {task.task.description}")
-                    st.markdown(f"**Expected Outcome:** {task.task.expected_outcome}")
+                    st.markdown(f"**Action:** {task.task.action}")
+                    st.markdown(f"**Expected Impact:** {task.task.impact}")
 
                     col1, col2, col3 = st.columns(3)
                     with col1:

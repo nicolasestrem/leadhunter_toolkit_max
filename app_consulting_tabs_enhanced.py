@@ -904,8 +904,8 @@ def enhanced_audit_tab():
                 st.markdown("#### 🔴 High Priority")
                 for i, task in enumerate(high_priority, 1):
                     with st.expander(f"**{i}. {task.task.title}** (Priority: {task.priority_score:.1f}/10)", expanded=(i<=2)):
-                        st.markdown(f"**📝 Description:** {task.task.description}")
-                        st.markdown(f"**🎯 Expected Outcome:** {task.task.expected_outcome}")
+                        st.markdown(f"**📝 Action:** {task.task.action}")
+                        st.markdown(f"**🎯 Expected Impact:** {task.task.impact}")
 
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -922,8 +922,8 @@ def enhanced_audit_tab():
                 st.markdown("#### 🟡 Medium Priority")
                 for i, task in enumerate(medium_priority, 1):
                     with st.expander(f"**{i}. {task.task.title}** (Priority: {task.priority_score:.1f}/10)"):
-                        st.markdown(f"**📝 Description:** {task.task.description}")
-                        st.markdown(f"**🎯 Expected Outcome:** {task.task.expected_outcome}")
+                        st.markdown(f"**📝 Action:** {task.task.action}")
+                        st.markdown(f"**🎯 Expected Impact:** {task.task.impact}")
 
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -937,7 +937,7 @@ def enhanced_audit_tab():
                 st.markdown("#### 🟢 Low Priority")
                 for i, task in enumerate(low_priority, 1):
                     with st.expander(f"**{i}. {task.task.title}** (Priority: {task.priority_score:.1f}/10)"):
-                        st.markdown(f"**📝 Description:** {task.task.description}")
+                        st.markdown(f"**📝 Action:** {task.task.action}")
 
                         col1, col2, col3 = st.columns(3)
                         with col1:
