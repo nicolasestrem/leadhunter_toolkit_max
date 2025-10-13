@@ -128,20 +128,58 @@ Streamlit session_state["results"] holds the lead list throughout the session. T
 - **Places**: Uses /places:searchText and detail lookups with field masks for efficiency
 
 ### LLM Integration
-LLMClient supports any OpenAI-compatible endpoint (e.g., LM Studio, Ollama). Set llm_base (e.g., "http://localhost:1234" for LM Studio or "http://localhost:11434" for Ollama), llm_model, llm_temperature (0.0-2.0), and llm_max_tokens in settings. The `/v1` path is automatically appended to the base URL if not present. The llm_key is optional and defaults to "not-needed" for local LLMs that don't require authentication.
 
-**Optimized for local models**:
-- Qwen models (qwen/qwen3-4b-2507, etc.)
-- GPT-OSS-20B and other LM Studio models
-- Temperature control for deterministic vs creative outputs
-- Max tokens setting to prevent timeouts with local models
+**Dual-Model Architecture**: Lead Hunter Toolkit uses a two-model configuration for granular control of performance vs quality:
 
-**Use Cases**:
-- Lead summarization in Review tab
-- SearchScraper AI extraction
-- SEO content quality scoring
+**Small Model (Mistral 7B)** - `mistralai/mistral-7b-instruct-v0.3`:
+- **Purpose**: Fast extraction, SEO audit, categorization
+- **Settings**: temp=0.4, top_k=30, top_p=0.9, max_tokens=4096
+- **Use Cases**: AI-powered scraping, SEO audits, classification, structured JSON output
 
-The client includes proper error handling and null-safety checks for response parsing.
+**Large Model (Llama 3 8B)** - `meta-llama-3-8b-instruct.gguf`:
+- **Purpose**: French writing, outreach, advanced reasoning
+- **Settings**: temp=0.6-0.7, top_k=40, top_p=0.9, max_tokens=8192
+- **Use Cases**: Outreach generation, lead summarization, dossier building, complex synthesis
+
+**Task-to-Model Mapping**:
+| Feature | Model | Reason |
+|---------|-------|--------|
+| Search Scraper (AI) | Mistral 7B | Fast JSON extraction |
+| SEO Content Audit | Mistral 7B | Structured analysis |
+| Lead Classification | Mistral 7B | Deterministic tagging |
+| Lead Summarization | Llama 3 8B | Advanced reasoning |
+| French Outreach | Llama 3 8B | Creative writing |
+| Dossier Building | Llama 3 8B | Complex synthesis |
+
+**Configuration** (settings.json):
+```json
+{
+  "llm_base": "https://lm.leophir.com/",
+  "llm_model": "mistralai/mistral-7b-instruct-v0.3",
+  "llm_temperature": 0.4,
+  "llm_top_k": 40,
+  "llm_top_p": 0.9,
+  "llm_max_tokens": 2048
+}
+```
+
+**Sampling Parameters**:
+- **Temperature**: Controls randomness (0.0=deterministic, 2.0=creative)
+- **Top-K**: Limits vocabulary to top K tokens (30-50 typical)
+- **Top-P**: Nucleus sampling threshold (0.8-0.95 typical)
+- **Max Tokens**: Maximum response length
+
+**Unified Adapters**:
+- **llm/adapter.py**: Modern adapter with full parameter support, async, and vision capabilities
+- **llm_client.py**: Legacy client for backward compatibility
+
+The `/v1` path is automatically appended to base URLs. The llm_key defaults to "not-needed" for local LLMs.
+
+See [docs/DUAL_MODEL_CONFIGURATION.md](docs/DUAL_MODEL_CONFIGURATION.md) for comprehensive guide including:
+- Detailed model specifications and benchmarks
+- Parameter tuning guidelines
+- Performance optimization tips
+- Troubleshooting and migration guide
 
 ### SearchScraper Feature
 SearchScraper is an AI-powered web research tool that searches, fetches, and analyzes multiple web pages based on a user's query.
