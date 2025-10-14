@@ -6,8 +6,13 @@ import streamlit as st
 import json
 import datetime
 import os
-from pathlib import Path
+from typing import Optional
 from constants import MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES
+from scraping.pipeline import (
+    PipelineResult,
+    run_search_pipeline_sync,
+    run_site_pipeline_sync,
+)
 
 
 def get_search_scraper():
@@ -159,3 +164,175 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                             f.write(f"- [{source['url']}]({source['url']})\n")
                         f.write(f"\n\n## Content\n\n{result.markdown_content}")
                     st.success(f"Saved to {path}")
+
+    # ------------------------------------------------------------------
+    # Contact discovery pipeline
+    # ------------------------------------------------------------------
+    st.divider()
+    st.subheader("Contact Discovery Pipeline")
+    st.caption("Crawl a site or search the web, then consolidate emails, phones, and social links with source attribution.")
+
+    pipeline_mode = st.radio(
+        "Source", ["Website Crawl", "Search Query"], horizontal=True, key="pipeline_mode"
+    )
+
+    col_extract1, col_extract2, col_extract3 = st.columns(3)
+    with col_extract1:
+        extract_emails = st.checkbox("Extract Emails", value=True, key="pipeline_emails")
+    with col_extract2:
+        extract_phones = st.checkbox("Extract Phones", value=True, key="pipeline_phones")
+    with col_extract3:
+        extract_social = st.checkbox("Extract Social", value=True, key="pipeline_social")
+
+    extraction_settings = {
+        "extract_emails": extract_emails,
+        "extract_phones": extract_phones,
+        "extract_social": extract_social,
+    }
+
+    pipeline_result: Optional[PipelineResult] = st.session_state.get("pipeline_result")
+    fetch_timeout = int(settings.get("fetch_timeout", 15))
+    concurrency = int(settings.get("concurrency", 6))
+
+    if pipeline_mode == "Website Crawl":
+        crawl_url = st.text_input("Website URL", placeholder="https://example.com", key="pipeline_site_url")
+        crawl_col1, crawl_col2, crawl_col3 = st.columns(3)
+        with crawl_col1:
+            max_pages = st.slider("Max Pages", min_value=1, max_value=20, value=5, key="pipeline_max_pages")
+        with crawl_col2:
+            deep_contact = st.checkbox("Prioritize Contact Pages", value=True, key="pipeline_deep_contact")
+        with crawl_col3:
+            crawl_timeout = st.number_input(
+                "Timeout (s)", min_value=5, max_value=60, value=fetch_timeout, key="pipeline_crawl_timeout"
+            )
+
+        run_pipeline = st.button("🚀 Run Contact Pipeline", key="pipeline_run_site", use_container_width=True)
+
+        if run_pipeline:
+            if not crawl_url.strip():
+                st.warning("Please provide a website URL to crawl.")
+            else:
+                try:
+                    with st.spinner("Crawling site and extracting contacts..."):
+                        pipeline_result = run_site_pipeline_sync(
+                            crawl_url.strip(),
+                            crawl_kwargs={
+                                "timeout": int(crawl_timeout),
+                                "concurrency": concurrency,
+                                "max_pages": int(max_pages),
+                                "deep_contact": bool(deep_contact),
+                            },
+                            extraction_settings=extraction_settings,
+                        )
+                    st.session_state["pipeline_result"] = pipeline_result
+                except Exception as exc:
+                    st.error(f"Error running pipeline: {exc}")
+
+    else:
+        search_query = st.text_input("Search Query", placeholder="best marketing agencies in Paris", key="pipeline_search_query")
+        search_col1, search_col2 = st.columns(2)
+        with search_col1:
+            max_results = st.slider("Results", min_value=3, max_value=15, value=5, key="pipeline_max_results")
+        with search_col2:
+            fetch_timeout_input = st.number_input(
+                "Timeout (s)", min_value=5, max_value=60, value=fetch_timeout, key="pipeline_search_timeout"
+            )
+
+        run_pipeline = st.button("🔎 Run Contact Pipeline", key="pipeline_run_search", use_container_width=True)
+
+        if run_pipeline:
+            if not search_query.strip():
+                st.warning("Please provide a search query.")
+            else:
+                try:
+                    with st.spinner("Fetching search results and extracting contacts..."):
+                        pipeline_result = run_search_pipeline_sync(
+                            search_query.strip(),
+                            max_results=int(max_results),
+                            fetch_kwargs={
+                                "timeout": int(fetch_timeout_input),
+                                "concurrency": concurrency,
+                                "use_cache": True,
+                            },
+                            extraction_settings=extraction_settings,
+                        )
+                    st.session_state["pipeline_result"] = pipeline_result
+                except Exception as exc:
+                    st.error(f"Error running pipeline: {exc}")
+
+    if pipeline_result:
+        st.success(
+            f"Pipeline processed {pipeline_result.page_count} pages with "
+            f"{len(pipeline_result.contacts.get('emails', []))} emails, "
+            f"{len(pipeline_result.contacts.get('phones', []))} phones, and "
+            f"{len(pipeline_result.contacts.get('social', []))} social profiles."
+        )
+
+        col_metrics = st.columns(3)
+        col_metrics[0].metric("Pages", pipeline_result.page_count)
+        col_metrics[1].metric("Emails", len(pipeline_result.contacts.get("emails", [])))
+        col_metrics[2].metric("Phones", len(pipeline_result.contacts.get("phones", [])))
+
+        if pipeline_result.contacts.get("emails"):
+            with st.expander("Email Addresses", expanded=False):
+                for entry in pipeline_result.contacts["emails"]:
+                    st.markdown(
+                        f"- **{entry['email']}**  \n  Sources: {', '.join(entry['sources'])}"
+                    )
+
+        if pipeline_result.contacts.get("phones"):
+            with st.expander("Phone Numbers", expanded=False):
+                for entry in pipeline_result.contacts["phones"]:
+                    st.markdown(
+                        f"- **{entry['phone']}**  \n  Sources: {', '.join(entry['sources'])}"
+                    )
+
+        if pipeline_result.contacts.get("social"):
+            with st.expander("Social Profiles", expanded=False):
+                for entry in pipeline_result.contacts["social"]:
+                    st.markdown(
+                        f"- **{entry['network'].title()}**: {entry['url']}  \n  Sources: {', '.join(entry['sources'])}"
+                    )
+
+        with st.expander(f"Processed Pages ({pipeline_result.page_count})", expanded=False):
+            for page in pipeline_result.pages:
+                st.markdown(f"**{page.title or page.url}**")
+                st.caption(page.url)
+                if page.meta_description:
+                    st.caption(page.meta_description)
+                page_contacts = []
+                if page.extraction.get("emails"):
+                    page_contacts.append(f"Emails: {', '.join(page.extraction['emails'])}")
+                if page.extraction.get("phones"):
+                    page_contacts.append(f"Phones: {', '.join(page.extraction['phones'])}")
+                if page.extraction.get("social"):
+                    socials = ", ".join(
+                        f"{network}: {link}" for network, link in page.extraction["social"].items()
+                    )
+                    page_contacts.append(f"Social: {socials}")
+                if page_contacts:
+                    st.caption(" | ".join(page_contacts))
+                if page.markdown:
+                    st.text_area(
+                        "Markdown Preview",
+                        page.markdown[:1000] + ("..." if len(page.markdown) > 1000 else ""),
+                        height=150,
+                        key=f"pipeline_md_{hash(page.url)}",
+                    )
+                st.divider()
+
+        json_payload = json.dumps(pipeline_result.to_dict(), ensure_ascii=False, indent=2)
+        st.download_button(
+            "⬇️ Download JSON",
+            data=json_payload,
+            file_name="pipeline_results.json",
+            mime="application/json",
+        )
+
+        if st.button("💾 Save results to disk", key="pipeline_save_disk"):
+            timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
+            filename = f"pipeline_{pipeline_result.mode}_{timestamp}.json"
+            path = os.path.join(out_dir, filename)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(json_payload)
+            st.success(f"Saved pipeline results to {path}")
