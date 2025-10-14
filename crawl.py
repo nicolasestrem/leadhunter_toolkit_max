@@ -3,7 +3,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
 
@@ -24,6 +24,9 @@ class CrawlConfig:
     disallowed_extensions: Iterable[str] = field(default_factory=set)
     request_delay: Optional[float] = None
     use_cache: bool = True
+    allowed_query_params: Optional[Iterable[str]] = None
+    blocked_query_params: Iterable[str] = field(default_factory=set)
+    strip_empty_fragments: bool = True
 
     def __post_init__(self):
         if self.allowed_domains is not None:
@@ -46,6 +49,33 @@ class CrawlConfig:
             normalized_exts.add(ext if ext.startswith(".") else f".{ext}")
         self.disallowed_extensions = normalized_exts
 
+        if self.allowed_query_params is not None:
+            self.allowed_query_params = {param.lower() for param in self.allowed_query_params if param}
+        else:
+            self.allowed_query_params = None
+
+        normalized_blocked_params = set()
+        for param in self.blocked_query_params:
+            if not param:
+                continue
+            normalized_blocked_params.add(param.lower())
+        self.blocked_query_params = normalized_blocked_params
+
+
+DEFAULT_TRACKING_QUERY_PARAMS = {
+    "fbclid",
+    "gclid",
+    "gbraid",
+    "wbraid",
+    "msclkid",
+    "utm_campaign",
+    "utm_content",
+    "utm_id",
+    "utm_medium",
+    "utm_source",
+    "utm_term",
+}
+
 
 class RateLimiter:
     def __init__(self, delay: Optional[float]):
@@ -67,7 +97,7 @@ class RateLimiter:
             self._last = now
 
 
-def canonicalize_url(url: str) -> Optional[str]:
+def canonicalize_url(url: str, config: Optional[CrawlConfig] = None) -> Optional[str]:
     try:
         parsed = urlparse(url)
     except Exception:
@@ -76,11 +106,58 @@ def canonicalize_url(url: str) -> Optional[str]:
     if parsed.scheme not in ("http", "https"):
         return None
 
+    username = parsed.username or ""
+    password = parsed.password or ""
+    hostname = (parsed.hostname or "").lower()
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+
+    netloc = hostname
+    if port:
+        netloc = f"{netloc}:{port}"
+    if username:
+        auth = username
+        if password:
+            auth = f"{auth}:{password}"
+        netloc = f"{auth}@{netloc}" if netloc else auth
+
     path = parsed.path or "/"
     if len(path) > 1 and path.endswith("/"):
         path = path.rstrip("/")
 
-    normalized = parsed._replace(fragment="", path=path, netloc=parsed.netloc.lower())
+    allowed_params = None
+    blocked_params = set(DEFAULT_TRACKING_QUERY_PARAMS)
+    strip_fragments = True
+
+    if config:
+        allowed_params = config.allowed_query_params
+        blocked_params.update(config.blocked_query_params)
+        strip_fragments = config.strip_empty_fragments
+
+    query_items = []
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        lower_key = key.lower()
+        if allowed_params is not None and lower_key not in allowed_params:
+            continue
+        if lower_key in blocked_params or lower_key.startswith("utm_"):
+            continue
+        query_items.append((lower_key, value))
+
+    query_items.sort()
+    query = urlencode(query_items, doseq=True)
+
+    fragment = ""
+    if not strip_fragments and parsed.fragment:
+        fragment = parsed.fragment
+
+    normalized = parsed._replace(
+        netloc=netloc,
+        path=path,
+        query=query,
+        fragment=fragment,
+    )
     return urlunparse(normalized)
 
 
@@ -89,7 +166,8 @@ def _is_allowed_by_config(url: str, config: CrawlConfig, root: Optional[str] = N
     if parsed.scheme not in ("http", "https"):
         return False
 
-    if config.allowed_domains is not None and parsed.netloc.lower() not in config.allowed_domains:
+    hostname = parsed.netloc.lower()
+    if config.allowed_domains is not None and hostname not in config.allowed_domains:
         return False
 
     if config.disallowed_extensions:
@@ -99,7 +177,7 @@ def _is_allowed_by_config(url: str, config: CrawlConfig, root: Optional[str] = N
 
     if config.path_filters:
         path = parsed.path or "/"
-        if root and canonicalize_url(url) == root:
+        if root and url == root:
             return True
         if not any(f.search(path) for f in config.path_filters):
             return False
@@ -142,7 +220,7 @@ async def crawl_site(
     if config.max_depth < 0:
         raise ValueError("max_depth must be >= 0")
 
-    canonical_root = canonicalize_url(root_url)
+    canonical_root = canonicalize_url(root_url, config)
     if not canonical_root:
         raise ValueError("Invalid root URL provided")
 
@@ -196,7 +274,7 @@ async def crawl_site(
         async def enqueue_url(candidate: str, depth: int):
             if stop_event.is_set():
                 return
-            canonical = canonicalize_url(candidate)
+            canonical = canonicalize_url(candidate, config)
             if not canonical or not _is_allowed_by_config(canonical, config, canonical_root):
                 return
             if not robots_allowed(canonical):
@@ -208,7 +286,7 @@ async def crawl_site(
             await queue.put((canonical, depth))
 
         async def process_sitemap(sitemap_url: str, current_depth: int):
-            canonical = canonicalize_url(sitemap_url)
+            canonical = canonicalize_url(sitemap_url, config)
             if not canonical:
                 return
 
