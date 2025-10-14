@@ -122,7 +122,6 @@ class ConfigLoader:
                 return True
 
             if current_mtime > cached_mtime:
-                self._file_mtimes[str(file_path)] = current_mtime
                 return True
 
             return False
