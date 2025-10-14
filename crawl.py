@@ -109,7 +109,10 @@ def canonicalize_url(url: str, config: Optional[CrawlConfig] = None) -> Optional
     username = parsed.username or ""
     password = parsed.password or ""
     hostname = (parsed.hostname or "").lower()
-    port = parsed.port
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
 
     netloc = hostname
     if port:

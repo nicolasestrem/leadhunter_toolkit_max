@@ -154,3 +154,9 @@ def test_crawl_normalizes_tracking_query_params(monkeypatch):
     assert set(pages.keys()) == {"http://example.com/", "http://example.com/?id=123"}
     assert Counter(fetch_calls)["http://example.com/?id=123"] == 1
     assert all("utm" not in url and "fbclid" not in url for url in fetch_calls)
+
+
+def test_canonicalize_url_skips_invalid_ports():
+    config = crawl.CrawlConfig()
+    assert crawl.canonicalize_url("http://example.com:abc", config) is None
+    assert crawl.canonicalize_url("https://example.com:999999", config) is None
