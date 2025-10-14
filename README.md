@@ -15,6 +15,10 @@ A comprehensive SMB consulting tool combining lead generation, automated analysi
 - **🌍 Multilingual**: Full support for English, French, German
 - **🎨 Vertical Presets**: Optimized for restaurants, retail, professional services
 - **🔌 Plugin System**: Extensible architecture for custom workflows
+- **🗂️ Persistent Site Indexer**: Cache crawled markdown into an on-disk semantic index for fast recall across sessions via [`indexing/site_indexer.py`](indexing/site_indexer.py)
+- **📇 Structured-Data Contacts**: Enrich extractions with schema.org JSON-LD and microdata parsing controlled in [`extract/structured.py`](extract/structured.py)
+- **🕷️ Configurable Crawl Depth**: Tune crawl scope per engagement with pipeline controls backed by [`crawl.py`](crawl.py) and sidebar settings
+- **🪄 Dynamic Rendering Support**: Load JavaScript-heavy pages using Playwright-powered fetchers from [`fetch_dynamic.py`](fetch_dynamic.py) and dynamic flags in [`search_scraper.py`](search_scraper.py)
 
 ---
 
@@ -36,9 +40,16 @@ python -m venv .venv
 pip install -U pip
 pip install -r requirements.txt
 
+# Playwright (dynamic rendering & screenshots)
+pip install playwright
+# Linux servers may also require: playwright install-deps chromium
+playwright install chromium
+
 # 4. Run the app
 streamlit run app.py
 ```
+
+Dynamic rendering for JavaScript-heavy pages and automated screenshots rely on Playwright; install the Python package and Chromium driver before enabling those options in the crawler or Search Scraper tabs. [`fetch_dynamic.py`](fetch_dynamic.py)
 
 ### LLM Setup
 
@@ -74,6 +85,27 @@ models:
     temperature: 0.2
     max_tokens: 2048
 ```
+
+---
+
+## 🔍 Web Research & Contact Discovery
+
+### Search Scraper workflow
+
+1. Open the **Search Scraper** tab to launch the AI-powered research assistant. Configure the number of sources and extraction mode (AI synthesis vs. raw markdown) before kicking off a run. [`ui/tabs/search_scraper_tab.py`](ui/tabs/search_scraper_tab.py)
+2. When the scrape completes, results are written to the in-app cache and optional text/markdown exports. Each processed page is simultaneously passed to the lightweight [`SiteIndexer`](indexing/site_indexer.py) so future queries can reuse the semantic index without re-fetching content. [`ui/tabs/search_scraper_tab.py`](ui/tabs/search_scraper_tab.py) [`search_scraper.py`](search_scraper.py)
+3. The indexer stores embeddings and metadata under `out/site_index/`, giving consultants a persistent knowledge base that survives Streamlit restarts. [`ui/tabs/search_scraper_tab.py`](ui/tabs/search_scraper_tab.py)
+
+### Contact discovery pipeline
+
+- Scroll below the research results to run the **Contact Discovery** workflow against either a direct URL crawl or an additional search query. Configure crawl depth, timeouts, and concurrency directly from the panel controls that feed the shared scraping pipeline. [`ui/tabs/search_scraper_tab.py`](ui/tabs/search_scraper_tab.py) [`scraping/pipeline.py`](scraping/pipeline.py)
+- Toggle **Parse Structured Data** to merge schema.org JSON-LD and microdata (names, phones, socials) into the consolidated contact list. [`ui/tabs/search_scraper_tab.py`](ui/tabs/search_scraper_tab.py) [`extract/structured.py`](extract/structured.py)
+- Choose the search engine (DuckDuckGo or Google CSE) inside the sidebar settings before launching the pipeline; the tab respects that preference when routing search queries. [`ui/sidebar/settings_section.py`](ui/sidebar/settings_section.py) [`ui/tabs/search_scraper_tab.py`](ui/tabs/search_scraper_tab.py)
+
+### Storage & exports
+
+- Search Scraper exports (`search_scraper_ai_*.txt`, `search_scraper_md_*.md`) and contact pipeline payloads (`pipeline_{mode}_*.json`) are saved under the project’s `out/` directory for easy sharing with clients. [`ui/tabs/search_scraper_tab.py`](ui/tabs/search_scraper_tab.py)
+- The persisted index lives in `out/site_index/` with `embeddings.npy` and `metadata.json`, making it simple to back up or hand off your research corpus. [`ui/tabs/search_scraper_tab.py`](ui/tabs/search_scraper_tab.py) [`indexing/site_indexer.py`](indexing/site_indexer.py)
 
 ---
 
