@@ -32,6 +32,7 @@ extraction:
   phones: true   # Extract phone numbers
   social: true   # Extract social media links
   addresses: true  # Extract physical addresses
+  structured: true  # Parse schema.org structured data (JSON-LD, microdata)
 
 # Scoring weights
 scoring:

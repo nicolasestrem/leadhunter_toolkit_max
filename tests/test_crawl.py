@@ -113,3 +113,50 @@ def test_crawl_respects_filters(monkeypatch):
     assert set(pages.keys()) == {"http://example.com/", "http://example.com/keep"}
     assert "http://example.com/deep/page" not in pages
     assert all(not url.startswith("http://external.com") for url in fetch_calls)
+
+
+def test_crawl_normalizes_tracking_query_params(monkeypatch):
+    html_map = {
+        "http://example.com/": "<a>Root</a>",
+        "http://example.com/?id=123": "<p>Page</p>",
+    }
+
+    fetch_calls = []
+
+    async def fake_fetch_one(client, url, timeout=15):
+        fetch_calls.append(url)
+        return html_map.get(url, "")
+
+    def fake_extract_links(html, base_url):
+        return [
+            "http://example.com/?id=123&utm_source=Google",
+            "http://example.com/?utm_medium=email&id=123",
+            "http://example.com/?id=123&fbclid=abc",
+            "http://example.com/?utm_campaign=sale&id=123&utm_term=deal",
+        ]
+
+    monkeypatch.setattr(crawl, "extract_links", fake_extract_links)
+    monkeypatch.setattr(crawl, "fetch_one", fake_fetch_one)
+    monkeypatch.setattr(crawl, "robots_allowed", lambda url: True)
+    monkeypatch.setattr(crawl, "get_crawl_delay", lambda url: 0)
+
+    config = crawl.CrawlConfig(max_depth=1, use_cache=False)
+
+    pages = asyncio.run(
+        crawl.crawl_site(
+            "http://example.com/?utm_content=ignore#frag",
+            max_pages=3,
+            concurrency=1,
+            config=config,
+        )
+    )
+
+    assert set(pages.keys()) == {"http://example.com/", "http://example.com/?id=123"}
+    assert Counter(fetch_calls)["http://example.com/?id=123"] == 1
+    assert all("utm" not in url and "fbclid" not in url for url in fetch_calls)
+
+
+def test_canonicalize_url_skips_invalid_ports():
+    config = crawl.CrawlConfig()
+    assert crawl.canonicalize_url("http://example.com:abc", config) is None
+    assert crawl.canonicalize_url("https://example.com:999999", config) is None
