@@ -50,7 +50,14 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
             height=100
         )
     with col2:
-        num_sources = st.slider("Number of sources", MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES)
+        num_sources = st.slider(
+            "Number of sources",
+            MIN_NUM_SOURCES,
+            MAX_NUM_SOURCES,
+            DEFAULT_NUM_SOURCES,
+            step=1,
+            help=f"Choose how many search results to fetch ({MIN_NUM_SOURCES}-{MAX_NUM_SOURCES}). Use the keyboard or type a value for quicker adjustments. Larger batches may take longer."
+        )
         extraction_mode = st.selectbox(
             "Mode",
             ["AI Extraction", "Markdown"],
