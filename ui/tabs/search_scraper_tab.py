@@ -14,6 +14,8 @@ from scraping.pipeline import (
     run_search_pipeline_sync,
     run_site_pipeline_sync,
 )
+from google_search import google_sites
+from search import ddg_sites
 
 
 def get_search_scraper():
@@ -274,9 +276,21 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                 st.warning("Please provide a search query.")
             else:
                 try:
+                    search_engine = (settings.get("search_engine") or "ddg").lower()
+                    google_kwargs = None
+                    if search_engine == "google":
+                        google_kwargs = {
+                            "api_key": settings.get("google_cse_key", ""),
+                            "cx": settings.get("google_cse_cx", ""),
+                        }
+                        search_callable = google_sites
+                    else:
+                        search_callable = ddg_sites
+
                     with st.spinner("Fetching search results and extracting contacts..."):
                         pipeline_result = run_search_pipeline_sync(
                             search_query.strip(),
+                            search_func=search_callable,
                             max_results=int(max_results),
                             fetch_kwargs={
                                 "timeout": int(fetch_timeout_input),
@@ -284,6 +298,7 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                                 "use_cache": True,
                             },
                             extraction_settings=extraction_settings,
+                            google_kwargs=google_kwargs,
                         )
                     st.session_state["pipeline_result"] = pipeline_result
                 except Exception as exc:
