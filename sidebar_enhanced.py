@@ -1,6 +1,14 @@
 # Enhanced Sidebar Section for app.py
 # Replace lines 275-471 in app.py with this code
 
+from pathlib import Path
+
+import streamlit as st
+
+from app import load_settings, save_settings
+from config.loader import ConfigLoader
+from plugins import load_plugins
+
 # ---- Sidebar ----
 with st.sidebar:
     st.header("Settings")
@@ -13,91 +21,164 @@ with st.sidebar:
     defaults_config = config_loader.load_defaults()
     default_scoring = defaults_config.get('scoring', {})
 
-    search_engine = st.selectbox(
-        "Search engine",
-        ["ddg", "google"],
-        index=0 if s.get("search_engine", "ddg") == "ddg" else 1
-    )
+    with st.form("settings_form"):
+        general_tab, crawl_tab, integrations_tab, llm_tab = st.tabs([
+            "General",
+            "Search & Crawl",
+            "Integrations",
+            "LLM",
+        ])
 
-    project = st.text_input("Project name", s.get("project", "default"))
-    country = st.text_input("Country code", s.get("country", "fr"))
-    language = st.text_input("Language", s.get("language", "fr-FR"))
-    city = st.text_input("City focus", s.get("city", "Toulouse"))
-    radius_km = st.number_input("Radius km", min_value=0, max_value=500, value=int(s.get("radius_km", 50)))
-    max_sites = st.slider("Max sites to scan (per query)", 1, 200, int(s.get("max_sites", 25)))
-    fetch_timeout = st.slider("Fetch timeout seconds", 5, 60, int(s.get("fetch_timeout", 15)))
-    concurrency = st.slider("Concurrency", 1, 32, int(s.get("concurrency", 8)))
-    deep_contact = st.checkbox("Deep crawl contact/about pages", value=bool(s.get("deep_contact", True)))
-    max_pages = st.slider("Max pages per site", 1, 20, int(s.get("max_pages", 5)))
-    extract_emails = st.checkbox("Extract emails", value=bool(s.get("extract_emails", True)))
-    extract_phones = st.checkbox("Extract phones", value=bool(s.get("extract_phones", True)))
-    extract_social = st.checkbox("Extract social links", value=bool(s.get("extract_social", True)))
+        with general_tab:
+            search_engine = st.selectbox(
+                "Search engine",
+                ["ddg", "google"],
+                index=0 if s.get("search_engine", "ddg") == "ddg" else 1,
+                help="Choose the primary engine used for prospect discovery",
+            )
 
-    # Google Places
-    g_api = st.text_input("Google Places API key", value=s.get("google_places_api_key", ""), type="password")
-    g_region = st.text_input("Places region", value=s.get("google_places_region", "FR"))
-    g_lang = st.text_input("Places language", value=s.get("google_places_language", "fr"))
+            project = st.text_input("Project name", s.get("project", "default"))
 
-    # Google CSE
-    g_cse_key = st.text_input("Google CSE API key", value=s.get("google_cse_key", ""), type="password")
-    g_cx = st.text_input("Google CSE cx (engine id)", value=s.get("google_cse_cx", ""))
+            location_cols = st.columns(2)
+            with location_cols[0]:
+                country = st.text_input("Country code", s.get("country", "fr"))
+                city = st.text_input("City focus", s.get("city", "Toulouse"))
+            with location_cols[1]:
+                language = st.text_input("Language", s.get("language", "fr-FR"))
+                radius_km = st.number_input(
+                    "Radius km",
+                    min_value=0,
+                    max_value=500,
+                    value=int(s.get("radius_km", 50)),
+                )
 
-    st.subheader("LLM")
-    llm_base = st.text_input("LLM base URL (OpenAI compatible)", s.get("llm_base", ""))
-    llm_key = st.text_input("LLM API key", value=s.get("llm_key", ""), type="password")
-    llm_model = st.text_input("LLM model", s.get("llm_model", "gpt-4o-mini"))
+        with crawl_tab:
+            crawl_cols = st.columns(2)
+            with crawl_cols[0]:
+                max_sites = st.slider(
+                    "Max sites per query",
+                    1,
+                    200,
+                    int(s.get("max_sites", 25)),
+                    help="Upper limit of domains captured for each search query",
+                )
+                fetch_timeout = st.slider(
+                    "Fetch timeout (seconds)",
+                    5,
+                    60,
+                    int(s.get("fetch_timeout", 15)),
+                )
+                deep_contact = st.toggle(
+                    "Deep crawl contact/about pages",
+                    value=bool(s.get("deep_contact", True)),
+                )
+            with crawl_cols[1]:
+                concurrency = st.slider(
+                    "Concurrency",
+                    1,
+                    32,
+                    int(s.get("concurrency", 8)),
+                    help="Number of parallel requests during crawling",
+                )
+                max_pages = st.slider(
+                    "Max pages per site",
+                    1,
+                    20,
+                    int(s.get("max_pages", 5)),
+                )
 
-    with st.expander("Advanced LLM Settings"):
-        llm_temperature = st.slider(
-            "Temperature",
-            min_value=0.0,
-            max_value=2.0,
-            value=float(s.get("llm_temperature", 0.2)),
-            step=0.1,
-            help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
+            extraction_cols = st.columns(3)
+            with extraction_cols[0]:
+                extract_emails = st.toggle(
+                    "Extract emails",
+                    value=bool(s.get("extract_emails", True)),
+                )
+            with extraction_cols[1]:
+                extract_phones = st.toggle(
+                    "Extract phones",
+                    value=bool(s.get("extract_phones", True)),
+                )
+            with extraction_cols[2]:
+                extract_social = st.toggle(
+                    "Extract social links",
+                    value=bool(s.get("extract_social", True)),
+                )
+
+        with integrations_tab:
+            st.caption("Manage external services used during prospect discovery.")
+            with st.expander("Google Places", expanded=bool(s.get("google_places_api_key"))):
+                g_api = st.text_input(
+                    "API key",
+                    value=s.get("google_places_api_key", ""),
+                    type="password",
+                )
+                places_cols = st.columns(2)
+                with places_cols[0]:
+                    g_region = st.text_input(
+                        "Places region",
+                        value=s.get("google_places_region", "FR"),
+                    )
+                with places_cols[1]:
+                    g_lang = st.text_input(
+                        "Places language",
+                        value=s.get("google_places_language", "fr"),
+                    )
+
+            with st.expander("Google Custom Search", expanded=bool(s.get("google_cse_key"))):
+                g_cse_key = st.text_input(
+                    "CSE API key",
+                    value=s.get("google_cse_key", ""),
+                    type="password",
+                )
+                g_cx = st.text_input(
+                    "CSE engine ID (cx)",
+                    value=s.get("google_cse_cx", ""),
+                )
+
+        with llm_tab:
+            llm_base = st.text_input(
+                "LLM base URL (OpenAI compatible)",
+                s.get("llm_base", ""),
+            )
+            llm_key = st.text_input(
+                "LLM API key",
+                value=s.get("llm_key", ""),
+                type="password",
+            )
+            llm_model = st.text_input("LLM model", s.get("llm_model", "gpt-4o-mini"))
+
+            with st.expander("Advanced options"):
+                llm_temperature = st.slider(
+                    "Temperature",
+                    min_value=0.0,
+                    max_value=2.0,
+                    value=float(s.get("llm_temperature", 0.2)),
+                    step=0.1,
+                    help="Controls randomness: 0.0 = deterministic, 2.0 = very creative",
+                )
+                llm_max_tokens = st.number_input(
+                    "Max tokens (0 = unlimited)",
+                    min_value=0,
+                    max_value=128000,
+                    value=int(s.get("llm_max_tokens", 0)),
+                    help="Maximum tokens in LLM response. Important for local models to prevent timeouts.",
+                )
+                llm_timeout = st.number_input(
+                    "LLM timeout (seconds)",
+                    min_value=10,
+                    max_value=300,
+                    value=int(s.get("llm_timeout", 60)),
+                    help="Maximum time to wait for LLM response",
+                )
+
+        save_submit = st.form_submit_button(
+            "Save settings", type="primary", use_container_width=True
         )
-        llm_max_tokens = st.number_input(
-            "Max tokens (0 = unlimited)",
-            min_value=0,
-            max_value=128000,
-            value=int(s.get("llm_max_tokens", 0)),
-            help="Maximum tokens in LLM response. Important for local models to prevent timeouts."
+        test_connection = st.form_submit_button(
+            "Test LLM Connection", use_container_width=True, help="Verify LLM endpoint is accessible"
         )
 
-        # LLM timeout setting
-        llm_timeout = st.number_input(
-            "LLM timeout (seconds)",
-            min_value=10,
-            max_value=300,
-            value=int(s.get("llm_timeout", 60)),
-            help="Maximum time to wait for LLM response"
-        )
-
-        # Test connection button
-        if st.button("Test LLM Connection", help="Verify LLM endpoint is accessible"):
-            if llm_base:
-                try:
-                    from llm_client import LLMClient
-                    with st.spinner("Testing connection..."):
-                        test_client = LLMClient(
-                            api_key=llm_key or "not-needed",
-                            base_url=llm_base,
-                            model=llm_model,
-                            temperature=0.1,
-                            max_tokens=50
-                        )
-                        # Simple test prompt
-                        response = test_client.chat([{"role": "user", "content": "Reply with OK"}])
-                        if response:
-                            st.success("LLM connection successful!")
-                        else:
-                            st.error("LLM returned empty response")
-                except Exception as e:
-                    st.error(f"Connection failed: {str(e)}")
-            else:
-                st.warning("Please enter LLM base URL first")
-
-    if st.button("Save settings", type="primary", use_container_width=True):
+    if save_submit:
         s.update({
             "search_engine": search_engine,
             "project": project,
@@ -123,10 +204,35 @@ with st.sidebar:
             "llm_model": llm_model,
             "llm_temperature": llm_temperature,
             "llm_max_tokens": llm_max_tokens,
-            "llm_timeout": llm_timeout
+            "llm_timeout": llm_timeout,
         })
         save_settings(s)
         st.success("Settings saved successfully!")
+
+    if test_connection:
+        if llm_base:
+            try:
+                from llm_client import LLMClient
+
+                with st.spinner("Testing connection..."):
+                    test_client = LLMClient(
+                        api_key=llm_key or "not-needed",
+                        base_url=llm_base,
+                        model=llm_model,
+                        temperature=0.1,
+                        max_tokens=50,
+                    )
+                    response = test_client.chat(
+                        [{"role": "user", "content": "Reply with OK"}]
+                    )
+                    if response:
+                        st.success("LLM connection successful!")
+                    else:
+                        st.error("LLM returned empty response")
+            except Exception as e:
+                st.error(f"Connection failed: {str(e)}")
+        else:
+            st.warning("Please enter LLM base URL first")
 
     st.divider()
     st.subheader("🎯 Vertical Presets")
