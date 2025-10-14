@@ -36,6 +36,7 @@ def render_hunt_tab(settings: dict, default_keywords: dict):
     extract_emails = bool(settings.get("extract_emails", True))
     extract_phones = bool(settings.get("extract_phones", True))
     extract_social = bool(settings.get("extract_social", True))
+    extract_structured = bool(settings.get("extract_structured", True))
     city = settings.get("city", "")
     deep_contact = bool(settings.get("deep_contact", True))
 
@@ -77,6 +78,7 @@ def render_hunt_tab(settings: dict, default_keywords: dict):
         crawl_settings["extract_emails"] = extract_emails
         crawl_settings["extract_phones"] = extract_phones
         crawl_settings["extract_social"] = extract_social
+        crawl_settings["extract_structured"] = extract_structured
         crawl_settings["city"] = city
         crawl_settings["deep_contact"] = deep_contact
         crawl_settings["max_pages"] = int(max_pages)

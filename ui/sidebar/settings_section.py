@@ -89,6 +89,11 @@ def render_settings_section(settings: dict, save_callback) -> dict:
         "Extract social links",
         value=bool(settings.get("extract_social", True))
     )
+    extract_structured = st.checkbox(
+        "Parse structured data",
+        value=bool(settings.get("extract_structured", True)),
+        help="Parse schema.org JSON-LD and microdata for contact information",
+    )
 
     # Google Places settings
     g_api = st.text_input(
@@ -183,6 +188,7 @@ def render_settings_section(settings: dict, save_callback) -> dict:
             "extract_emails": extract_emails,
             "extract_phones": extract_phones,
             "extract_social": extract_social,
+            "extract_structured": extract_structured,
             "google_places_api_key": g_api,
             "google_places_region": g_region,
             "google_places_language": g_lang,
