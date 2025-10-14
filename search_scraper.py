@@ -8,6 +8,7 @@ from search import ddg_sites
 from google_search import google_sites
 from fetch import fetch_many, text_content
 from llm_client import LLMClient
+from constants import MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES
 
 if TYPE_CHECKING:
     from indexing.site_indexer import SiteIndexer
@@ -88,7 +89,7 @@ class SearchScraper:
     async def search_and_scrape(
         self,
         prompt: str,
-        num_results: int = 5,
+        num_results: int = DEFAULT_NUM_SOURCES,
         extraction_mode: bool = True,
         schema: Optional[Dict[str, Any]] = None,
         timeout: int = 15,
@@ -100,7 +101,7 @@ class SearchScraper:
 
         Args:
             prompt: The search query or research question
-            num_results: Number of web pages to scrape (3-20)
+            num_results: Number of web pages to scrape (between MIN_NUM_SOURCES and MAX_NUM_SOURCES)
             extraction_mode: True for AI extraction, False for markdown mode
             schema: Optional JSON schema for structured extraction
             timeout: Request timeout in seconds
@@ -116,7 +117,7 @@ class SearchScraper:
         )
 
         # Validate inputs
-        num_results = max(3, min(20, num_results))
+        num_results = max(MIN_NUM_SOURCES, min(MAX_NUM_SOURCES, num_results))
 
         try:
             # Step 1: Search for relevant URLs
@@ -231,7 +232,7 @@ Instructions:
     def sync_search_and_scrape(
         self,
         prompt: str,
-        num_results: int = 5,
+        num_results: int = DEFAULT_NUM_SOURCES,
         extraction_mode: bool = True,
         schema: Optional[Dict[str, Any]] = None,
         timeout: int = 15,
