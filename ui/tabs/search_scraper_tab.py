@@ -2,8 +2,6 @@
 Search Scraper Tab - AI-Powered Web Research
 """
 
-import streamlit as st
-import json
 import datetime
 from pathlib import Path
 from typing import Optional
