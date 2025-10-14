@@ -87,7 +87,7 @@ with st.sidebar:
                     int(s.get("max_pages", 5)),
                 )
 
-            extraction_cols = st.columns(3)
+            extraction_cols = st.columns(4)
             with extraction_cols[0]:
                 extract_emails = st.toggle(
                     "Extract emails",
@@ -102,6 +102,12 @@ with st.sidebar:
                 extract_social = st.toggle(
                     "Extract social links",
                     value=bool(s.get("extract_social", True)),
+                )
+            with extraction_cols[3]:
+                extract_structured = st.toggle(
+                    "Parse structured data",
+                    value=bool(s.get("extract_structured", True)),
+                    help="Parse schema.org JSON-LD and microdata",
                 )
 
         with integrations_tab:
@@ -194,6 +200,7 @@ with st.sidebar:
             "extract_emails": extract_emails,
             "extract_phones": extract_phones,
             "extract_social": extract_social,
+            "extract_structured": extract_structured,
             "google_places_api_key": g_api,
             "google_places_region": g_region,
             "google_places_language": g_lang,

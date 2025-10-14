@@ -404,6 +404,8 @@ class ConfigLoader:
             config['extraction']['phones'] = settings['extract_phones']
         if 'extract_social' in settings:
             config['extraction']['social'] = settings['extract_social']
+        if 'extract_structured' in settings:
+            config['extraction']['structured'] = settings['extract_structured']
 
         # Merge scoring settings
         if 'scoring' in settings:

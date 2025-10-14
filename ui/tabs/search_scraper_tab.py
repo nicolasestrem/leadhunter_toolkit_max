@@ -197,18 +197,26 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
         "Source", ["Website Crawl", "Search Query"], horizontal=True, key="pipeline_mode"
     )
 
-    col_extract1, col_extract2, col_extract3 = st.columns(3)
+    col_extract1, col_extract2, col_extract3, col_extract4 = st.columns(4)
     with col_extract1:
         extract_emails = st.checkbox("Extract Emails", value=True, key="pipeline_emails")
     with col_extract2:
         extract_phones = st.checkbox("Extract Phones", value=True, key="pipeline_phones")
     with col_extract3:
         extract_social = st.checkbox("Extract Social", value=True, key="pipeline_social")
+    with col_extract4:
+        extract_structured = st.checkbox(
+            "Parse Structured Data",
+            value=True,
+            key="pipeline_structured",
+            help="Parse schema.org JSON-LD and microdata for contact details",
+        )
 
     extraction_settings = {
         "extract_emails": extract_emails,
         "extract_phones": extract_phones,
         "extract_social": extract_social,
+        "extract_structured": extract_structured,
     }
 
     pipeline_result: Optional[PipelineResult] = st.session_state.get("pipeline_result")
