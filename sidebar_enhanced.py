@@ -1,6 +1,14 @@
 # Enhanced Sidebar Section for app.py
 # Replace lines 275-471 in app.py with this code
 
+from pathlib import Path
+
+import streamlit as st
+
+from app import load_settings, save_settings
+from config.loader import ConfigLoader
+from plugins import load_plugins
+
 # ---- Sidebar ----
 with st.sidebar:
     st.header("Settings")
