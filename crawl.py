@@ -9,6 +9,7 @@ import httpx
 
 from cache_manager import read_cache, write_cache
 from fetch import extract_links, fetch_one
+from fetch_dynamic import fetch_dynamic
 from logger import get_logger
 from robots_util import USER_AGENT, get_crawl_delay, robots_allowed
 from utils_html import looks_contact_or_about
@@ -24,12 +25,21 @@ class CrawlConfig:
     disallowed_extensions: Iterable[str] = field(default_factory=set)
     request_delay: Optional[float] = None
     use_cache: bool = True
+    dynamic_rendering: bool = False
+    dynamic_allowed_domains: Optional[Iterable[str]] = None
 
     def __post_init__(self):
         if self.allowed_domains is not None:
             self.allowed_domains = {d.lower() for d in self.allowed_domains}
         else:
             self.allowed_domains = None
+
+        if self.dynamic_allowed_domains is not None:
+            self.dynamic_allowed_domains = {
+                d.lower() for d in self.dynamic_allowed_domains
+            }
+        else:
+            self.dynamic_allowed_domains = None
 
         compiled_filters = []
         for filt in self.path_filters:
@@ -180,18 +190,35 @@ async def crawl_site(
     async with httpx.AsyncClient(follow_redirects=True, headers={"User-Agent": USER_AGENT}) as client:
 
         async def fetch_with_cache(url: str) -> str:
+            dynamic = _should_use_dynamic(url)
+            cache_key = _cache_key(url, is_dynamic=dynamic)
+
             if config.use_cache:
-                cached = read_cache(url)
+                cached = read_cache(cache_key)
                 if cached is not None:
                     return cached
 
             async with sem:
                 await rate_limiter.wait()
-                html = await fetch_one(client, url, timeout=timeout)
+                if dynamic:
+                    html, _ = await fetch_dynamic(url, timeout=timeout)
+                else:
+                    html = await fetch_one(client, url, timeout=timeout)
 
             if html and config.use_cache:
-                write_cache(url, html)
+                write_cache(cache_key, html)
             return html
+
+        def _should_use_dynamic(target_url: str) -> bool:
+            if not config.dynamic_rendering:
+                return False
+            domain = urlparse(target_url).netloc.lower()
+            if config.dynamic_allowed_domains is not None:
+                return domain in config.dynamic_allowed_domains
+            return True
+
+        def _cache_key(target_url: str, *, is_dynamic: bool = False) -> str:
+            return f"dynamic::{target_url}" if is_dynamic else target_url
 
         async def enqueue_url(candidate: str, depth: int):
             if stop_event.is_set():

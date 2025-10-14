@@ -2,7 +2,7 @@
 SearchScraper: AI-powered web search and information extraction
 """
 import asyncio
-from typing import Optional, Dict, List, Any, TYPE_CHECKING
+from typing import Optional, Dict, List, Any, TYPE_CHECKING, Iterable, Mapping
 from markdownify import markdownify as md
 from search import ddg_sites
 from google_search import google_sites
@@ -94,7 +94,10 @@ class SearchScraper:
         schema: Optional[Dict[str, Any]] = None,
         timeout: int = 15,
         concurrency: int = 6,
-        indexer: Optional["SiteIndexer"] = None
+        indexer: Optional["SiteIndexer"] = None,
+        dynamic_rendering: bool = False,
+        dynamic_allowlist: Optional[Iterable[str]] = None,
+        dynamic_selector_hints: Optional[Mapping[str, Iterable[str]]] = None,
     ) -> SearchScraperResult:
         """
         Search the web and extract information based on a prompt
@@ -107,6 +110,9 @@ class SearchScraper:
             timeout: Request timeout in seconds
             concurrency: Number of concurrent requests
             indexer: Optional SiteIndexer instance to persist processed content
+            dynamic_rendering: Enable Playwright-backed fetching for allowed domains
+            dynamic_allowlist: Optional collection of domains eligible for dynamic rendering
+            dynamic_selector_hints: Optional mapping of domain -> CSS selectors to await
 
         Returns:
             SearchScraperResult with extracted data or markdown content
@@ -128,7 +134,15 @@ class SearchScraper:
                 return result
 
             # Step 2: Fetch all pages
-            html_pages = await fetch_many(urls, timeout=timeout, concurrency=concurrency, use_cache=True)
+            html_pages = await fetch_many(
+                urls,
+                timeout=timeout,
+                concurrency=concurrency,
+                use_cache=True,
+                dynamic_rendering=dynamic_rendering,
+                dynamic_allowlist=dynamic_allowlist,
+                dynamic_selector_hints=dynamic_selector_hints,
+            )
 
             # Step 3: Convert to markdown and build sources
             markdown_pages = []
