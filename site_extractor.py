@@ -4,7 +4,7 @@ Site Extractor - Convert entire websites or sitemaps to markdown
 import asyncio
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, TYPE_CHECKING
 from urllib.parse import urlparse
 import re
 from markdownify import markdownify as md
@@ -12,6 +12,9 @@ from fetch import fetch_many
 from crawl import crawl_site
 from robots_util import robots_allowed
 from logger import get_logger
+
+if TYPE_CHECKING:
+    from indexing.site_indexer import SiteIndexer
 
 logger = get_logger(__name__)
 
@@ -36,7 +39,8 @@ class SiteExtractor:
     async def extract_from_sitemap(
         self,
         sitemap_url: str,
-        max_pages: Optional[int] = None
+        max_pages: Optional[int] = None,
+        indexer: Optional["SiteIndexer"] = None
     ) -> Dict[str, str]:
         """
         Extract all pages from a sitemap.xml
@@ -44,6 +48,7 @@ class SiteExtractor:
         Args:
             sitemap_url: URL to sitemap.xml
             max_pages: Optional limit on number of pages
+            indexer: Optional SiteIndexer instance for persisting content
 
         Returns:
             Dictionary of {url: markdown_content}
@@ -74,7 +79,11 @@ class SiteExtractor:
                     sub_sitemap_url = sitemap_elem.text
                     if sub_sitemap_url:
                         logger.info(f"Found sub-sitemap: {sub_sitemap_url}")
-                        sub_urls = await self.extract_from_sitemap(sub_sitemap_url, max_pages)
+                        sub_urls = await self.extract_from_sitemap(
+                            sub_sitemap_url,
+                            max_pages,
+                            indexer=indexer,
+                        )
                         urls.extend(sub_urls.keys())
 
             if max_pages:
@@ -83,7 +92,22 @@ class SiteExtractor:
             logger.info(f"Found {len(urls)} URLs in sitemap")
 
             # Fetch and convert to markdown
-            return await self._fetch_and_convert(urls)
+            pages = await self._fetch_and_convert(urls)
+
+            if indexer:
+                for url, markdown in pages.items():
+                    if markdown:
+                        indexer.index_page(
+                            url,
+                            markdown,
+                            metadata={
+                                "source": "site_extractor",
+                                "origin": "sitemap",
+                                "sitemap_url": sitemap_url,
+                            },
+                        )
+
+            return pages
 
         except Exception as e:
             logger.error(f"Error extracting from sitemap {sitemap_url}: {e}")
@@ -93,7 +117,8 @@ class SiteExtractor:
         self,
         domain_url: str,
         max_pages: int = 50,
-        deep_crawl: bool = True
+        deep_crawl: bool = True,
+        indexer: Optional["SiteIndexer"] = None
     ) -> Dict[str, str]:
         """
         Extract pages from a domain via crawling
@@ -102,6 +127,7 @@ class SiteExtractor:
             domain_url: Starting URL (domain homepage)
             max_pages: Maximum pages to crawl
             deep_crawl: Whether to deep crawl
+            indexer: Optional SiteIndexer instance for persisting content
 
         Returns:
             Dictionary of {url: markdown_content}
@@ -125,6 +151,19 @@ class SiteExtractor:
             for url, html in pages_html.items():
                 if html:
                     pages_md[url] = self._html_to_markdown(html)
+
+            if indexer:
+                for url, markdown in pages_md.items():
+                    if markdown:
+                        indexer.index_page(
+                            url,
+                            markdown,
+                            metadata={
+                                "source": "site_extractor",
+                                "origin": "domain",
+                                "root_url": domain_url,
+                            },
+                        )
 
             return pages_md
 
