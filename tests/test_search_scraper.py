@@ -12,7 +12,7 @@ def test_search_scraper_google_pagination_returns_requested_count(monkeypatch):
         assert max_results == requested_results
         return urls
 
-    async def fake_fetch_many(url_list, timeout, concurrency, use_cache):
+    async def fake_fetch_many(url_list, **kwargs):
         return {url: "<html><body>Test Content</body></html>" for url in url_list}
 
     monkeypatch.setattr("search_scraper.google_sites", fake_google_sites)
@@ -36,7 +36,7 @@ def test_search_scraper_clamps_to_max_sources(monkeypatch):
         captured_max = max_results
         return [f"https://example{i}.com" for i in range(max_results)]
 
-    async def fake_fetch_many(url_list, timeout, concurrency, use_cache):
+    async def fake_fetch_many(url_list, **kwargs):
         return {url: "<html><body>Content</body></html>" for url in url_list}
 
     monkeypatch.setattr("search_scraper.google_sites", fake_google_sites)

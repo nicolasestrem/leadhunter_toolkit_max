@@ -1,6 +1,12 @@
-import httpx, asyncio
+import asyncio
+from typing import Iterable, Mapping, Optional
+from urllib.parse import urlparse
+
+import httpx
 from selectolax.parser import HTMLParser
-from cache_manager import read_cache, write_cache, is_cache_valid
+
+from cache_manager import read_cache, write_cache
+from fetch_dynamic import fetch_dynamic
 from retry_utils import async_retry_with_backoff
 from logger import get_logger
 
@@ -35,29 +41,50 @@ async def fetch_one(client: httpx.AsyncClient, url: str, timeout: int = 15) -> s
         logger.error(f"Error fetching {url}: {e}")
         return ""
 
-async def fetch_many(urls: list[str], timeout: int = 15, concurrency: int = 6, use_cache: bool = True) -> dict[str, str]:
-    """
-    Fetch multiple URLs concurrently with caching
-
-    Args:
-        urls: List of URLs to fetch
-        timeout: Request timeout in seconds
-        concurrency: Maximum concurrent requests
-        use_cache: Whether to use cache
-
-    Returns:
-        Dictionary mapping URLs to HTML content
-    """
+async def fetch_many(
+    urls: list[str],
+    *,
+    timeout: int = 15,
+    concurrency: int = 6,
+    use_cache: bool = True,
+    dynamic_rendering: bool = False,
+    dynamic_allowlist: Optional[Iterable[str]] = None,
+    dynamic_selector_hints: Optional[Mapping[str, Iterable[str]]] = None,
+) -> dict[str, str]:
+    """Fetch multiple URLs concurrently with optional dynamic rendering."""
     out = {}
     sem = asyncio.Semaphore(concurrency)
+
+    if dynamic_allowlist is not None:
+        allowed_domains = {domain.lower() for domain in dynamic_allowlist}
+    else:
+        allowed_domains = None
+
+    selector_hints = {
+        domain.lower(): tuple(hints)
+        for domain, hints in (dynamic_selector_hints or {}).items()
+    }
+
+    def _should_use_dynamic(url: str) -> bool:
+        if not dynamic_rendering:
+            return False
+        domain = urlparse(url).netloc.lower()
+        if allowed_domains is not None:
+            return domain in allowed_domains
+        return True
+
+    def _cache_key(url: str, is_dynamic: bool) -> str:
+        return f"dynamic::{url}" if is_dynamic else url
 
     logger.info(f"Fetching {len(urls)} URLs (concurrency: {concurrency}, cache: {use_cache})")
 
     async with httpx.AsyncClient() as client:
         async def task(url):
             # Try cache first
+            dynamic = _should_use_dynamic(url)
+            cache_key = _cache_key(url, dynamic)
             if use_cache:
-                cached = read_cache(url)
+                cached = read_cache(cache_key)
                 if cached:
                     logger.debug(f"Cache hit: {url}")
                     out[url] = cached
@@ -65,12 +92,20 @@ async def fetch_many(urls: list[str], timeout: int = 15, concurrency: int = 6, u
 
             # Fetch with concurrency control
             async with sem:
-                html = await fetch_one(client, url, timeout)
+                if dynamic:
+                    hints = selector_hints.get(urlparse(url).netloc.lower())
+                    html, _ = await fetch_dynamic(
+                        url,
+                        timeout=timeout,
+                        selector_hints=hints,
+                    )
+                else:
+                    html = await fetch_one(client, url, timeout)
                 out[url] = html
 
                 # Write to cache if successful
                 if html and use_cache:
-                    if write_cache(url, html):
+                    if write_cache(cache_key, html):
                         logger.debug(f"Cached: {url}")
 
         await asyncio.gather(*(task(u) for u in urls))

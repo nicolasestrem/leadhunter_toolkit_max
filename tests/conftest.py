@@ -141,3 +141,29 @@ def sample_html_content() -> str:
 </body>
 </html>
 """
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-playwright",
+        action="store_true",
+        default=False,
+        help="run tests marked with 'playwright'",
+    )
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "playwright: mark tests that require Playwright and a Chromium install",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--run-playwright"):
+        return
+
+    skip_marker = pytest.mark.skip(reason="use --run-playwright to execute Playwright tests")
+    for item in items:
+        if "playwright" in item.keywords:
+            item.add_marker(skip_marker)

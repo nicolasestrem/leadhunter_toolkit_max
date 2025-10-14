@@ -26,3 +26,30 @@ apiKey, prompt, numResults 3 to 20, extraction_mode boolean, schema object, mock
 
 ## Use cases
 Research and analysis, data aggregation, content creation, cost effective scraping for bulk content.
+
+## Dynamic Rendering Requirements
+
+Some sites require JavaScript execution to expose their content. Enable Playwright-based
+rendering by passing `dynamic_rendering=True` to `CrawlConfig`, `fetch_many`, or
+`SearchScraper.search_and_scrape`. When dynamic rendering is enabled the toolkit will:
+
+- Use [Playwright](https://playwright.dev/python/) with the Chromium engine.
+- Cache rendered HTML separately from standard HTTP fetches to avoid stale data.
+- Respect the existing concurrency, caching, and rate limiting settings.
+
+Before enabling dynamic rendering install the browser runtime:
+
+```bash
+pip install playwright
+playwright install chromium
+```
+
+Chromium downloads require roughly 150–200 MB of disk space. Expect each dynamic render to
+consume more CPU and memory than a regular HTTP request.
+
+Tests that exercise the Playwright integration are skipped by default. Run them explicitly
+with:
+
+```bash
+pytest --run-playwright -m playwright
+```
