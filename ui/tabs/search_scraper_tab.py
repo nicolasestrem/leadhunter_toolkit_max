@@ -6,7 +6,11 @@ import datetime
 from pathlib import Path
 from typing import Optional
 from constants import MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES
-from indexing import SiteIndexer
+from scraping.pipeline import (
+    PipelineResult,
+    run_search_pipeline_sync,
+    run_site_pipeline_sync,
+)
 
 
 def get_search_scraper():
