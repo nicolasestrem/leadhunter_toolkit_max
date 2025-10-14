@@ -3,7 +3,38 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterable, Mapping, MutableMapping, Type
 
+from httpx import HTTPError
+from openai import OpenAIError
 import streamlit as st
+
+from constants import (
+    DEFAULT_CONCURRENCY,
+    DEFAULT_FETCH_TIMEOUT,
+    DEFAULT_LLM_MAX_TOKENS,
+    DEFAULT_LLM_TEMPERATURE,
+    DEFAULT_LLM_TOP_K,
+    DEFAULT_LLM_TOP_P,
+    DEFAULT_MAX_PAGES,
+    DEFAULT_MAX_SITES,
+    DEFAULT_RADIUS_KM,
+    MAX_CONCURRENCY,
+    MAX_FETCH_TIMEOUT,
+    MAX_LLM_MAX_TOKENS,
+    MAX_LLM_TEMPERATURE,
+    MAX_LLM_TOP_K,
+    MAX_LLM_TOP_P,
+    MAX_MAX_PAGES,
+    MAX_MAX_SITES,
+    MAX_RADIUS_KM,
+    MIN_CONCURRENCY,
+    MIN_FETCH_TIMEOUT,
+    MIN_LLM_TEMPERATURE,
+    MIN_LLM_TOP_P,
+    MIN_MAX_PAGES,
+    MIN_MAX_SITES,
+    MIN_RADIUS_KM,
+)
+from plugins.loader import is_plugin_enabled, set_plugin_enabled
 
 
 def render_enhanced_sidebar(
@@ -53,9 +84,11 @@ def render_enhanced_sidebar(
                 )
                 radius_km = st.number_input(
                     "Radius km",
-                    min_value=0,
-                    max_value=500,
-                    value=int(mutable_settings.get("radius_km", 50)),
+                    min_value=MIN_RADIUS_KM,
+                    max_value=MAX_RADIUS_KM,
+                    value=int(
+                        mutable_settings.get("radius_km", DEFAULT_RADIUS_KM)
+                    ),
                 )
 
         with crawl_tab:
@@ -63,16 +96,20 @@ def render_enhanced_sidebar(
             with crawl_cols[0]:
                 max_sites = st.slider(
                     "Max sites per query",
-                    1,
-                    200,
-                    int(mutable_settings.get("max_sites", 25)),
+                    MIN_MAX_SITES,
+                    MAX_MAX_SITES,
+                    int(mutable_settings.get("max_sites", DEFAULT_MAX_SITES)),
                     help="Upper limit of domains captured for each search query",
                 )
                 fetch_timeout = st.slider(
                     "Fetch timeout (seconds)",
-                    5,
-                    60,
-                    int(mutable_settings.get("fetch_timeout", 15)),
+                    MIN_FETCH_TIMEOUT,
+                    MAX_FETCH_TIMEOUT,
+                    int(
+                        mutable_settings.get(
+                            "fetch_timeout", DEFAULT_FETCH_TIMEOUT
+                        )
+                    ),
                 )
                 deep_contact = st.toggle(
                     "Deep crawl contact/about pages",
@@ -81,16 +118,18 @@ def render_enhanced_sidebar(
             with crawl_cols[1]:
                 concurrency = st.slider(
                     "Concurrency",
-                    1,
-                    32,
-                    int(mutable_settings.get("concurrency", 8)),
+                    MIN_CONCURRENCY,
+                    MAX_CONCURRENCY,
+                    int(
+                        mutable_settings.get("concurrency", DEFAULT_CONCURRENCY)
+                    ),
                     help="Number of parallel requests during crawling",
                 )
                 max_pages = st.slider(
                     "Max pages per site",
-                    1,
-                    20,
-                    int(mutable_settings.get("max_pages", 5)),
+                    MIN_MAX_PAGES,
+                    MAX_MAX_PAGES,
+                    int(mutable_settings.get("max_pages", DEFAULT_MAX_PAGES)),
                 )
 
             extraction_cols = st.columns(4)
@@ -168,18 +207,45 @@ def render_enhanced_sidebar(
             with st.expander("Advanced options"):
                 llm_temperature = st.slider(
                     "Temperature",
-                    min_value=0.0,
-                    max_value=2.0,
-                    value=float(mutable_settings.get("llm_temperature", 0.2)),
+                    min_value=float(MIN_LLM_TEMPERATURE),
+                    max_value=float(MAX_LLM_TEMPERATURE),
+                    value=float(
+                        mutable_settings.get(
+                            "llm_temperature", DEFAULT_LLM_TEMPERATURE
+                        )
+                    ),
                     step=0.1,
                     help="Controls randomness: 0.0 = deterministic, 2.0 = very creative",
                 )
                 llm_max_tokens = st.number_input(
                     "Max tokens (0 = unlimited)",
                     min_value=0,
-                    max_value=128000,
-                    value=int(mutable_settings.get("llm_max_tokens", 0)),
+                    max_value=MAX_LLM_MAX_TOKENS,
+                    value=int(
+                        mutable_settings.get(
+                            "llm_max_tokens", DEFAULT_LLM_MAX_TOKENS
+                        )
+                    ),
                     help="Maximum tokens in LLM response. Important for local models to prevent timeouts.",
+                )
+                llm_top_k = st.number_input(
+                    "Top-K (0 = provider default)",
+                    min_value=0,
+                    max_value=MAX_LLM_TOP_K,
+                    value=int(
+                        mutable_settings.get("llm_top_k", DEFAULT_LLM_TOP_K)
+                    ),
+                    help="Limits vocabulary to the top K tokens. Set to 0 to use provider defaults.",
+                )
+                llm_top_p = st.slider(
+                    "Top-P (nucleus sampling)",
+                    min_value=float(MIN_LLM_TOP_P),
+                    max_value=float(MAX_LLM_TOP_P),
+                    value=float(
+                        mutable_settings.get("llm_top_p", DEFAULT_LLM_TOP_P)
+                    ),
+                    step=0.05,
+                    help="Probability mass for nucleus sampling. Lower values focus responses; higher values add creativity.",
                 )
                 llm_timeout = st.number_input(
                     "LLM timeout (seconds)",
@@ -226,6 +292,8 @@ def render_enhanced_sidebar(
                 "llm_model": llm_model,
                 "llm_temperature": llm_temperature,
                 "llm_max_tokens": llm_max_tokens,
+                "llm_top_k": int(llm_top_k),
+                "llm_top_p": float(llm_top_p),
                 "llm_timeout": llm_timeout,
             }
         )
@@ -236,24 +304,39 @@ def render_enhanced_sidebar(
         if llm_base:
             try:
                 from llm_client import LLMClient
-
-                with st.spinner("Testing connection..."):
-                    test_client = LLMClient(
-                        api_key=llm_key or "not-needed",
-                        base_url=llm_base,
-                        model=llm_model,
-                        temperature=0.1,
-                        max_tokens=50,
-                    )
-                    response = test_client.chat(
-                        [{"role": "user", "content": "Reply with OK"}]
-                    )
-                    if response:
-                        st.success("LLM connection successful!")
-                    else:
-                        st.error("LLM returned empty response")
-            except Exception as exc:  # noqa: BLE001
-                st.error(f"Connection failed: {exc}")
+            except ImportError as exc:
+                st.error(f"Unable to load LLM client: {exc}")
+            else:
+                top_k_param = int(llm_top_k) if int(llm_top_k) > 0 else None
+                top_p_param = float(llm_top_p) if llm_top_p else None
+                try:
+                    with st.spinner("Testing connection..."):
+                        test_client = LLMClient(
+                            api_key=llm_key or "not-needed",
+                            base_url=llm_base,
+                            model=llm_model,
+                            temperature=0.1,
+                            top_k=top_k_param,
+                            top_p=top_p_param,
+                            max_tokens=50,
+                        )
+                        response = test_client.chat(
+                            [{"role": "user", "content": "Reply with OK"}]
+                        )
+                        if response:
+                            st.success("LLM connection successful!")
+                        else:
+                            st.error("LLM returned empty response")
+                except (
+                    OpenAIError,
+                    HTTPError,
+                    TimeoutError,
+                    AttributeError,
+                    ValueError,
+                    RuntimeError,
+                    ConnectionError,
+                ) as exc:
+                    st.error(f"Connection failed: {exc}")
         else:
             st.warning("Please enter LLM base URL first")
 
@@ -420,22 +503,26 @@ def render_enhanced_sidebar(
             loaded_plugins = list(load_plugins_fn())
             st.session_state.plugins = list(loaded_plugins)
             st.session_state.plugins_loaded = True
-        except Exception as exc:  # noqa: BLE001
+        except (RuntimeError, OSError, ImportError) as exc:
             st.error(f"Error loading plugins: {exc}")
             loaded_plugins = []
             st.session_state.plugins = []
             st.session_state.plugins_loaded = False
 
     if loaded_plugins:
-        st.success(f"✓ {len(loaded_plugins)} plugin(s) active")
+        enabled_count = sum(
+            1
+            for plugin in loaded_plugins
+            if is_plugin_enabled(plugin.get("name", ""))
+        )
+        st.success(f"✓ {enabled_count} plugin(s) enabled")
 
-        if "plugin_enabled" not in st.session_state:
-            st.session_state.plugin_enabled = {
-                p.get("name", ""): True for p in loaded_plugins
-            }
+        plugin_state = st.session_state.setdefault("plugin_enabled", {})
 
         for plugin in loaded_plugins:
             plugin_name = plugin.get("name", "Unknown")
+            current_enabled = is_plugin_enabled(plugin_name)
+            plugin_state.setdefault(plugin_name, current_enabled)
 
             with st.expander(
                 f"🔧 {plugin_name} v{plugin.get('version', '0.0.0')}", expanded=False
@@ -448,10 +535,14 @@ def render_enhanced_sidebar(
                 with col2:
                     enabled = st.toggle(
                         "Enable",
-                        value=st.session_state.plugin_enabled.get(plugin_name, True),
+                        value=plugin_state[plugin_name],
                         key=f"plugin_toggle_{plugin_name}",
                     )
-                    st.session_state.plugin_enabled[plugin_name] = enabled
+                    if enabled != plugin_state[plugin_name]:
+                        plugin_state[plugin_name] = enabled
+                        set_plugin_enabled(plugin_name, enabled)
+                    elif current_enabled != plugin_state[plugin_name]:
+                        plugin_state[plugin_name] = current_enabled
 
                 if "author" in plugin:
                     st.caption(f"👤 Author: {plugin['author']}")
@@ -462,7 +553,7 @@ def render_enhanced_sidebar(
                     for hook_name in hooks.keys():
                         st.caption(f"• `{hook_name}`")
 
-                if enabled:
+                if plugin_state[plugin_name]:
                     col1, col2 = st.columns(2)
                     with col1:
                         st.metric("Status", "✅ Active", delta="Ready")
@@ -500,7 +591,7 @@ def render_enhanced_sidebar(
                         f"✅ Reloaded {len(st.session_state.plugins)} plugins"
                     )
                     st.rerun()
-                except Exception as exc:  # noqa: BLE001
+                except (RuntimeError, OSError, ImportError) as exc:
                     st.error(f"Error reloading plugins: {exc}")
             else:
                 st.session_state.confirm_reload_plugins = True
