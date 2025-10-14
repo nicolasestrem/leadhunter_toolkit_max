@@ -37,6 +37,7 @@ SOCIAL_PATTERNS = {
         re.compile(r'https?://(?:www\.)?instagram\.com/[\w.-]+', re.I),
         re.compile(r'instagram\.com/([\w.-]+)', re.I),
         re.compile(r'@([\w.-]+)\s+(?:on\s+)?instagram', re.I),
+        re.compile(r'instagram\s*[:\-]?\s*@([\w.-]+)', re.I),
     ],
     'linkedin': [
         re.compile(r'https?://(?:www\.)?linkedin\.com/(?:company|in)/[\w-]+', re.I),

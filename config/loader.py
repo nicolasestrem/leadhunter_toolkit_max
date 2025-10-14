@@ -111,7 +111,13 @@ class ConfigLoader:
             current_mtime = file_path.stat().st_mtime
             cached_mtime = self._file_mtimes.get(str(file_path))
 
-            if cached_mtime is None or current_mtime > cached_mtime:
+            if cached_mtime is None:
+                # First time we see this file – store its mtime but don't treat it as "modified"
+                # so cached objects can be reused on the next call.
+                self._file_mtimes[str(file_path)] = current_mtime
+                return False
+
+            if current_mtime > cached_mtime:
                 self._file_mtimes[str(file_path)] = current_mtime
                 return True
 

@@ -53,7 +53,8 @@ class LLMAdapter:
         top_k: Optional[int] = None,
         top_p: Optional[float] = None,
         max_tokens: Optional[int] = 2048,
-        timeout: int = 60
+        timeout: int = 60,
+        supports_system_role: Optional[bool] = None,
     ):
         """
         Initialize LLM adapter
@@ -68,6 +69,8 @@ class LLMAdapter:
             top_p: Nucleus sampling (cumulative probability threshold, 0.0-1.0)
             max_tokens: Maximum tokens in response
             timeout: Request timeout in seconds
+            supports_system_role: Whether the endpoint supports the "system" role.
+                If None, it will default to False for Mistral models and True otherwise.
         """
         # API key fallback chain: param -> env var -> default
         self.api_key = api_key or os.environ.get('LLM_API_KEY', "not-needed")
@@ -90,6 +93,12 @@ class LLMAdapter:
         self.top_p = top_p
         self.max_tokens = max_tokens
         self.timeout = timeout
+
+        # Most OpenAI-compatible endpoints support the system role. Some (e.g. certain
+        # Mistral templates) only accept user/assistant roles, so allow opting out.
+        if supports_system_role is None:
+            supports_system_role = "mistral" not in (model or "").lower()
+        self.supports_system_role = supports_system_role
 
         # Log configuration with masked API key
         logger.debug(
@@ -189,17 +198,18 @@ class LLMAdapter:
             Response content as string
 
         Note:
-            For Mistral compatibility, system messages are prepended to user messages
-            instead of using a separate system role (Mistral only supports user/assistant roles)
+            When ``supports_system_role`` is False (e.g. some Mistral templates), the
+            system prompt is prepended to the user message to keep compatibility with
+            user/assistant-only chat formats.
         """
-        # Prepend system message to user message for Mistral compatibility
-        # Mistral's Jinja template only supports user and assistant roles
-        if system_message:
+        if system_message and not self.supports_system_role:
             combined_message = f"{system_message}\n\n{user_message}"
+            messages = [{"role": "user", "content": combined_message}]
         else:
-            combined_message = user_message
-
-        messages = [{"role": "user", "content": combined_message}]
+            messages = []
+            if system_message:
+                messages.append({"role": "system", "content": system_message})
+            messages.append({"role": "user", "content": user_message})
 
         return self.chat(messages, **kwargs)
 
@@ -291,17 +301,17 @@ class LLMAdapter:
             Response content as string
 
         Note:
-            For Mistral compatibility, system messages are prepended to user messages
-            instead of using a separate system role (Mistral only supports user/assistant roles)
+            When ``supports_system_role`` is False the system message is prepended to the
+            user content to keep compatibility with user/assistant-only chat formats.
         """
-        # Prepend system message to user message for Mistral compatibility
-        # Mistral's Jinja template only supports user and assistant roles
-        if system_message:
+        if system_message and not self.supports_system_role:
             combined_message = f"{system_message}\n\n{user_message}"
+            messages = [{"role": "user", "content": combined_message}]
         else:
-            combined_message = user_message
-
-        messages = [{"role": "user", "content": combined_message}]
+            messages = []
+            if system_message:
+                messages.append({"role": "system", "content": system_message})
+            messages.append({"role": "user", "content": user_message})
 
         return await self.chat_async(messages, **kwargs)
 
@@ -327,7 +337,8 @@ class LLMAdapter:
             top_k=llm_config.get('top_k'),
             top_p=llm_config.get('top_p'),
             max_tokens=llm_config.get('max_tokens', 2048),
-            timeout=llm_config.get('timeout', 60)
+            timeout=llm_config.get('timeout', 60),
+            supports_system_role=llm_config.get('supports_system_role')
         )
 
     @classmethod
@@ -347,7 +358,8 @@ class LLMAdapter:
             temperature=model_config.get('temperature', 0.2),
             top_k=model_config.get('top_k'),
             top_p=model_config.get('top_p'),
-            max_tokens=model_config.get('max_tokens', 2048)
+            max_tokens=model_config.get('max_tokens', 2048),
+            supports_system_role=model_config.get('supports_system_role')
         )
 
     def chat_with_image(

@@ -5,8 +5,42 @@ Handles phone numbers, currency, dates, and other locale-specific formats
 
 import re
 from datetime import datetime
-from typing import Optional, Dict
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from typing import Optional, Dict, Union
 from localization.i18n import get_language_config
+
+
+def _to_decimal(value: Union[float, int, Decimal]) -> Decimal:
+    """Convert numeric input to ``Decimal`` for consistent rounding."""
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
+
+
+def _quantize(value: Decimal, decimals: int) -> Decimal:
+    """Quantize ``value`` to the desired number of decimal places."""
+    quant = Decimal('1').scaleb(-decimals) if decimals > 0 else Decimal('1')
+    return value.quantize(quant, rounding=ROUND_HALF_UP)
+
+
+def _format_locale_number(value: Decimal, language: str, decimals: int) -> str:
+    """Format a ``Decimal`` according to locale separators."""
+    config = get_language_config(language)
+    decimal_sep = config.get('decimal_separator', '.')
+    thousand_sep = config.get('thousand_separator', ',')
+
+    sign = '-' if value.is_signed() and value != 0 else ''
+    abs_value = value.copy_abs()
+
+    integer_part = int(abs_value)
+    whole_str = f"{integer_part:,}".replace(',', thousand_sep)
+
+    if decimals > 0:
+        fraction_decimal = (abs_value - Decimal(integer_part)) * (Decimal(10) ** decimals)
+        fraction = int(fraction_decimal.to_integral_value(rounding=ROUND_HALF_UP))
+        return f"{sign}{whole_str}{decimal_sep}{fraction:0{decimals}d}"
+
+    return f"{sign}{whole_str}"
 
 
 def format_phone(phone: str, country: str = 'de') -> str:
@@ -23,23 +57,28 @@ def format_phone(phone: str, country: str = 'de') -> str:
     # Remove all non-digit characters for processing
     digits = re.sub(r'\D', '', phone)
 
+    # Handle international prefix 00 -> +
+    if digits.startswith('00'):
+        digits = digits[2:]
+
     country = country.lower()
 
     # Country-specific formatting
     if country == 'de':
-        # German format: +49 XXX XXXXXXX or +49 XX XXXXXXXX
+        # German format: +49 AA BBBBBBB or +49 AAA BBBBBB depending on area code length
         if digits.startswith('49'):
-            digits = digits[2:]  # Remove country code
-            if len(digits) >= 10:
-                return f"+49 {digits[:3]} {digits[3:]}"
-            elif len(digits) >= 9:
-                return f"+49 {digits[:2]} {digits[2:]}"
+            national = digits[2:]
         elif digits.startswith('0'):
-            # Domestic format
-            if len(digits) >= 10:
-                return f"+49 {digits[1:4]} {digits[4:]}"
-            elif len(digits) >= 9:
-                return f"+49 {digits[1:3]} {digits[3:]}"
+            national = digits[1:]
+        else:
+            national = digits
+
+        if len(national) >= 5:
+            if len(national) > 8:
+                area_len = 3
+            else:
+                area_len = 2
+            return f"+49 {national[:area_len]} {national[area_len:]}"
 
     elif country == 'fr':
         # French format: +33 X XX XX XX XX
@@ -101,23 +140,25 @@ def format_currency(amount: float, language: str = 'en') -> str:
     config = get_language_config(language)
 
     symbol = config.get('currency_symbol', '€')
-    decimal_sep = config.get('decimal_separator', '.')
-    thousand_sep = config.get('thousand_separator', ',')
 
-    # Format number with appropriate separators
-    whole = int(amount)
-    decimal = int((amount - whole) * 100)
+    try:
+        decimal_amount = _quantize(_to_decimal(amount), 2)
+    except (InvalidOperation, TypeError, ValueError):
+        return str(amount)
 
-    # Add thousand separators
-    whole_str = f"{whole:,}".replace(',', thousand_sep)
-
-    # Build final string
-    if language == 'en':
-        # Symbol before amount: $1,234.56
-        return f"{symbol}{whole_str}{decimal_sep}{decimal:02d}"
+    number_str = _format_locale_number(decimal_amount, language, 2)
+    is_negative = number_str.startswith('-')
+    if is_negative:
+        number_body = number_str[1:]
+        sign = '-'
     else:
-        # Symbol after amount: 1.234,56 €
-        return f"{whole_str}{decimal_sep}{decimal:02d} {symbol}"
+        number_body = number_str
+        sign = ''
+
+    if language == 'en':
+        return f"{sign}{symbol}{number_body}"
+    else:
+        return f"{sign}{number_body} {symbol}"
 
 
 def format_date(
@@ -200,21 +241,16 @@ def format_number(number: float, language: str = 'en', decimals: int = 2) -> str
     """
     config = get_language_config(language)
 
-    decimal_sep = config.get('decimal_separator', '.')
-    thousand_sep = config.get('thousand_separator', ',')
+    try:
+        raw_value = _to_decimal(number)
+        if decimals == 0:
+            decimal_value = Decimal(int(raw_value))
+        else:
+            decimal_value = _quantize(raw_value, decimals)
+    except (InvalidOperation, TypeError, ValueError):
+        return str(number)
 
-    # Split into whole and decimal parts
-    whole = int(number)
-    decimal = int((number - whole) * (10 ** decimals))
-
-    # Format whole part with thousand separators
-    whole_str = f"{whole:,}".replace(',', thousand_sep)
-
-    # Build final string
-    if decimals > 0:
-        return f"{whole_str}{decimal_sep}{decimal:0{decimals}d}"
-    else:
-        return whole_str
+    return _format_locale_number(decimal_value, language, decimals)
 
 
 def format_percentage(value: float, language: str = 'en', decimals: int = 1) -> str:
