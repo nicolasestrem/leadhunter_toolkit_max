@@ -8,6 +8,7 @@ import datetime
 import os
 from pathlib import Path
 from constants import MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES
+from indexing import SiteIndexer
 
 
 def get_search_scraper():
@@ -26,6 +27,15 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
     """
     st.subheader("AI-Powered Web Research")
     st.caption("Search the web and extract insights using AI, or get raw markdown content from multiple sources")
+
+    index_path = Path(out_dir) / "site_index"
+
+    @st.cache_resource(show_spinner=False)
+    def _get_cached_indexer(path: str) -> SiteIndexer:
+        return SiteIndexer(path)
+
+    indexer = _get_cached_indexer(str(index_path))
+    st.caption(f"Indexed chunks available: {len(indexer.metadata)}")
 
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -95,7 +105,8 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                     extraction_mode=(extraction_mode == "AI Extraction"),
                     schema=schema_json,
                     timeout=int(settings.get("fetch_timeout", 15)),
-                    concurrency=int(settings.get("concurrency", 8))
+                    concurrency=int(settings.get("concurrency", 8)),
+                    indexer=indexer,
                 )
 
             st.session_state["search_scraper_result"] = result
@@ -159,3 +170,47 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                             f.write(f"- [{source['url']}]({source['url']})\n")
                         f.write(f"\n\n## Content\n\n{result.markdown_content}")
                     st.success(f"Saved to {path}")
+
+    st.divider()
+    st.subheader("Semantic Search of Indexed Pages")
+    st.caption("Query previously processed content with optional filters.")
+
+    with st.form("semantic_index_search"):
+        query_text = st.text_input("Semantic query", key="index_query")
+        col_filters = st.columns(3)
+        with col_filters[0]:
+            domain_filter = st.text_input("Domain filter", placeholder="example.com", key="index_domain")
+        with col_filters[1]:
+            start_date = st.text_input("Start date (YYYY-MM-DD)", key="index_start")
+        with col_filters[2]:
+            end_date = st.text_input("End date (YYYY-MM-DD)", key="index_end")
+        top_k = st.slider("Max results", 1, 10, 5)
+        submitted = st.form_submit_button("Search Index")
+
+    if submitted:
+        if not query_text.strip():
+            st.warning("Please provide a query to search the index.")
+        else:
+            results = indexer.query(
+                query_text,
+                top_k=top_k,
+                domain=domain_filter or None,
+                start_date=start_date or None,
+                end_date=end_date or None,
+            )
+            if not results:
+                st.info("No indexed chunks matched the query and filters.")
+            else:
+                for item in results:
+                    st.markdown(f"**[{item.url}]({item.url})** — Score: {item.score:.3f}")
+                    st.caption(
+                        f"Timestamp: {item.timestamp or 'unknown'} | Domain: {item.domain or 'n/a'} | Chunk #{item.chunk_index}"
+                    )
+                    preview = item.text.strip()
+                    if len(preview) > 500:
+                        preview = preview[:500] + "…"
+                    st.write(preview)
+                    if item.metadata:
+                        meta_str = ", ".join(f"{k}: {v}" for k, v in item.metadata.items())
+                        st.caption(f"Metadata: {meta_str}")
+                    st.divider()
