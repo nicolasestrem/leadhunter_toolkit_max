@@ -1,9 +1,11 @@
 # Content scrapers and normalizers for Markdown Mode-like usage.
 # If you already have raw HTML, convert to markdown or plain text here.
+from typing import Dict, Optional, Union
+
 from selectolax.parser import HTMLParser
 
 
-def to_markdown(html: str, include_meta: bool = False):
+def to_markdown(html: str, include_meta: bool = False) -> Union[str, Dict[str, Optional[str]]]:
     """Convert HTML to lightweight markdown and optionally return metadata."""
 
     def _empty():

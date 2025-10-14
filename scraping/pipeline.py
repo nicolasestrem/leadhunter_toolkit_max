@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 from crawl import crawl_site
 from extract import extract_basic
@@ -59,9 +59,9 @@ class PipelineResult:
 
 
 def _aggregate_contacts(pages: Iterable[PageRecord]) -> Dict[str, List[Dict[str, Iterable[str]]]]:
-    email_sources: Dict[str, set[str]] = {}
-    phone_sources: Dict[str, set[str]] = {}
-    social_sources: Dict[tuple[str, str], set[str]] = {}
+    email_sources: Dict[str, Set[str]] = {}
+    phone_sources: Dict[str, Set[str]] = {}
+    social_sources: Dict[Tuple[str, str], Set[str]] = {}
 
     for page in pages:
         extraction = page.extraction or {}
@@ -77,7 +77,7 @@ def _aggregate_contacts(pages: Iterable[PageRecord]) -> Dict[str, List[Dict[str,
                 continue
             social_sources.setdefault((network, link), set()).add(page.url)
 
-    def _sorted_records(source_map: Dict[str, set[str]], value_key: str) -> List[Dict[str, Iterable[str]]]:
+    def _sorted_records(source_map: Dict[str, Set[str]], value_key: str) -> List[Dict[str, Iterable[str]]]:
         records = []
         for value, sources in sorted(source_map.items(), key=lambda item: item[0]):
             records.append({
@@ -176,7 +176,12 @@ async def run_search_pipeline(
     urls = search_func(query, max_results)
     if not urls:
         logger.warning("No URLs returned for query: %s", query)
-        return PipelineResult(seed=query, mode="search", pages=[], contacts={"emails": [], "phones": [], "social": []})
+        return PipelineResult(
+            seed=query,
+            mode="search",
+            pages=[],
+            contacts=_aggregate_contacts([]),
+        )
 
     html_pages = await fetch_many(urls, **fetch_kwargs)
     return build_pipeline_result(

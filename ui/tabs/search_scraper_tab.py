@@ -5,7 +5,7 @@ Search Scraper Tab - AI-Powered Web Research
 import streamlit as st
 import json
 import datetime
-import os
+from pathlib import Path
 from typing import Optional
 from constants import MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES
 from scraping.pipeline import (
@@ -29,6 +29,9 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
         settings: Application settings dict
         out_dir: Output directory path
     """
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
     st.subheader("AI-Powered Web Research")
     st.caption("Search the web and extract insights using AI, or get raw markdown content from multiple sources")
 
@@ -149,8 +152,8 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                 if st.button("💾 Export as Text"):
                     timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                     filename = f"search_scraper_ai_{timestamp}.txt"
-                    path = os.path.join(out_dir, filename)
-                    with open(path, "w", encoding="utf-8") as f:
+                    path = out_path / filename
+                    with path.open("w", encoding="utf-8") as f:
                         f.write(f"Query: {result.prompt}\n\n")
                         f.write(f"Sources:\n")
                         for source in result.sources:
@@ -166,8 +169,8 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                 if st.button("💾 Export as Markdown"):
                     timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
                     filename = f"search_scraper_md_{timestamp}.md"
-                    path = os.path.join(out_dir, filename)
-                    with open(path, "w", encoding="utf-8") as f:
+                    path = out_path / filename
+                    with path.open("w", encoding="utf-8") as f:
                         f.write(f"# Query: {result.prompt}\n\n")
                         f.write(f"## Sources\n\n")
                         for source in result.sources:
@@ -342,7 +345,7 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
         if st.button("💾 Save results to disk", key="pipeline_save_disk"):
             timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
             filename = f"pipeline_{pipeline_result.mode}_{timestamp}.json"
-            path = os.path.join(out_dir, filename)
-            with open(path, "w", encoding="utf-8") as f:
+            path = out_path / filename
+            with path.open("w", encoding="utf-8") as f:
                 f.write(json_payload)
             st.success(f"Saved pipeline results to {path}")
