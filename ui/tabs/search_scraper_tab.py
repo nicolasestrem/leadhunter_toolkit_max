@@ -3,9 +3,12 @@ Search Scraper Tab - AI-Powered Web Research
 """
 
 import datetime
+import json
+import streamlit as st
 from pathlib import Path
 from typing import Optional
 from constants import MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES
+from indexing.site_indexer import SiteIndexer
 from scraping.pipeline import (
     PipelineResult,
     run_search_pipeline_sync,
