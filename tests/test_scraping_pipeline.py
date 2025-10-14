@@ -1,4 +1,4 @@
-from scraping.pipeline import build_pipeline_result
+from scraping.pipeline import build_pipeline_result, run_search_pipeline_sync
 
 
 def test_pipeline_aggregates_contacts_and_metadata():
@@ -71,3 +71,83 @@ def test_pipeline_handles_empty_pages():
     result = build_pipeline_result(seed="seed", mode="crawl", html_pages={"https://a": ""})
     assert result.page_count == 0
     assert result.contacts == {"emails": [], "phones": [], "social": []}
+
+
+def _stubbed_page_outputs():
+    return {
+        "markdown": "",
+        "title": None,
+        "meta_description": None,
+    }
+
+
+def _stubbed_extraction():
+    return {
+        "emails": [],
+        "phones": [],
+        "social": {},
+    }
+
+
+def test_run_search_pipeline_uses_injected_callable(monkeypatch):
+    def fake_ddg(*_args, **_kwargs):  # pragma: no cover - sanity guard
+        raise AssertionError("ddg_sites should not be invoked when a search_func is provided")
+
+    monkeypatch.setattr("scraping.pipeline.ddg_sites", fake_ddg)
+
+    captured = {}
+
+    def custom_search(query: str, max_results: int):
+        captured["args"] = (query, max_results)
+        return ["https://example.com"]
+
+    async def fake_fetch_many(urls, **_kwargs):
+        return {url: "<html></html>" for url in urls}
+
+    monkeypatch.setattr("scraping.pipeline.fetch_many", fake_fetch_many)
+    monkeypatch.setattr("scraping.pipeline.to_markdown", lambda *_args, **_kwargs: _stubbed_page_outputs())
+    monkeypatch.setattr("scraping.pipeline.extract_basic", lambda *_args, **_kwargs: _stubbed_extraction())
+
+    result = run_search_pipeline_sync(
+        "b2b marketing contacts",
+        search_func=custom_search,
+        max_results=7,
+        fetch_kwargs={"use_cache": False},
+    )
+
+    assert captured["args"] == ("b2b marketing contacts", 7)
+    assert result.page_count == 1
+
+
+def test_run_search_pipeline_passes_google_parameters(monkeypatch):
+    def fake_ddg(*_args, **_kwargs):  # pragma: no cover - sanity guard
+        raise AssertionError("DuckDuckGo fallback should not run when Google kwargs are supplied")
+
+    monkeypatch.setattr("scraping.pipeline.ddg_sites", fake_ddg)
+
+    captured = {}
+
+    def fake_google(query: str, max_results: int, *, api_key: str, cx: str):
+        captured["args"] = (query, max_results)
+        captured["api_key"] = api_key
+        captured["cx"] = cx
+        return ["https://google-result.com"]
+
+    async def fake_fetch_many(urls, **_kwargs):
+        return {url: "<html></html>" for url in urls}
+
+    monkeypatch.setattr("scraping.pipeline.google_sites", fake_google)
+    monkeypatch.setattr("scraping.pipeline.fetch_many", fake_fetch_many)
+    monkeypatch.setattr("scraping.pipeline.to_markdown", lambda *_args, **_kwargs: _stubbed_page_outputs())
+    monkeypatch.setattr("scraping.pipeline.extract_basic", lambda *_args, **_kwargs: _stubbed_extraction())
+
+    result = run_search_pipeline_sync(
+        "contact discovery",
+        google_kwargs={"api_key": "key-123", "cx": "cx-456"},
+        max_results=4,
+    )
+
+    assert captured["args"] == ("contact discovery", 4)
+    assert captured["api_key"] == "key-123"
+    assert captured["cx"] == "cx-456"
+    assert result.page_count == 1

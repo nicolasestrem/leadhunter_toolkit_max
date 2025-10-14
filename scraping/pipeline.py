@@ -12,6 +12,7 @@ from fetch import fetch_many
 from logger import get_logger
 from scrape_content import to_markdown
 from search import ddg_sites
+from google_search import google_sites
 
 logger = get_logger(__name__)
 
@@ -166,14 +167,29 @@ async def run_site_pipeline(
 async def run_search_pipeline(
     query: str,
     *,
-    search_func: Callable[[str, int], List[str]] = ddg_sites,
+    search_func: Optional[Callable[..., List[str]]] = None,
     max_results: int = 5,
     fetch_kwargs: Optional[Dict] = None,
     extraction_settings: Optional[Dict] = None,
+    google_kwargs: Optional[Dict[str, str]] = None,
 ) -> PipelineResult:
     """Run the pipeline on search results returned by a search function."""
     fetch_kwargs = fetch_kwargs or {}
-    urls = search_func(query, max_results)
+    google_kwargs = google_kwargs or {}
+
+    search_callable = search_func
+    if search_callable is None:
+        search_callable = google_sites if google_kwargs else ddg_sites
+
+    if search_callable is google_sites:
+        urls = search_callable(
+            query,
+            max_results,
+            api_key=google_kwargs.get("api_key", ""),
+            cx=google_kwargs.get("cx", ""),
+        )
+    else:
+        urls = search_callable(query, max_results)
     if not urls:
         logger.warning("No URLs returned for query: %s", query)
         return PipelineResult(
@@ -211,10 +227,11 @@ def run_site_pipeline_sync(
 def run_search_pipeline_sync(
     query: str,
     *,
-    search_func: Callable[[str, int], List[str]] = ddg_sites,
+    search_func: Optional[Callable[..., List[str]]] = None,
     max_results: int = 5,
     fetch_kwargs: Optional[Dict] = None,
     extraction_settings: Optional[Dict] = None,
+    google_kwargs: Optional[Dict[str, str]] = None,
 ) -> PipelineResult:
     """Synchronous wrapper around :func:`run_search_pipeline`."""
     return asyncio.run(
@@ -224,5 +241,6 @@ def run_search_pipeline_sync(
             max_results=max_results,
             fetch_kwargs=fetch_kwargs,
             extraction_settings=extraction_settings,
+            google_kwargs=google_kwargs,
         )
     )
