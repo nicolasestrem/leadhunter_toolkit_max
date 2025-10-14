@@ -1,36 +1,32 @@
-"""
-Sidebar orchestrator module.
-Coordinates all sidebar sections and returns settings.
-"""
+"""Sidebar orchestrator module."""
+from pathlib import Path
+from typing import Callable, Dict
+
 import streamlit as st
-from .settings_section import render_settings_section
-from .verticals_section import render_verticals_section
-from .plugins_section import render_plugins_section
+
+from config.loader import ConfigLoader
+from plugins import load_plugins
+
+from sidebar_enhanced import render_enhanced_sidebar
+
 from .presets_section import render_presets_section
 from .cache_section import render_cache_section
 
 
-def render_sidebar(settings: dict, save_callback, load_preset_callback) -> dict:
-    """
-    Render complete sidebar with all sections.
-
-    Args:
-        settings: Current settings dictionary
-        save_callback: Function to save settings
-        load_preset_callback: Function to load preset data
-
-    Returns:
-        Updated settings dictionary
-    """
+def render_sidebar(
+    settings: Dict,
+    save_callback: Callable[[Dict], None],
+    load_preset_callback: Callable[[str], Dict],
+) -> Dict:
+    """Render complete sidebar with all sections."""
     with st.sidebar:
-        # Core settings form
-        settings = render_settings_section(settings, save_callback)
-
-        # Verticals presets
-        settings = render_verticals_section(settings, save_callback)
-
-        # Plugins management
-        render_plugins_section()
+        settings = render_enhanced_sidebar(
+            settings,
+            save_callback,
+            load_plugins,
+            ConfigLoader,
+            Path,
+        )
 
         # Presets save/load/delete
         settings = render_presets_section(

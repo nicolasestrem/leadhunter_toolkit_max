@@ -21,6 +21,8 @@ logger = get_logger(__name__)
 class CrawlConfig:
     max_depth: int = 2
     allowed_domains: Optional[Iterable[str]] = None
+    dynamic_rendering: bool = False
+    dynamic_allowed_domains: Optional[Iterable[str]] = None
     path_filters: Iterable[re.Pattern] = field(default_factory=list)
     disallowed_extensions: Iterable[str] = field(default_factory=set)
     request_delay: Optional[float] = None
