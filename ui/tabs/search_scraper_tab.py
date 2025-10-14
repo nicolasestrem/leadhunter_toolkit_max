@@ -1,12 +1,43 @@
-"""
-Search Scraper Tab - AI-Powered Web Research
-"""
+"""Search Scraper Tab - AI-Powered Web Research."""
 
 import datetime
+import importlib
+import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING, Type
+
+import streamlit as st
+
 from constants import MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES
-from indexing import SiteIndexer
+
+if TYPE_CHECKING:  # pragma: no cover - import only used for static analysis
+    from indexing import SiteIndexer as _SiteIndexer
+
+
+def _resolve_site_indexer() -> Type["_SiteIndexer"]:
+    """Return the SiteIndexer implementation if available, otherwise a stub."""
+
+    spec = importlib.util.find_spec("indexing")
+    if spec is not None:
+        module = importlib.import_module("indexing")
+        site_indexer = getattr(module, "SiteIndexer", None)
+        if site_indexer is not None:
+            return site_indexer  # type: ignore[return-value]
+
+    class _FallbackSiteIndexer:
+        def __init__(self, path: str) -> None:  # noqa: D401 - simple shim
+            """Fallback indexer that provides an empty metadata collection."""
+
+            self.metadata = []
+
+        def index_page(self, url: str, content: str, *, metadata=None, timestamp=None):
+            """No-op implementation to maintain API compatibility when indexing is unavailable."""
+            return []
+
+    return _FallbackSiteIndexer  # type: ignore[return-value]
+
+
+SiteIndexer = _resolve_site_indexer()
 
 
 def get_search_scraper():
@@ -32,7 +63,7 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
     index_path = Path(out_dir) / "site_index"
 
     @st.cache_resource(show_spinner=False)
-    def _get_cached_indexer(path: str) -> SiteIndexer:
+    def _get_cached_indexer(path: str) -> "_SiteIndexer":
         return SiteIndexer(path)
 
     indexer = _get_cached_indexer(str(index_path))
