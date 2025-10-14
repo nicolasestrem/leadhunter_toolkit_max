@@ -4,12 +4,15 @@ Site Extractor - Convert entire websites or sitemaps to markdown
 import asyncio
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List, Optional, Dict, TYPE_CHECKING
+from typing import Dict, List, Optional, Set, TYPE_CHECKING
 from urllib.parse import urlparse
 import re
+import httpx
+
 from markdownify import markdownify as md
-from fetch import fetch_many
+
 from crawl import crawl_site
+from fetch import fetch_many
 from robots_util import robots_allowed
 from logger import get_logger
 
@@ -56,62 +59,105 @@ class SiteExtractor:
         logger.info(f"Fetching sitemap: {sitemap_url}")
 
         try:
-            # Fetch sitemap
-            import httpx
-            resp = httpx.get(sitemap_url, timeout=self.timeout, follow_redirects=True)
-            resp.raise_for_status()
-
-            # Parse XML
-            root = ET.fromstring(resp.content)
-
-            # Extract URLs (handle namespace)
-            namespaces = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
-            urls = []
-
-            for url_elem in root.findall('.//ns:url/ns:loc', namespaces):
-                url = url_elem.text
-                if url and robots_allowed(url):
-                    urls.append(url)
-
-            # If sitemap index, recursively fetch sub-sitemaps
-            if not urls:
-                for sitemap_elem in root.findall('.//ns:sitemap/ns:loc', namespaces):
-                    sub_sitemap_url = sitemap_elem.text
-                    if sub_sitemap_url:
-                        logger.info(f"Found sub-sitemap: {sub_sitemap_url}")
-                        sub_urls = await self.extract_from_sitemap(
-                            sub_sitemap_url,
-                            max_pages,
-                            indexer=indexer,
-                        )
-                        urls.extend(sub_urls.keys())
-
-            if max_pages:
-                urls = urls[:max_pages]
-
-            logger.info(f"Found {len(urls)} URLs in sitemap")
-
-            # Fetch and convert to markdown
-            pages = await self._fetch_and_convert(urls)
-
-            if indexer:
-                for url, markdown in pages.items():
-                    if markdown:
-                        indexer.index_page(
-                            url,
-                            markdown,
-                            metadata={
-                                "source": "site_extractor",
-                                "origin": "sitemap",
-                                "sitemap_url": sitemap_url,
-                            },
-                        )
-
-            return pages
-
+            async with httpx.AsyncClient() as client:
+                return await self._extract_from_sitemap_with_client(
+                    sitemap_url,
+                    max_pages,
+                    indexer=indexer,
+                    client=client,
+                    visited=set(),
+                )
         except Exception as e:
             logger.error(f"Error extracting from sitemap {sitemap_url}: {e}")
             return {}
+
+    async def _extract_from_sitemap_with_client(
+        self,
+        sitemap_url: str,
+        max_pages: Optional[int],
+        indexer: Optional["SiteIndexer"],
+        client: httpx.AsyncClient,
+        visited: Set[str],
+    ) -> Dict[str, str]:
+        """Internal helper that reuses a shared HTTP client for sitemap traversal."""
+
+        if sitemap_url in visited:
+            logger.warning(f"Skipping already visited sitemap: {sitemap_url}")
+            return {}
+
+        visited.add(sitemap_url)
+
+        try:
+            resp = await client.get(
+                sitemap_url,
+                timeout=self.timeout,
+                follow_redirects=True,
+                headers={"User-Agent": "LeadHunter/1.0"},
+            )
+            resp.raise_for_status()
+        except Exception as exc:
+            logger.error(f"Error fetching sitemap {sitemap_url}: {exc}")
+            return {}
+
+        try:
+            root = ET.fromstring(resp.content)
+        except ET.ParseError as exc:
+            logger.error(f"Error parsing sitemap XML from {sitemap_url}: {exc}")
+            return {}
+
+        namespaces = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+
+        urls: List[str] = []
+        for url_elem in root.findall('.//ns:url/ns:loc', namespaces):
+            url = url_elem.text
+            if url and robots_allowed(url):
+                urls.append(url)
+
+        if not urls:
+            pages: Dict[str, str] = {}
+            for sitemap_elem in root.findall('.//ns:sitemap/ns:loc', namespaces):
+                sub_sitemap_url = sitemap_elem.text
+                if not sub_sitemap_url:
+                    continue
+                logger.info(f"Found sub-sitemap: {sub_sitemap_url}")
+                sub_pages = await self._extract_from_sitemap_with_client(
+                    sub_sitemap_url,
+                    max_pages,
+                    indexer=indexer,
+                    client=client,
+                    visited=visited,
+                )
+                pages.update(sub_pages)
+                if max_pages and len(pages) >= max_pages:
+                    break
+
+            if max_pages and pages:
+                limited_items = list(pages.items())[:max_pages]
+                return dict(limited_items)
+
+            return pages
+
+        if max_pages:
+            urls = urls[:max_pages]
+
+        logger.info(f"Found {len(urls)} URLs in sitemap")
+
+        pages = await self._fetch_and_convert(urls)
+
+        if indexer:
+            for url, markdown in pages.items():
+                if markdown:
+                    indexer.index_page(
+                        url,
+                        markdown,
+                        metadata={
+                            "source": "site_extractor",
+                            "origin": "sitemap",
+                            "sitemap_url": sitemap_url,
+                        },
+                    )
+
+        return pages
 
     async def extract_from_domain(
         self,
