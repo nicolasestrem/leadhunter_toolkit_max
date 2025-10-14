@@ -30,6 +30,10 @@ def _resolve_site_indexer() -> Type["_SiteIndexer"]:
 
             self.metadata = []
 
+        def index_page(self, url: str, content: str, *, metadata=None, timestamp=None):
+            """No-op implementation to maintain API compatibility when indexing is unavailable."""
+            return []
+
     return _FallbackSiteIndexer  # type: ignore[return-value]
 
 
