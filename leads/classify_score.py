@@ -48,33 +48,35 @@ def calculate_quality_score(lead_data: Dict[str, Any], config: Optional[Dict[str
     score = 0.0
 
     # Email presence and count
-    emails = lead_data.get('emails', [])
-    if len(emails) >= 2:
-        score += email_weight
-    elif len(emails) == 1:
-        score += email_weight * 0.67
+    emails = {
+        email.strip().lower()
+        for email in lead_data.get('emails', [])
+        if isinstance(email, str) and email.strip()
+    }
+    if emails:
+        score += min(len(emails), 3) * email_weight
 
     # Phone presence and count
-    phones = lead_data.get('phones', [])
-    if len(phones) >= 2:
-        score += phone_weight
-    elif len(phones) == 1:
-        score += phone_weight * 0.75
+    phones = {
+        phone.strip()
+        for phone in lead_data.get('phones', [])
+        if isinstance(phone, str) and phone.strip()
+    }
+    if phones:
+        score += min(len(phones), 2) * phone_weight
 
     # Social media presence
     social = lead_data.get('social', {})
     if isinstance(social, dict):
-        social_count = len([v for v in social.values() if v])
-        if social_count >= 3:
-            score += social_weight
-        elif social_count == 2:
-            score += social_weight * 0.75
-        elif social_count == 1:
-            score += social_weight * 0.5
+        social_count = len({v for v in social.values() if v})
+        if social_count:
+            score += min(social_count, 3) * social_weight
 
     # Address/location (0-1 point)
-    if lead_data.get('address') or lead_data.get('city'):
-        score += 1.0
+    if lead_data.get('address'):
+        score += 0.6
+    if lead_data.get('city'):
+        score += 0.4
 
     # Company name (0-1 point)
     if lead_data.get('name'):

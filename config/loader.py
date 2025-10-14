@@ -94,6 +94,13 @@ class ConfigLoader:
         # Track file modification times for cache invalidation
         self._file_mtimes = {}
 
+    def _update_file_mtime(self, file_path: Path) -> None:
+        """Record the latest modification time for ``file_path`` if available."""
+        try:
+            self._file_mtimes[str(file_path)] = file_path.stat().st_mtime
+        except (OSError, FileNotFoundError):
+            self._file_mtimes.pop(str(file_path), None)
+
     def _is_file_modified(self, file_path: Path) -> bool:
         """
         Check if file has been modified since last load
@@ -111,8 +118,10 @@ class ConfigLoader:
             current_mtime = file_path.stat().st_mtime
             cached_mtime = self._file_mtimes.get(str(file_path))
 
-            if cached_mtime is None or current_mtime > cached_mtime:
-                self._file_mtimes[str(file_path)] = current_mtime
+            if cached_mtime is None:
+                return True
+
+            if current_mtime > cached_mtime:
                 return True
 
             return False
@@ -128,6 +137,7 @@ class ConfigLoader:
             if models_path.exists():
                 with open(models_path, 'r', encoding='utf-8') as f:
                     self._models_config = yaml.safe_load(f) or {}
+                self._update_file_mtime(models_path)
             else:
                 self._models_config = {}
 
@@ -142,6 +152,7 @@ class ConfigLoader:
             if defaults_path.exists():
                 with open(defaults_path, 'r', encoding='utf-8') as f:
                     self._defaults_config = yaml.safe_load(f) or {}
+                self._update_file_mtime(defaults_path)
             else:
                 self._defaults_config = {}
 
@@ -154,6 +165,7 @@ class ConfigLoader:
             if SETTINGS_PATH.exists():
                 with open(SETTINGS_PATH, 'r', encoding='utf-8') as f:
                     self._settings = json.load(f)
+                self._update_file_mtime(SETTINGS_PATH)
             else:
                 self._settings = {}
 
@@ -224,6 +236,7 @@ class ConfigLoader:
             with open(vertical_path, 'r', encoding='utf-8') as f:
                 vertical_config = yaml.safe_load(f) or {}
             self._vertical_cache[vertical_name] = vertical_config
+            self._update_file_mtime(vertical_path)
             return vertical_config
         except (OSError, IOError) as e:
             print(f"Error reading vertical preset file '{vertical_name}': {e}")

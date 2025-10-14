@@ -181,8 +181,8 @@ def check_subject_line(subject: str, min_chars: int = 30, max_chars: int = 60) -
     # Check for spam indicators
     if subject.isupper():
         issues.append(DeliverabilityIssue(
-            severity='warning',
-            category='spam_words',
+            severity='critical',
+            category='formatting',
             message='Subject line is all caps',
             suggestion='Use normal capitalization. ALL CAPS triggers spam filters.'
         ))
@@ -244,7 +244,7 @@ def check_exclamation_marks(text: str) -> List[DeliverabilityIssue]:
     if exclamation_count > 3:
         issues.append(DeliverabilityIssue(
             severity='warning',
-            category='spam_words',
+            category='formatting',
             message=f'Too many exclamation marks ({exclamation_count})',
             suggestion='Limit to 1-2 exclamation marks. Excessive use triggers spam filters.'
         ))

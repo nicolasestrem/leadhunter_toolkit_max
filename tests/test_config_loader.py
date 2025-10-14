@@ -3,6 +3,8 @@ Tests for config loader with vertical preset support
 Ensures vertical configuration loading and merging works correctly
 """
 
+import os
+import time
 import pytest
 import json
 import tempfile
@@ -281,6 +283,43 @@ class TestVerticalPresetStructure:
                 assert 'vertical' in vertical
                 assert 'description' in vertical
                 assert 'scoring' in vertical
+
+
+class TestModificationTracking:
+    """Ensure configuration reload logic tracks modification times correctly."""
+
+    def test_first_check_does_not_cache_mtime(self, tmp_path):
+        loader = ConfigLoader()
+        config_file = tmp_path / "sample.yml"
+        config_file.write_text("key: 1", encoding="utf-8")
+
+        # First check should report the file as modified without caching the mtime.
+        assert loader._is_file_modified(config_file) is True
+
+        # Simulate updates happening before the loader records the mtime.
+        time.sleep(0.01)
+        config_file.write_text("key: 2", encoding="utf-8")
+
+        # After a successful load, the loader records the latest timestamp.
+        loader._update_file_mtime(config_file)
+
+        # No further changes so the file should not appear modified.
+        assert loader._is_file_modified(config_file) is False
+
+    def test_detects_follow_up_changes(self, tmp_path):
+        loader = ConfigLoader()
+        config_file = tmp_path / "sample.yml"
+        config_file.write_text("key: 1", encoding="utf-8")
+
+        # Initial load records the timestamp.
+        loader._update_file_mtime(config_file)
+
+        # Ensure filesystem registers a different mtime.
+        original_mtime = config_file.stat().st_mtime
+        new_mtime = original_mtime + 5
+        os.utime(config_file, (new_mtime, new_mtime))
+
+        assert loader._is_file_modified(config_file) is True
 
 
 def test_integration_vertical_scoring():
