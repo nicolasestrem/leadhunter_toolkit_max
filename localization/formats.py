@@ -29,7 +29,7 @@ def _format_locale_number(value: Decimal, language: str, decimals: int) -> str:
     decimal_sep = config.get('decimal_separator', '.')
     thousand_sep = config.get('thousand_separator', ',')
 
-    sign = '-' if value.is_signed() and value != 0 else ''
+    sign = '-' if value < 0 else ''
     abs_value = value.copy_abs()
 
     integer_part = int(abs_value)
@@ -336,5 +336,5 @@ def format_business_hours(
             open_dt = datetime.strptime(open_time, '%H:%M')
             close_dt = datetime.strptime(close_time, '%H:%M')
             return f"{open_dt.strftime('%I:%M %p')} - {close_dt.strftime('%I:%M %p')}"
-        except:
+        except (TypeError, ValueError):
             return f"{open_time} - {close_time}"
