@@ -2,12 +2,15 @@
 SearchScraper: AI-powered web search and information extraction
 """
 import asyncio
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, TYPE_CHECKING
 from markdownify import markdownify as md
 from search import ddg_sites
 from google_search import google_sites
 from fetch import fetch_many, text_content
 from llm_client import LLMClient
+
+if TYPE_CHECKING:
+    from indexing.site_indexer import SiteIndexer
 
 
 class SearchScraperResult:
@@ -89,7 +92,8 @@ class SearchScraper:
         extraction_mode: bool = True,
         schema: Optional[Dict[str, Any]] = None,
         timeout: int = 15,
-        concurrency: int = 6
+        concurrency: int = 6,
+        indexer: Optional["SiteIndexer"] = None
     ) -> SearchScraperResult:
         """
         Search the web and extract information based on a prompt
@@ -101,6 +105,7 @@ class SearchScraper:
             schema: Optional JSON schema for structured extraction
             timeout: Request timeout in seconds
             concurrency: Number of concurrent requests
+            indexer: Optional SiteIndexer instance to persist processed content
 
         Returns:
             SearchScraperResult with extracted data or markdown content
@@ -142,6 +147,17 @@ class SearchScraper:
                 })
 
                 markdown_pages.append(f"## Source: {url}\n\n{markdown}")
+
+                if indexer:
+                    indexer.index_page(
+                        url,
+                        markdown,
+                        metadata={
+                            "source": "search_scraper",
+                            "prompt": prompt,
+                            "mode": "ai_extraction" if extraction_mode else "markdown",
+                        },
+                    )
 
             if not markdown_pages:
                 result.error = "No content could be extracted from search results"
@@ -219,11 +235,18 @@ Instructions:
         extraction_mode: bool = True,
         schema: Optional[Dict[str, Any]] = None,
         timeout: int = 15,
-        concurrency: int = 6
+        concurrency: int = 6,
+        indexer: Optional["SiteIndexer"] = None
     ) -> SearchScraperResult:
         """Synchronous wrapper for search_and_scrape"""
         return asyncio.run(
             self.search_and_scrape(
-                prompt, num_results, extraction_mode, schema, timeout, concurrency
+                prompt,
+                num_results,
+                extraction_mode,
+                schema,
+                timeout,
+                concurrency,
+                indexer=indexer,
             )
         )
