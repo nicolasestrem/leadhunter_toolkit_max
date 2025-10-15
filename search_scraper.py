@@ -251,7 +251,10 @@ Instructions:
         schema: Optional[Dict[str, Any]] = None,
         timeout: int = 15,
         concurrency: int = 6,
-        indexer: Optional["SiteIndexer"] = None
+        indexer: Optional["SiteIndexer"] = None,
+        dynamic_rendering: bool = False,
+        dynamic_allowlist: Optional[Iterable[str]] = None,
+        dynamic_selector_hints: Optional[Mapping[str, Iterable[str]]] = None,
     ) -> SearchScraperResult:
         """Synchronous wrapper for search_and_scrape"""
         return asyncio.run(
@@ -263,5 +266,8 @@ Instructions:
                 timeout,
                 concurrency,
                 indexer=indexer,
+                dynamic_rendering=dynamic_rendering,
+                dynamic_allowlist=dynamic_allowlist,
+                dynamic_selector_hints=dynamic_selector_hints,
             )
         )
