@@ -5,7 +5,7 @@ Automates client onboarding with site crawl, audit, and quick wins generation
 
 import asyncio
 from typing import List, Dict, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -29,6 +29,7 @@ class OnboardingResult:
     all_quick_wins: List[PrioritizedTask]
     generated_at: datetime
     output_file: Optional[Path] = None
+    failed_urls: List[str] = field(default_factory=list)
 
 
 def select_key_pages(
@@ -140,7 +141,8 @@ async def run_onboarding(
             pages_audited=0,
             audits=[],
             all_quick_wins=[],
-            generated_at=datetime.now()
+            generated_at=datetime.now(),
+            failed_urls=[]
         )
 
     # Step 2: Select key pages
@@ -153,24 +155,33 @@ async def run_onboarding(
 
     # Step 4: Audit each page
     audits = []
+    failed_urls: List[str] = []
     for url in key_urls:
         html_content = html_results.get(url, '')
 
         if not html_content:
             logger.warning(f"No HTML content for {url}, skipping audit")
+            failed_urls.append(url)
             continue
 
         logger.info(f"Auditing {url}")
-        audit = audit_page(
-            url=url,
-            html_content=html_content,
-            llm_adapter=llm_adapter,
-            use_llm=True
-        )
+        try:
+            audit = audit_page(
+                url=url,
+                html_content=html_content,
+                llm_adapter=llm_adapter,
+                use_llm=True
+            )
+        except Exception as exc:  # noqa: BLE001 - Surface audit errors gracefully
+            logger.error(f"Audit failed for {url}: {exc}", exc_info=True)
+            failed_urls.append(url)
+            continue
 
         audits.append(audit)
 
     logger.info(f"Completed {len(audits)} page audits")
+    if failed_urls:
+        logger.warning(f"Failed to audit {len(failed_urls)} pages: {failed_urls}")
 
     # Step 5: Aggregate quick wins from all audits
     all_tasks = []
@@ -198,7 +209,8 @@ async def run_onboarding(
         pages_audited=len(audits),
         audits=audits,
         all_quick_wins=top_tasks,
-        generated_at=datetime.now()
+        generated_at=datetime.now(),
+        failed_urls=failed_urls
     )
 
     # Step 6: Export to markdown if output_dir provided

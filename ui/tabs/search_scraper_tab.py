@@ -5,9 +5,11 @@ Search Scraper Tab - AI-Powered Web Research
 import datetime
 import json
 import streamlit as st
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional
 from constants import MIN_NUM_SOURCES, MAX_NUM_SOURCES, DEFAULT_NUM_SOURCES
+from crawl import CrawlConfig
 from indexing.site_indexer import SiteIndexer
 from scraping.pipeline import (
     PipelineResult,
@@ -84,6 +86,113 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
             except json.JSONDecodeError:
                 st.warning("Invalid JSON schema. Will use default extraction.")
 
+    dynamic_rendering_default = bool(settings.get("dynamic_rendering", False))
+    dynamic_allowlist: Optional[set[str]] = None
+    dynamic_selector_hints: Optional[dict[str, list[str]]] = None
+
+    with st.expander("Advanced fetching options", expanded=dynamic_rendering_default):
+        dynamic_rendering = st.toggle(
+            "Enable dynamic rendering (Playwright)",
+            value=dynamic_rendering_default,
+            help="Fetch pages with a headless browser for sites that require JavaScript rendering.",
+        )
+
+        allowlist_default = settings.get("dynamic_allowlist", "")
+        if isinstance(allowlist_default, (list, tuple, set)):
+            allowlist_default = ", ".join(str(domain) for domain in allowlist_default)
+        allowlist_input = st.text_input(
+            "Dynamic rendering allowlist",
+            value=str(allowlist_default) if allowlist_default else "",
+            help="Comma or newline separated domains allowed for Playwright rendering.",
+            placeholder="example.com, example.org",
+        )
+
+        hints_default = settings.get("dynamic_selector_hints", "")
+        if isinstance(hints_default, dict):
+            try:
+                hints_default = json.dumps(hints_default, indent=2)
+            except (TypeError, ValueError):
+                hints_default = ""
+        hints_input = st.text_area(
+            "Selector hints (JSON)",
+            value=str(hints_default) if hints_default else "",
+            help="Optional JSON mapping of domain to CSS selectors to await when using Playwright.",
+            placeholder='{"example.com": [".content", "#main"]}',
+        )
+
+        if dynamic_rendering:
+            cleaned_allowlist: set[str] = set()
+            if allowlist_input.strip():
+                for chunk in allowlist_input.replace("\n", ",").split(","):
+                    domain = chunk.strip().lower()
+                    if domain:
+                        cleaned_allowlist.add(domain)
+            dynamic_allowlist = cleaned_allowlist or None
+
+            if hints_input.strip():
+                try:
+                    parsed_hints = json.loads(hints_input)
+                    if isinstance(parsed_hints, dict):
+                        cleaned_hints: dict[str, list[str]] = {}
+                        for domain, selectors in parsed_hints.items():
+                            domain_label = str(domain).strip()
+                            if not domain_label:
+                                st.warning(
+                                    "Selector hints entries require a non-empty domain key. Ignoring entry.",
+                                    icon="⚠️",
+                                )
+                                continue
+
+                            if isinstance(selectors, str):
+                                selector_iterable = [selectors]
+                            elif isinstance(selectors, Iterable) and not isinstance(selectors, (dict, str)):
+                                selector_iterable = selectors
+                            else:
+                                st.warning(
+                                    f"Selector hints for {domain_label!r} must be a string or list of strings. Ignoring entry.",
+                                    icon="⚠️",
+                                )
+                                continue
+
+                            cleaned_selectors: list[str] = []
+                            for selector in selector_iterable:
+                                selector_text = str(selector).strip()
+                                if selector_text:
+                                    cleaned_selectors.append(selector_text)
+
+                            if cleaned_selectors:
+                                unique_selectors = list(dict.fromkeys(cleaned_selectors))
+                                cleaned_hints[domain_label.lower()] = unique_selectors
+                            else:
+                                st.warning(
+                                    f"Selector hints for {domain_label!r} did not include any selectors. Ignoring entry.",
+                                    icon="⚠️",
+                                )
+
+                        dynamic_selector_hints = cleaned_hints or None
+                    else:
+                        st.warning("Selector hints must be a JSON object mapping domains to selectors.", icon="⚠️")
+                except json.JSONDecodeError:
+                    st.warning("Invalid JSON for selector hints. Ignoring value.", icon="⚠️")
+            else:
+                dynamic_selector_hints = None
+        else:
+            dynamic_allowlist = None
+            dynamic_selector_hints = None
+
+    def build_dynamic_fetch_kwargs() -> dict[str, object]:
+        if not dynamic_rendering:
+            return {}
+
+        kwargs: dict[str, object] = {"dynamic_rendering": True}
+        if dynamic_allowlist is not None:
+            kwargs["dynamic_allowlist"] = dynamic_allowlist
+        if dynamic_selector_hints:
+            kwargs["dynamic_selector_hints"] = dynamic_selector_hints
+        return kwargs
+
+    dynamic_fetch_kwargs = build_dynamic_fetch_kwargs()
+
     run_scraper = st.button("🔍 Search & Scrape", type="primary", use_container_width=True)
 
     if run_scraper and scraper_prompt.strip():
@@ -124,6 +233,7 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                     timeout=int(settings.get("fetch_timeout", 15)),
                     concurrency=int(settings.get("concurrency", 8)),
                     indexer=indexer,
+                    **dynamic_fetch_kwargs,
                 )
 
             st.session_state["search_scraper_result"] = result
@@ -245,14 +355,21 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
             else:
                 try:
                     with st.spinner("Crawling site and extracting contacts..."):
+                        crawl_params = {
+                            "timeout": int(crawl_timeout),
+                            "concurrency": concurrency,
+                            "max_pages": int(max_pages),
+                            "deep_contact": bool(deep_contact),
+                        }
+                        if dynamic_rendering:
+                            crawl_params["config"] = CrawlConfig(
+                                dynamic_rendering=True,
+                                dynamic_allowed_domains=dynamic_allowlist,
+                            )
+
                         pipeline_result = run_site_pipeline_sync(
                             crawl_url.strip(),
-                            crawl_kwargs={
-                                "timeout": int(crawl_timeout),
-                                "concurrency": concurrency,
-                                "max_pages": int(max_pages),
-                                "deep_contact": bool(deep_contact),
-                            },
+                            crawl_kwargs=crawl_params,
                             extraction_settings=extraction_settings,
                         )
                     st.session_state["pipeline_result"] = pipeline_result
@@ -288,15 +405,18 @@ def render_search_scraper_tab(settings: dict, out_dir: str):
                         search_callable = ddg_sites
 
                     with st.spinner("Fetching search results and extracting contacts..."):
+                        fetch_kwargs = {
+                            "timeout": int(fetch_timeout_input),
+                            "concurrency": concurrency,
+                            "use_cache": True,
+                        }
+                        fetch_kwargs.update(dynamic_fetch_kwargs)
+
                         pipeline_result = run_search_pipeline_sync(
                             search_query.strip(),
                             search_func=search_callable,
                             max_results=int(max_results),
-                            fetch_kwargs={
-                                "timeout": int(fetch_timeout_input),
-                                "concurrency": concurrency,
-                                "use_cache": True,
-                            },
+                            fetch_kwargs=fetch_kwargs,
                             extraction_settings=extraction_settings,
                             google_kwargs=google_kwargs,
                         )
