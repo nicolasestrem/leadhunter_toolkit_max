@@ -83,7 +83,8 @@ def test_crawl_site_dynamic_fetch(monkeypatch):
         store[key] = value
         return True
 
-    async def fake_dynamic(url: str, *, timeout: int):
+    async def fake_dynamic(url: str, *, timeout: int, selector_hints=None):
+        assert selector_hints == ("#app",)
         return "<html><body><a href='https://example.com/about'>About</a></body></html>", {
             "status": 200,
             "final_url": url,
@@ -98,16 +99,30 @@ def test_crawl_site_dynamic_fetch(monkeypatch):
     monkeypatch.setattr("crawl.robots_allowed", lambda url: True)
     monkeypatch.setattr("crawl.get_crawl_delay", lambda url: None)
 
+    config = CrawlConfig(
+        max_depth=0,
+        use_cache=True,
+        dynamic_rendering=True,
+        dynamic_allowed_domains={"Example.com"},
+        dynamic_selector_hints={"EXAMPLE.COM": ["#app"]},
+    )
+
+    # Ensure __post_init__ normalized casing and selector tuple conversion
+    assert config.dynamic_allowed_domains == {"example.com"}
+    assert config.dynamic_selector_hints["example.com"] == ("#app",)
+
+    # Simulate a legacy instance that only had dynamic_allowlist populated
+    legacy_config = CrawlConfig(dynamic_rendering=True)
+    legacy_config.dynamic_allowed_domains = None
+    setattr(legacy_config, "dynamic_allowlist", {"Example.com"})
+    legacy_config.__post_init__()
+    assert legacy_config.dynamic_allowed_domains == {"example.com"}
+
     pages = asyncio.run(
         crawl.crawl_site(
             "https://example.com",
             max_pages=1,
-            config=CrawlConfig(
-                max_depth=0,
-                use_cache=True,
-                dynamic_rendering=True,
-                dynamic_allowed_domains={"example.com"},
-            ),
+            config=config,
         )
     )
 
