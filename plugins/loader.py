@@ -111,6 +111,24 @@ def enable_plugin(plugin_name: str):
             logger.info(f"Plugin '{plugin_name}' manually re-enabled")
 
 
+def disable_plugin(plugin_name: str):
+    """Manually disable a plugin (thread-safe)."""
+    with _health_lock:
+        if plugin_name not in PLUGIN_HEALTH:
+            init_plugin_health(plugin_name)
+        if PLUGIN_HEALTH[plugin_name]['enabled']:
+            PLUGIN_HEALTH[plugin_name]['enabled'] = False
+            logger.info(f"Plugin '{plugin_name}' manually disabled")
+
+
+def set_plugin_enabled(plugin_name: str, enabled: bool):
+    """Update a plugin's enabled state (thread-safe)."""
+    if enabled:
+        enable_plugin(plugin_name)
+    else:
+        disable_plugin(plugin_name)
+
+
 def get_plugin_health_status() -> Dict[str, Dict]:
     """
     Get health status of all plugins (thread-safe)

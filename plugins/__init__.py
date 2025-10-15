@@ -9,7 +9,9 @@ from plugins.loader import (
     call_plugin_hook,
     get_plugin_health_status,
     enable_plugin,
-    is_plugin_enabled
+    disable_plugin,
+    is_plugin_enabled,
+    set_plugin_enabled,
 )
 
 __all__ = [
@@ -18,5 +20,7 @@ __all__ = [
     'call_plugin_hook',
     'get_plugin_health_status',
     'enable_plugin',
-    'is_plugin_enabled'
+    'disable_plugin',
+    'is_plugin_enabled',
+    'set_plugin_enabled',
 ]

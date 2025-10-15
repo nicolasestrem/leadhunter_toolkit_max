@@ -90,8 +90,22 @@ def render_audit_tab(settings: dict, out_dir: str):
 
                 progress_bar.progress(1.0)
                 status_text.text("✓ Onboarding workflow complete!")
-                st.success(f"✅ Audited {len(result.audits)} pages, generated {len(result.all_quick_wins)} prioritized quick wins")
-                st.toast("Audit complete!", icon="🔍")
+                success_message = (
+                    f"✅ Audited {len(result.audits)} pages, generated {len(result.all_quick_wins)} prioritized quick wins"
+                )
+                if result.failed_urls:
+                    success_message += f" (⚠️ {len(result.failed_urls)} page(s) skipped due to errors)"
+                st.success(success_message)
+
+                if result.failed_urls:
+                    skipped_list = "\n".join(f"• {url}" for url in result.failed_urls)
+                    st.warning(
+                        "Some pages could not be audited successfully. "
+                        "They may have timed out or returned an error:\n" + skipped_list
+                    )
+                    st.toast("Audit completed with some skipped pages", icon="⚠️")
+                else:
+                    st.toast("Audit complete!", icon="🔍")
 
             except Exception as e:
                 st.error(f"Onboarding failed: {str(e)}")
@@ -156,6 +170,19 @@ def render_audit_tab(settings: dict, out_dir: str):
         st.subheader(f"📊 Audit Results: {result.domain}")
 
         st.info(f"Crawled: {result.pages_crawled} pages | Audited: {result.pages_audited} pages")
+
+        if result.failed_urls:
+            st.warning(
+                "The following page(s) could not be audited and were skipped:\n" +
+                "\n".join(f"• {url}" for url in result.failed_urls)
+            )
+
+        if not result.audits:
+            st.error(
+                "No audits were completed successfully. Please verify the domain is accessible "
+                "and try again with fewer pages or a higher timeout."
+            )
+            return
 
         # Page audits
         for i, audit in enumerate(result.audits, 1):

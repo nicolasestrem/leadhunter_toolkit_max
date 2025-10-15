@@ -51,3 +51,35 @@ def test_search_scraper_clamps_to_max_sources(monkeypatch):
     assert len(result.sources) == MAX_NUM_SOURCES
     assert result.error is None
     assert result.markdown_content is not None
+
+
+def test_sync_search_scraper_forwards_dynamic_options(monkeypatch):
+    urls = ["https://example.com"]
+
+    def fake_ddg_sites(query, max_results):
+        assert query == "query"
+        return urls
+
+    captured_kwargs = {}
+
+    async def fake_fetch_many(url_list, **kwargs):
+        captured_kwargs.update(kwargs)
+        return {url: "<html><body>Content</body></html>" for url in url_list}
+
+    monkeypatch.setattr("search_scraper.ddg_sites", fake_ddg_sites)
+    monkeypatch.setattr("search_scraper.fetch_many", fake_fetch_many)
+
+    scraper = SearchScraper()
+    result = scraper.sync_search_and_scrape(
+        "query",
+        extraction_mode=False,
+        dynamic_rendering=True,
+        dynamic_allowlist={"example.com"},
+        dynamic_selector_hints={"example.com": ["#app", ".content"]},
+    )
+
+    assert captured_kwargs.get("dynamic_rendering") is True
+    assert captured_kwargs.get("dynamic_allowlist") == {"example.com"}
+    assert captured_kwargs.get("dynamic_selector_hints") == {"example.com": ["#app", ".content"]}
+    assert result.error is None
+    assert result.markdown_content is not None
