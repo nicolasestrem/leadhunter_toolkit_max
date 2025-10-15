@@ -2,7 +2,7 @@ import asyncio
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
@@ -32,6 +32,7 @@ class CrawlConfig:
     strip_empty_fragments: bool = True
     dynamic_rendering: bool = False
     dynamic_allowed_domains: Optional[Iterable[str]] = None
+    dynamic_selector_hints: Mapping[str, Iterable[str]] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.allowed_domains is not None:
@@ -39,12 +40,43 @@ class CrawlConfig:
         else:
             self.allowed_domains = None
 
-        if self.dynamic_allowed_domains is not None:
+        # Support legacy attribute names that may still be attached to
+        # deserialized CrawlConfig instances.
+        legacy_allowlist = getattr(self, "dynamic_allowlist", None)
+        if legacy_allowlist and not getattr(self, "dynamic_allowed_domains", None):
+            self.dynamic_allowed_domains = legacy_allowlist
+        if hasattr(self, "dynamic_allowlist"):
+            delattr(self, "dynamic_allowlist")
+
+        dynamic_domains = getattr(self, "dynamic_allowed_domains", None)
+        if dynamic_domains is not None:
             self.dynamic_allowed_domains = {
-                d.lower() for d in self.dynamic_allowed_domains
+                d.lower() for d in dynamic_domains if d
             }
         else:
             self.dynamic_allowed_domains = None
+
+        selector_hints: Optional[Mapping[str, Iterable[str]]] = getattr(
+            self, "dynamic_selector_hints", None
+        )
+        if selector_hints:
+            normalized_hints: dict[str, tuple[str, ...]] = {}
+            for domain, hints in selector_hints.items():
+                if not domain:
+                    continue
+                domain_key = domain.lower()
+                if hints is None:
+                    normalized_hints[domain_key] = tuple()
+                    continue
+                if isinstance(hints, str):
+                    normalized_hints[domain_key] = (hints,)
+                    continue
+
+                normalized_tuple = tuple(hint for hint in hints if hint)
+                normalized_hints[domain_key] = normalized_tuple
+            self.dynamic_selector_hints = normalized_hints
+        else:
+            self.dynamic_selector_hints = {}
 
         compiled_filters = []
         for filt in self.path_filters:
@@ -281,7 +313,16 @@ async def crawl_site(
             async with sem:
                 await rate_limiter.wait()
                 if dynamic:
-                    html, _ = await fetch_dynamic(url, timeout=timeout)
+                    hints = None
+                    if config.dynamic_selector_hints:
+                        hints = config.dynamic_selector_hints.get(
+                            urlparse(url).netloc.lower()
+                        )
+                    html, _ = await fetch_dynamic(
+                        url,
+                        timeout=timeout,
+                        selector_hints=hints,
+                    )
                 else:
                     html = await fetch_one(client, url, timeout=timeout)
 
