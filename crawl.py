@@ -28,6 +28,8 @@ class CrawlConfig:
     allowed_query_params: Optional[Iterable[str]] = None
     blocked_query_params: Iterable[str] = field(default_factory=set)
     strip_empty_fragments: bool = True
+    dynamic_rendering: bool = False
+    dynamic_allowed_domains: Optional[Iterable[str]] = None
 
     def __post_init__(self):
         if self.allowed_domains is not None:
