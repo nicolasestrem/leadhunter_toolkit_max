@@ -27,6 +27,7 @@ def test_fetch_many_dynamic_uses_cache(monkeypatch):
         raise AssertionError("HTTP fetch should not be used during dynamic test")
 
     async def fake_fetch_dynamic(url: str, *, timeout: int, selector_hints=None):
+        assert selector_hints == ("#app",)
         return "<html id='app'>dynamic</html>", {"status": 200, "final_url": url}
 
     monkeypatch.setattr(fetch, "write_cache", fake_write_cache)
@@ -43,7 +44,7 @@ def test_fetch_many_dynamic_uses_cache(monkeypatch):
             use_cache=True,
             dynamic_rendering=True,
             dynamic_allowlist={"example.com"},
-            dynamic_selector_hints={"example.com": ["#app"]},
+            dynamic_selector_hints={"example.com": "#app"},
         )
     )
 
@@ -54,6 +55,7 @@ def test_fetch_many_dynamic_uses_cache(monkeypatch):
     call_counter = {"count": 0}
 
     async def counting_fetch_dynamic(url: str, *, timeout: int, selector_hints=None):
+        assert selector_hints is None
         call_counter["count"] += 1
         return "<html id='app'>dynamic</html>", {"status": 200, "final_url": url}
 
@@ -83,7 +85,8 @@ def test_crawl_site_dynamic_fetch(monkeypatch):
         store[key] = value
         return True
 
-    async def fake_dynamic(url: str, *, timeout: int):
+    async def fake_dynamic(url: str, *, timeout: int, selector_hints=None):
+        assert selector_hints == ("#app",)
         return "<html><body><a href='https://example.com/about'>About</a></body></html>", {
             "status": 200,
             "final_url": url,
@@ -98,16 +101,32 @@ def test_crawl_site_dynamic_fetch(monkeypatch):
     monkeypatch.setattr("crawl.robots_allowed", lambda url: True)
     monkeypatch.setattr("crawl.get_crawl_delay", lambda url: None)
 
+    config = CrawlConfig(
+        max_depth=0,
+        use_cache=True,
+        dynamic_rendering=True,
+        dynamic_allowed_domains={"Example.com"},
+        dynamic_selector_hints={"EXAMPLE.COM": "#app"},
+    )
+
+    # Ensure __post_init__ normalized casing and selector tuple conversion
+    assert config.dynamic_allowed_domains == {"example.com"}
+    assert config.dynamic_selector_hints["example.com"] == ("#app",)
+
+    # Simulate a legacy instance that only had dynamic_allowlist populated
+    legacy_config = CrawlConfig(dynamic_rendering=True)
+    legacy_config.dynamic_allowed_domains = None
+    setattr(legacy_config, "dynamic_allowlist", {"Example.com"})
+    setattr(legacy_config, "dynamic_selector_hints", {"Example.com": None})
+    legacy_config.__post_init__()
+    assert legacy_config.dynamic_allowed_domains == {"example.com"}
+    assert legacy_config.dynamic_selector_hints["example.com"] == tuple()
+
     pages = asyncio.run(
         crawl.crawl_site(
             "https://example.com",
             max_pages=1,
-            config=CrawlConfig(
-                max_depth=0,
-                use_cache=True,
-                dynamic_rendering=True,
-                dynamic_allowed_domains={"example.com"},
-            ),
+            config=config,
         )
     )
 

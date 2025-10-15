@@ -60,10 +60,20 @@ async def fetch_many(
     else:
         allowed_domains = None
 
-    selector_hints = {
-        domain.lower(): tuple(hints)
-        for domain, hints in (dynamic_selector_hints or {}).items()
-    }
+    selector_hints: dict[str, tuple[str, ...]] = {}
+    if dynamic_selector_hints:
+        for domain, hints in dynamic_selector_hints.items():
+            if not domain:
+                continue
+            domain_key = domain.lower()
+            if hints is None:
+                selector_hints[domain_key] = tuple()
+                continue
+            if isinstance(hints, str):
+                selector_hints[domain_key] = (hints,)
+                continue
+
+            selector_hints[domain_key] = tuple(hint for hint in hints if hint)
 
     def _should_use_dynamic(url: str) -> bool:
         if not dynamic_rendering:
