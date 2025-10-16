@@ -41,7 +41,10 @@ class CrawlConfig:
         # Support legacy attribute names that may still be attached to
         # deserialized CrawlConfig instances.
         legacy_allowlist = getattr(self, "dynamic_allowlist", None)
-        if legacy_allowlist and not getattr(self, "dynamic_allowed_domains", None):
+        if (
+            legacy_allowlist is not None
+            and getattr(self, "dynamic_allowed_domains", None) is None
+        ):
             self.dynamic_allowed_domains = legacy_allowlist
         if hasattr(self, "dynamic_allowlist"):
             delattr(self, "dynamic_allowlist")
