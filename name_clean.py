@@ -1,6 +1,17 @@
 import re
 
 def company_name_from_title(title: str | None) -> str | None:
+    """Clean up a page title to extract a company name.
+
+    This function uses a series of regular expressions to remove common suffixes,
+    parentheticals, and prefixes from a page title to isolate the company name.
+
+    Args:
+        title (str | None): The page title to clean.
+
+    Returns:
+        str | None: The cleaned company name, or None if the title is invalid.
+    """
     if not title:
         return None
     t = title.strip()

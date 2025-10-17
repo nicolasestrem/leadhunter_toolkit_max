@@ -304,6 +304,7 @@ Plugins auto-load from `plugins/` directory.
 
 - **[CLIENT_PLAYBOOK.md](docs/CLIENT_PLAYBOOK.md)**: Day-1 workflow for consultants
 - **[CLAUDE.md](CLAUDE.md)**: Architecture and implementation details
+- **Codebase Documentation**: The codebase is fully documented with comprehensive docstrings.
 - **[config/defaults.yml](config/defaults.yml)**: All configurable settings
 - **[config/models.yml](config/models.yml)**: LLM model configurations
 

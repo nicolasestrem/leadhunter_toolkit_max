@@ -6,10 +6,10 @@ import streamlit as st
 
 
 def render_quick_start():
-    """
-    Render the quick start guide in an expander.
+    """Render the quick start guide in a Streamlit expander.
 
-    Provides comprehensive documentation for all features and workflows.
+    This function creates a collapsible section in the UI that contains comprehensive
+    documentation for all of the application's features and workflows.
     """
     with st.expander("📚 Quick Start Guide", expanded=False):
         st.markdown("""

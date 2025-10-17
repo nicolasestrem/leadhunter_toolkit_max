@@ -21,26 +21,47 @@ PROMPT_LIBRARY_DIR = BASE_DIR / "llm" / "prompt_library"
 
 @dataclass
 class QuickWin:
-    """Represents a 48-hour quick win"""
+    """Represents a tangible, 48-hour quick win that can be proposed to a client.
+
+    Attributes:
+        title (str): A concise title for the quick win.
+        action (str): A clear, actionable step to be taken.
+        impact (str): The expected positive impact of the action.
+        effort (str): The estimated effort required ('low', 'medium').
+        priority (int): A priority score from 1 to 5.
+    """
     title: str
     action: str
     impact: str
-    effort: str  # low, medium
-    priority: int  # 1-5
+    effort: str
+    priority: int
 
 
 @dataclass
 class Issue:
-    """Represents a detected issue"""
-    category: str  # technical, content, seo, ux
-    severity: str  # critical, high, medium, low
+    """Represents a single issue detected during the analysis.
+
+    Attributes:
+        category (str): The category of the issue (e.g., 'technical', 'seo').
+        severity (str): The severity of the issue ('critical', 'high', 'medium', 'low').
+        description (str): A detailed description of the issue.
+        source (str): The URL where the issue was identified.
+    """
+    category: str
+    severity: str
     description: str
-    source: str  # URL where issue was found
+    source: str
 
 
 @dataclass
 class DigitalPresence:
-    """Digital presence analysis"""
+    """Represents the analysis of a company's digital presence.
+
+    Attributes:
+        website_quality (str): An assessment of the website's quality.
+        social_activity (str): An assessment of the company's social media activity.
+        online_reputation (str): An assessment of the company's online reputation.
+    """
     website_quality: str
     social_activity: str
     online_reputation: str
@@ -48,7 +69,13 @@ class DigitalPresence:
 
 @dataclass
 class Signals:
-    """Business signals"""
+    """Represents various business signals identified during the analysis.
+
+    Attributes:
+        positive (List[str]): A list of positive signals.
+        growth (List[str]): A list of signals indicating growth.
+        pain (List[str]): A list of pain points or challenges.
+    """
     positive: List[str] = field(default_factory=list)
     growth: List[str] = field(default_factory=list)
     pain: List[str] = field(default_factory=list)
@@ -56,26 +83,46 @@ class Signals:
 
 @dataclass
 class Dossier:
-    """Complete lead dossier"""
+    """Represents a complete and comprehensive lead dossier.
+
+    This data class serves as the main container for all the information gathered
+    and analyzed about a lead.
+
+    Attributes:
+        company_name (str): The name of the company.
+        website (str): The company's website URL.
+        generated_at (datetime): The timestamp of when the dossier was generated.
+        company_overview (str): A summary of the company.
+        services_products (List[str]): A list of the company's services or products.
+        digital_presence (DigitalPresence): An analysis of the digital presence.
+        signals (Signals): A collection of identified business signals.
+        issues (List[Issue]): A list of detected issues.
+        quick_wins (List[QuickWin]): A list of actionable quick wins.
+        pages_analyzed (int): The number of pages analyzed to create the dossier.
+        sources (List[str]): A list of the source URLs used for the analysis.
+    """
     company_name: str
     website: str
     generated_at: datetime
-
-    # Core sections
     company_overview: str
     services_products: List[str]
     digital_presence: DigitalPresence
     signals: Signals
     issues: List[Issue]
     quick_wins: List[QuickWin]
-
-    # Metadata
     pages_analyzed: int
     sources: List[str] = field(default_factory=list)
 
 
 def load_dossier_prompt_config() -> Dict:
-    """Load dossier prompt configuration from YAML"""
+    """Load the dossier prompt configuration from its YAML file.
+
+    This function is responsible for reading and parsing the 'dossier.yml' file, which
+    contains the templates and settings for generating a dossier.
+
+    Returns:
+        Dict: A dictionary containing the dossier prompt configuration.
+    """
     prompt_path = PROMPT_LIBRARY_DIR / "dossier.yml"
 
     with open(prompt_path, 'r', encoding='utf-8') as f:
@@ -90,17 +137,20 @@ def prepare_pages_content(
     max_total: int = 15000,
     priority_keywords: List[str] = None
 ) -> tuple[str, int]:
-    """
-    Prepare and aggregate page content for LLM
+    """Prepare and aggregate page content for use in an LLM prompt.
+
+    This function processes a list of crawled pages, prioritizing them based on keywords,
+    truncating content to meet size limits, and formatting them into a single string
+    for the LLM.
 
     Args:
-        pages: List of dicts with 'url' and 'content' keys
-        max_per_page: Max characters per page
-        max_total: Max total characters
-        priority_keywords: Keywords to prioritize pages (home, about, contact, etc.)
+        pages (List[Dict[str, str]]): A list of dictionaries, each with 'url' and 'content'.
+        max_per_page (int): The maximum number of characters per page.
+        max_total (int): The maximum total characters for the aggregated content.
+        priority_keywords (List[str]): A list of keywords to prioritize pages.
 
     Returns:
-        Tuple of (formatted_content, page_count)
+        tuple[str, int]: A tuple containing the formatted content and the count of pages included.
     """
     if priority_keywords is None:
         priority_keywords = ['home', 'index', 'about', 'contact', 'services', 'products']
@@ -146,15 +196,17 @@ def format_dossier_prompt(
     lead_data: Dict,
     pages: List[Dict[str, str]]
 ) -> tuple[str, str]:
-    """
-    Format dossier prompts (system + user)
+    """Format the dossier prompts, including both system and user prompts.
+
+    This function assembles the prompts for the LLM by combining the lead data and the
+    prepared page content with the templates from the dossier prompt configuration.
 
     Args:
-        lead_data: Lead data dict
-        pages: List of page dicts with url and content
+        lead_data (Dict): The lead data dictionary.
+        pages (List[Dict[str, str]]): A list of page dictionaries with URL and content.
 
     Returns:
-        Tuple of (system_prompt, user_prompt)
+        tuple[str, str]: A tuple containing the system and user prompts.
     """
     config = load_dossier_prompt_config()
 
@@ -201,16 +253,18 @@ def format_dossier_prompt(
 
 
 def parse_dossier_response(response: str, lead_data: Dict, pages: List[Dict]) -> Dossier:
-    """
-    Parse LLM response into Dossier object
+    """Parse the LLM's response into a Dossier object.
+
+    This function is designed to robustly handle the JSON output from the LLM, including
+    cleaning the response and parsing it into the structured Dossier data class.
 
     Args:
-        response: LLM JSON response
-        lead_data: Lead data dict
-        pages: Pages analyzed
+        response (str): The JSON response from the LLM.
+        lead_data (Dict): The lead data dictionary.
+        pages (List[Dict]): The list of pages that were analyzed.
 
     Returns:
-        Dossier object
+        Dossier: A complete Dossier object.
     """
     try:
         # Clean response - handle various formats
@@ -330,17 +384,20 @@ def build_dossier(
     llm_adapter: LLMAdapter,
     output_dir: Optional[Path] = None
 ) -> Dossier:
-    """
-    Build comprehensive dossier for a lead
+    """Build a comprehensive dossier for a lead.
+
+    This is the main function for generating a dossier. It orchestrates the entire process,
+    from formatting the prompts and calling the LLM to parsing the response and saving the
+    final dossier.
 
     Args:
-        lead_data: Lead data dict (should include LeadRecord fields)
-        pages: List of page dicts with 'url' and 'content' keys
-        llm_adapter: Configured LLM adapter
-        output_dir: Optional output directory for saving dossier
+        lead_data (Dict): The lead data, which should include LeadRecord fields.
+        pages (List[Dict[str, str]]): A list of page dictionaries with 'url' and 'content'.
+        llm_adapter (LLMAdapter): A configured LLM adapter.
+        output_dir (Optional[Path]): An optional directory to save the dossier.
 
     Returns:
-        Dossier object
+        Dossier: The generated Dossier object.
     """
     logger.info(f"Building dossier for {lead_data.get('name', 'Unknown')}")
 
@@ -387,15 +444,17 @@ def build_dossier(
 
 
 def save_dossier(dossier: Dossier, output_dir: Path) -> tuple[Path, Path]:
-    """
-    Save dossier to markdown and JSON files
+    """Save the dossier to both markdown and JSON files.
+
+    This function creates a human-readable markdown report of the dossier, as well as
+    a machine-readable JSON file containing the sources.
 
     Args:
-        dossier: Dossier to save
-        output_dir: Output directory
+        dossier (Dossier): The dossier to be saved.
+        output_dir (Path): The directory where the files will be saved.
 
     Returns:
-        Tuple of (markdown_path, json_path)
+        tuple[Path, Path]: A tuple containing the paths to the saved markdown and JSON files.
     """
     # Create slug from company name
     slug = dossier.company_name.replace(' ', '_').replace('.', '_').lower()

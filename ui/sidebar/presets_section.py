@@ -8,7 +8,14 @@ from constants import PRESETS_DIR
 
 
 def list_presets():
-    """Get list of available preset names."""
+    """Get a list of available preset names.
+
+    This function scans the presets directory for '.json' files and returns a sorted
+    list of their base names.
+
+    Returns:
+        list: A sorted list of preset names.
+    """
     items = []
     for name in os.listdir(PRESETS_DIR):
         if name.endswith(".json"):
@@ -17,16 +24,17 @@ def list_presets():
 
 
 def render_presets_section(settings: dict, load_callback, save_callback) -> dict:
-    """
-    Render presets management section.
+    """Render the presets management section in the sidebar.
+
+    This function provides the UI for loading, saving, and deleting configuration presets.
 
     Args:
-        settings: Current settings dictionary
-        load_callback: Function to load preset data
-        save_callback: Function to save settings
+        settings (dict): The current settings dictionary.
+        load_callback: The function to call to load preset data.
+        save_callback: The function to call to save settings.
 
     Returns:
-        Updated settings dictionary (only if changed)
+        dict: The updated settings dictionary, which may be modified if a preset is loaded.
     """
     st.divider()
     st.subheader("Presets")

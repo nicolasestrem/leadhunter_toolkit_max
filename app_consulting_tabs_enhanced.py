@@ -8,11 +8,17 @@ Replace lines 704-982 in app.py with this enhanced version
 """
 
 def enhanced_leads_tab():
+    """Render the enhanced Leads tab in the Streamlit UI.
+
+    This function provides an improved user interface for classifying, scoring,
+    and filtering leads.
+    """
     st.subheader("Lead Classification & Scoring")
     st.caption("Classify and score leads with multi-dimensional analysis using LLM")
 
     # Helper function to create LLM adapter
     def get_llm_adapter():
+        """Create and return a configured LLM adapter."""
         config_loader = ConfigLoader()
         config = config_loader.get_merged_config()
         return LLMAdapter.from_config(config)
@@ -289,6 +295,11 @@ Replace lines 984-1103 in app.py with this enhanced version
 """
 
 def enhanced_outreach_tab():
+    """Render the enhanced Outreach tab in the Streamlit UI.
+
+    This function provides an improved user interface for generating personalized
+    outreach messages.
+    """
     st.subheader("✉️ Personalized Outreach Generator")
     st.caption("Generate 3 message variants with deliverability optimization and vertical-specific templates")
 
@@ -481,6 +492,11 @@ Replace lines 1104-1328 in app.py with this enhanced version
 """
 
 def enhanced_dossier_tab():
+    """Render the enhanced Dossier tab in the Streamlit UI.
+
+    This function provides an improved user interface for building and displaying
+    client dossiers.
+    """
     st.subheader("📋 Client Dossier Builder")
     st.caption("Generate comprehensive RAG-based client dossiers with cited sources and quick wins")
 
@@ -767,6 +783,11 @@ Replace lines 1330-1534 in app.py with this enhanced version
 """
 
 def enhanced_audit_tab():
+    """Render the enhanced Audit tab in the Streamlit UI.
+
+    This function provides an improved user interface for the client onboarding
+    wizard and the site audit functionalities.
+    """
     st.subheader("🔍 Client Onboarding & Audit")
     st.caption("Run comprehensive site audits and generate prioritized quick wins")
 

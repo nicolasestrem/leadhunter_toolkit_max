@@ -11,20 +11,44 @@ from localization.i18n import get_language_config
 
 
 def _to_decimal(value: Union[float, int, Decimal]) -> Decimal:
-    """Convert numeric input to ``Decimal`` for consistent rounding."""
+    """Convert a numeric input to a Decimal for consistent rounding.
+
+    Args:
+        value (Union[float, int, Decimal]): The numeric value to convert.
+
+    Returns:
+        Decimal: The converted Decimal object.
+    """
     if isinstance(value, Decimal):
         return value
     return Decimal(str(value))
 
 
 def _quantize(value: Decimal, decimals: int) -> Decimal:
-    """Quantize ``value`` to the desired number of decimal places."""
+    """Quantize a Decimal value to a specified number of decimal places.
+
+    Args:
+        value (Decimal): The Decimal object to quantize.
+        decimals (int): The number of decimal places to round to.
+
+    Returns:
+        Decimal: The quantized Decimal object.
+    """
     quant = Decimal('1').scaleb(-decimals) if decimals > 0 else Decimal('1')
     return value.quantize(quant, rounding=ROUND_HALF_UP)
 
 
 def _format_locale_number(value: Decimal, language: str, decimals: int) -> str:
-    """Format a ``Decimal`` according to locale separators."""
+    """Format a Decimal number according to locale-specific separators.
+
+    Args:
+        value (Decimal): The Decimal object to format.
+        language (str): The language code for locale settings.
+        decimals (int): The number of decimal places to display.
+
+    Returns:
+        str: The formatted number string.
+    """
     config = get_language_config(language)
     decimal_sep = config.get('decimal_separator', '.')
     thousand_sep = config.get('thousand_separator', ',')
@@ -44,15 +68,17 @@ def _format_locale_number(value: Decimal, language: str, decimals: int) -> str:
 
 
 def format_phone(phone: str, country: str = 'de') -> str:
-    """
-    Format phone number according to country conventions
+    """Format a phone number according to country-specific conventions.
+
+    This function takes a raw phone number string and attempts to format it based on
+    the conventions of the specified country.
 
     Args:
-        phone: Raw phone number
-        country: Country code (de, fr, us, etc.)
+        phone (str): The raw phone number.
+        country (str): The country code (e.g., 'de', 'fr', 'us').
 
     Returns:
-        Formatted phone number
+        str: The formatted phone number.
     """
     # Remove all non-digit characters for processing
     digits = re.sub(r'\D', '', phone)
@@ -107,14 +133,16 @@ def format_phone(phone: str, country: str = 'de') -> str:
 
 
 def normalize_phone(phone: str) -> str:
-    """
-    Normalize phone number to E.164 format (+XXXXXXXXXXX)
+    """Normalize a phone number to the E.164 format.
+
+    This function strips all non-digit characters from the phone number and ensures it
+    starts with a '+', making it suitable for standardized storage or APIs.
 
     Args:
-        phone: Input phone number
+        phone (str): The input phone number.
 
     Returns:
-        Normalized phone number
+        str: The normalized phone number in E.164 format.
     """
     # Remove all non-digit characters
     digits = re.sub(r'\D', '', phone)
@@ -127,15 +155,17 @@ def normalize_phone(phone: str) -> str:
 
 
 def format_currency(amount: float, language: str = 'en') -> str:
-    """
-    Format currency according to language conventions
+    """Format a currency amount according to language-specific conventions.
+
+    This function handles the placement of the currency symbol and the use of
+    appropriate decimal and thousand separators.
 
     Args:
-        amount: Amount to format
-        language: Language code (en, fr, de)
+        amount (float): The currency amount to format.
+        language (str): The language code (e.g., 'en', 'fr', 'de').
 
     Returns:
-        Formatted currency string
+        str: The formatted currency string.
     """
     config = get_language_config(language)
 
@@ -166,16 +196,18 @@ def format_date(
     language: str = 'en',
     include_time: bool = False
 ) -> str:
-    """
-    Format date according to language conventions
+    """Format a date and time according to language-specific conventions.
+
+    This function uses locale-aware format strings to present the date and time in a
+    way that is familiar to users of a specific language.
 
     Args:
-        date: Datetime object to format
-        language: Language code (en, fr, de)
-        include_time: Whether to include time
+        date (datetime): The datetime object to format.
+        language (str): The language code (e.g., 'en', 'fr', 'de').
+        include_time (bool): If True, include the time in the output.
 
     Returns:
-        Formatted date string
+        str: The formatted date string.
     """
     config = get_language_config(language)
 
@@ -195,18 +227,17 @@ def format_address(
     country: str,
     language: str = 'en'
 ) -> str:
-    """
-    Format address according to country conventions
+    """Format a postal address according to country-specific conventions.
 
     Args:
-        street: Street address
-        city: City name
-        postal_code: Postal/ZIP code
-        country: Country code
-        language: Language code for formatting
+        street (str): The street address.
+        city (str): The city name.
+        postal_code (str): The postal or ZIP code.
+        country (str): The country code.
+        language (str): The language code for formatting conventions.
 
     Returns:
-        Formatted address string
+        str: A formatted, multi-line address string.
     """
     country = country.lower()
 
@@ -228,16 +259,18 @@ def format_address(
 
 
 def format_number(number: float, language: str = 'en', decimals: int = 2) -> str:
-    """
-    Format number according to language conventions
+    """Format a number according to language-specific conventions.
+
+    This function handles the correct use of decimal and thousand separators for a
+    given language.
 
     Args:
-        number: Number to format
-        language: Language code (en, fr, de)
-        decimals: Number of decimal places
+        number (float): The number to format.
+        language (str): The language code (e.g., 'en', 'fr', 'de').
+        decimals (int): The number of decimal places to display.
 
     Returns:
-        Formatted number string
+        str: The formatted number string.
     """
     config = get_language_config(language)
 
@@ -254,16 +287,17 @@ def format_number(number: float, language: str = 'en', decimals: int = 2) -> str
 
 
 def format_percentage(value: float, language: str = 'en', decimals: int = 1) -> str:
-    """
-    Format percentage according to language conventions
+    """Format a value as a percentage, with language-specific formatting.
+
+    This function handles the placement of the '%' symbol, which can vary by language.
 
     Args:
-        value: Percentage value (0-100)
-        language: Language code
-        decimals: Number of decimal places
+        value (float): The percentage value (e.g., 95.5).
+        language (str): The language code.
+        decimals (int): The number of decimal places to display.
 
     Returns:
-        Formatted percentage string
+        str: The formatted percentage string.
     """
     num_str = format_number(value, language, decimals)
 
@@ -274,14 +308,16 @@ def format_percentage(value: float, language: str = 'en', decimals: int = 1) -> 
 
 
 def parse_phone(phone_str: str) -> Optional[Dict[str, str]]:
-    """
-    Parse phone number into components
+    """Parse a phone number string into its components.
+
+    This function attempts to break down a phone number into its country code, area code,
+    and local number.
 
     Args:
-        phone_str: Phone number string
+        phone_str (str): The phone number string to parse.
 
     Returns:
-        Dict with country_code, area_code, number or None
+        Optional[Dict[str, str]]: A dictionary with the parsed components, or None if parsing fails.
     """
     # Remove all non-digit characters
     digits = re.sub(r'\D', '', phone_str)
@@ -315,16 +351,18 @@ def format_business_hours(
     close_time: str,
     language: str = 'en'
 ) -> str:
-    """
-    Format business hours according to language conventions
+    """Format business hours according to language-specific conventions.
+
+    This function can handle different time formats, such as the 12-hour AM/PM format
+    used in English-speaking regions.
 
     Args:
-        open_time: Opening time (e.g., "09:00")
-        close_time: Closing time (e.g., "17:00")
-        language: Language code
+        open_time (str): The opening time (e.g., "09:00").
+        close_time (str): The closing time (e.g., "17:00").
+        language (str): The language code.
 
     Returns:
-        Formatted business hours string
+        str: A formatted string representing the business hours.
     """
     if language == 'de':
         return f"{open_time} - {close_time} Uhr"

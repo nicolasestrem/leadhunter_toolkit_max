@@ -1,4 +1,16 @@
 def score_lead(lead: dict, settings: dict) -> float:
+    """Calculate a score for a lead based on a set of configurable weights.
+
+    This function assigns a score to a lead by evaluating various attributes, such as
+    the presence of contact information and a match with the target city.
+
+    Args:
+        lead (dict): The lead to score.
+        settings (dict): The application settings, containing the scoring weights.
+
+    Returns:
+        float: The calculated score for the lead.
+    """
     w = settings.get("scoring", {})
     score = 0.0
     score += w.get("email_weight", 2.0) * min(len(lead.get("emails", [])), 5)

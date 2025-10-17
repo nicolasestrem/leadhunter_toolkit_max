@@ -7,14 +7,17 @@ import pandas as pd
 
 
 def dict_to_json_safe(data):
-    """
-    Convert a dict with pandas/numpy types to JSON-serializable dict.
+    """Convert a dictionary with pandas/numpy types to a JSON-serializable dictionary.
+
+    This function iterates through a dictionary and converts any non-serializable
+    types, such as pandas Timestamps or numpy data types, into formats that can be
+    safely encoded as JSON.
 
     Args:
-        data: dict potentially containing Timestamp or numpy types
+        data (dict): A dictionary that may contain non-serializable types.
 
     Returns:
-        Dict with JSON-serializable values
+        dict: A dictionary with all values converted to JSON-serializable types.
     """
     result = {}
     for key, value in data.items():
@@ -27,14 +30,16 @@ def dict_to_json_safe(data):
 
 
 def dict_to_json_safe_value(value):
-    """
-    Convert a single value to JSON-safe type.
+    """Convert a single value to a JSON-safe type.
+
+    This helper function handles the conversion of individual values, such as pandas
+    Timestamps, numpy types, and NaNs, to their JSON-serializable equivalents.
 
     Args:
-        value: Any value potentially containing pandas/numpy types
+        value: The value to convert.
 
     Returns:
-        JSON-serializable value
+        The JSON-serializable value.
     """
     # Check for None/NaN (use try/except to avoid array ambiguity)
     try:
@@ -58,14 +63,16 @@ def dict_to_json_safe_value(value):
 
 
 def dataframe_to_json_safe(df):
-    """
-    Convert DataFrame to JSON-serializable dict, handling Timestamps and other pandas types.
+    """Convert a pandas DataFrame to a JSON-serializable list of dictionaries.
+
+    This function first converts the DataFrame to a list of records and then ensures
+    that each record is JSON-serializable by processing it with 'dict_to_json_safe'.
 
     Args:
-        df: pandas DataFrame
+        df (pd.DataFrame): The pandas DataFrame to convert.
 
     Returns:
-        List of dicts with JSON-serializable values
+        list: A list of JSON-serializable dictionaries.
     """
     # Convert to dict with default date format
     records = df.to_dict(orient="records")

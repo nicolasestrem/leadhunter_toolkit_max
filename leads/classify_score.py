@@ -23,16 +23,21 @@ logger = get_logger(__name__)
 
 
 def calculate_quality_score(lead_data: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> float:
-    """
-    Calculate data quality score based on completeness
-    Applies vertical preset weights if configured
+    """Calculate the data quality score based on the completeness of the lead data.
+
+    This function assesses the quality of a lead by checking for the presence and count
+    of important contact information like emails, phone numbers, and social media links.
+    It applies configurable weights for each attribute, which can be influenced by
+    vertical-specific presets.
 
     Args:
-        lead_data: Lead data dict
-        config: Optional config dict with scoring weights (uses vertical if active)
+        lead_data (Dict[str, Any]): The lead data dictionary.
+        config (Optional[Dict[str, Any]]): An optional configuration dictionary with
+                                            scoring weights. If not provided, it is
+                                            loaded automatically.
 
     Returns:
-        Quality score (0-10)
+        float: The calculated quality score, ranging from 0 to 10.
     """
     # Load config if not provided
     if config is None:
@@ -96,19 +101,20 @@ def calculate_priority_score(
     quality_signals: list,
     issue_flags: list
 ) -> float:
-    """
-    Calculate overall priority score
+    """Calculate the overall priority score for a lead.
 
-    Formula: (quality_score * 0.3 + fit_score * 0.5) - (num_issues * 0.5) + (num_signals * 0.3)
+    This score is a composite metric derived from the quality score, the fit score (from LLM),
+    and adjustments based on the number of positive signals and identified issues. The
+    formula is: (quality_score * 0.3 + fit_score * 0.5) - (num_issues * 0.5) + (num_signals * 0.3).
 
     Args:
-        quality_score: Data quality score (0-10)
-        fit_score: SMB fit score from LLM (0-10)
-        quality_signals: List of positive signals
-        issue_flags: List of issues
+        quality_score (float): The data quality score (0-10).
+        fit_score (float): The SMB fit score from the LLM (0-10).
+        quality_signals (list): A list of positive signals.
+        issue_flags (list): A list of identified issues.
 
     Returns:
-        Priority score (0-10)
+        float: The final priority score, clamped between 0 and 10.
     """
     # Base score from quality and fit
     base_score = (quality_score * 0.3) + (fit_score * 0.5)
@@ -130,22 +136,18 @@ def classify_with_llm(
     lead_data: Dict[str, Any],
     llm_adapter: LLMAdapter
 ) -> Dict[str, Any]:
-    """
-    Classify lead using LLM
+    """Classify a lead using a Large Language Model.
+
+    This function sends the lead data to an LLM to obtain a detailed classification,
+    which includes the business type, issue flags, quality signals, and a fit score.
+    It is designed to handle potential JSON parsing errors from the LLM's response.
 
     Args:
-        lead_data: Lead data dict
-        llm_adapter: Configured LLM adapter
+        lead_data (Dict[str, Any]): The lead data dictionary.
+        llm_adapter (LLMAdapter): A configured instance of the LLM adapter.
 
     Returns:
-        Dict with classification results:
-        {
-            'business_type': str,
-            'issue_flags': List[str],
-            'quality_signals': List[str],
-            'fit_score': float,
-            'notes': str
-        }
+        Dict[str, Any]: A dictionary with the classification results.
     """
     try:
         logger.debug(f"Classifying lead: {lead_data.get('name', 'Unknown')}")
@@ -214,17 +216,20 @@ def classify_and_score_lead(
     content_sample: str = "",
     use_llm: bool = True
 ) -> LeadRecord:
-    """
-    Classify and score a lead with enhanced metrics
+    """Classify and score a lead with enhanced metrics.
+
+    This function serves as the main orchestrator for processing a single lead. It combines
+    heuristic scoring with LLM-based classification to produce a comprehensive LeadRecord.
+    It also integrates with a plugin system to allow for extensible, custom processing hooks.
 
     Args:
-        lead: Input Lead object
-        llm_adapter: Configured LLM adapter
-        content_sample: Sample of page content for LLM analysis
-        use_llm: Whether to use LLM classification (if False, only heuristics)
+        lead (Lead): The input Lead object.
+        llm_adapter (LLMAdapter): A configured LLM adapter.
+        content_sample (str): A sample of page content for LLM analysis.
+        use_llm (bool): If True, use the LLM for classification; otherwise, use only heuristics.
 
     Returns:
-        Enhanced LeadRecord with classification and scores
+        LeadRecord: An enhanced LeadRecord with classification and scores.
     """
     logger.debug(f"Classifying and scoring lead: {lead.name or lead.domain}")
 
@@ -316,17 +321,19 @@ def batch_classify_and_score(
     content_samples: Optional[Dict[str, str]] = None,
     use_llm: bool = True
 ) -> list[LeadRecord]:
-    """
-    Classify and score multiple leads
+    """Classify and score multiple leads in a batch.
+
+    This function is designed for efficient processing of a list of leads. It iterates
+    through the leads, applying the 'classify_and_score_lead' function to each one.
 
     Args:
-        leads: List of Lead objects
-        llm_adapter: Configured LLM adapter
-        content_samples: Optional dict mapping domain to content sample
-        use_llm: Whether to use LLM classification
+        leads (list[Lead]): A list of Lead objects.
+        llm_adapter (LLMAdapter): A configured LLM adapter.
+        content_samples (Optional[Dict[str, str]]): A dictionary mapping a domain to its content sample.
+        use_llm (bool): If True, use the LLM for classification.
 
     Returns:
-        List of LeadRecord objects
+        list[LeadRecord]: A list of processed LeadRecord objects.
     """
     logger.info(f"Batch processing {len(leads)} leads")
 

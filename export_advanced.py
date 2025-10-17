@@ -20,7 +20,23 @@ OUT_DIR.mkdir(exist_ok=True)
 
 @dataclass
 class ExportFilter:
-    """Filter configuration for exports"""
+    """A data class for specifying filter configurations for exports.
+
+    Attributes:
+        min_score (float): The minimum score for a lead to be included.
+        max_score (float): The maximum score for a lead to be included.
+        min_quality (float): The minimum quality score.
+        min_fit (float): The minimum fit score.
+        min_priority (float): The minimum priority score.
+        business_types (Optional[List[str]]): A list of business types to include.
+        tags (Optional[List[str]]): A list of tags to include.
+        statuses (Optional[List[str]]): A list of statuses to include.
+        has_emails (Optional[bool]): If True, only include leads with emails.
+        has_phones (Optional[bool]): If True, only include leads with phone numbers.
+        date_from (Optional[datetime.datetime]): The start date for filtering leads.
+        date_to (Optional[datetime.datetime]): The end date for filtering leads.
+        columns (Optional[List[str]]): A list of specific columns to export.
+    """
     min_score: float = 0.0
     max_score: float = 10.0
     min_quality: float = 0.0
@@ -33,11 +49,19 @@ class ExportFilter:
     has_phones: Optional[bool] = None
     date_from: Optional[datetime.datetime] = None
     date_to: Optional[datetime.datetime] = None
-    columns: Optional[List[str]] = None  # Specific columns to export
+    columns: Optional[List[str]] = None
 
 
 def apply_filters(leads: List[Dict[str, Any]], filters: ExportFilter) -> List[Dict[str, Any]]:
-    """Apply filters to lead list"""
+    """Apply a set of filters to a list of leads.
+
+    Args:
+        leads (List[Dict[str, Any]]): The list of leads to filter.
+        filters (ExportFilter): The filter configuration to apply.
+
+    Returns:
+        List[Dict[str, Any]]: The filtered list of leads.
+    """
     filtered = []
 
     for lead in leads:
@@ -107,7 +131,15 @@ def apply_filters(leads: List[Dict[str, Any]], filters: ExportFilter) -> List[Di
 
 
 def select_columns(leads: List[Dict[str, Any]], columns: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-    """Select specific columns from leads"""
+    """Select a specific set of columns from a list of leads.
+
+    Args:
+        leads (List[Dict[str, Any]]): The list of leads.
+        columns (Optional[List[str]]): The list of column names to select.
+
+    Returns:
+        List[Dict[str, Any]]: A new list of leads with only the selected columns.
+    """
     if not columns:
         return leads
 
@@ -125,9 +157,16 @@ def export_filtered_csv(
     project: str = "default",
     filename_prefix: str = "leads"
 ) -> Tuple[str, int]:
-    """
-    Export leads to CSV with filtering
-    Returns: (file_path, number_of_exported_records)
+    """Export a list of leads to a CSV file after applying filters.
+
+    Args:
+        leads (List[Dict[str, Any]]): The list of leads to export.
+        filters (ExportFilter): The filters to apply before exporting.
+        project (str): The name of the project, used for organizing output files.
+        filename_prefix (str): The prefix for the output filename.
+
+    Returns:
+        Tuple[str, int]: A tuple containing the file path and the number of exported records.
     """
     # Apply filters
     filtered_leads = apply_filters(leads, filters)
@@ -170,9 +209,16 @@ def export_filtered_json(
     project: str = "default",
     filename_prefix: str = "leads"
 ) -> Tuple[str, int]:
-    """
-    Export leads to JSON with filtering
-    Returns: (file_path, number_of_exported_records)
+    """Export a list of leads to a JSON file after applying filters.
+
+    Args:
+        leads (List[Dict[str, Any]]): The list of leads to export.
+        filters (ExportFilter): The filters to apply before exporting.
+        project (str): The name of the project.
+        filename_prefix (str): The prefix for the output filename.
+
+    Returns:
+        Tuple[str, int]: A tuple containing the file path and the number of exported records.
     """
     # Apply filters
     filtered_leads = apply_filters(leads, filters)
@@ -205,9 +251,16 @@ def export_filtered_xlsx(
     project: str = "default",
     filename_prefix: str = "leads"
 ) -> Tuple[str, int]:
-    """
-    Export leads to XLSX with filtering
-    Returns: (file_path, number_of_exported_records)
+    """Export a list of leads to an XLSX file after applying filters.
+
+    Args:
+        leads (List[Dict[str, Any]]): The list of leads to export.
+        filters (ExportFilter): The filters to apply before exporting.
+        project (str): The name of the project.
+        filename_prefix (str): The prefix for the output filename.
+
+    Returns:
+        Tuple[str, int]: A tuple containing the file path and the number of exported records.
     """
     # Apply filters
     filtered_leads = apply_filters(leads, filters)
@@ -246,9 +299,16 @@ def export_filtered_markdown(
     project: str = "default",
     filename_prefix: str = "leads"
 ) -> Tuple[str, int]:
-    """
-    Export leads to Markdown with filtering
-    Returns: (file_path, number_of_exported_records)
+    """Export a list of leads to a Markdown file after applying filters.
+
+    Args:
+        leads (List[Dict[str, Any]]): The list of leads to export.
+        filters (ExportFilter): The filters to apply before exporting.
+        project (str): The name of the project.
+        filename_prefix (str): The prefix for the output filename.
+
+    Returns:
+        Tuple[str, int]: A tuple containing the file path and the number of exported records.
     """
     # Apply filters
     filtered_leads = apply_filters(leads, filters)
@@ -338,9 +398,17 @@ def create_consulting_pack_zip(
     audit_result: Any = None,
     project: str = "default"
 ) -> str:
-    """
-    Create a complete consulting pack ZIP with all materials
-    Returns: path to ZIP file
+    """Create a complete consulting pack for a lead and package it as a ZIP file.
+
+    Args:
+        lead (Dict[str, Any]): The lead's data.
+        dossier_result (Any): The dossier result.
+        outreach_result (Any): The outreach result.
+        audit_result (Any): The audit result.
+        project (str): The name of the project.
+
+    Returns:
+        str: The path to the created ZIP file.
     """
     timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     company_slug = lead.get('name', 'unknown').replace(' ', '_').replace('/', '_')
@@ -439,7 +507,14 @@ def create_consulting_pack_zip(
 
 
 def _format_dossier_markdown(dossier) -> str:
-    """Format dossier as markdown"""
+    """Format a dossier object into a markdown string.
+
+    Args:
+        dossier: The dossier object to format.
+
+    Returns:
+        str: The markdown-formatted dossier.
+    """
     md = f"# Client Dossier: {dossier.company_name}\n\n"
     md += f"**Website:** {dossier.website}\n\n"
     md += f"**Pages Analyzed:** {dossier.pages_analyzed}\n\n"
@@ -499,7 +574,14 @@ def _format_dossier_markdown(dossier) -> str:
 
 
 def _format_outreach_markdown(outreach) -> str:
-    """Format outreach as markdown"""
+    """Format an outreach object into a markdown string.
+
+    Args:
+        outreach: The outreach object to format.
+
+    Returns:
+        str: The markdown-formatted outreach.
+    """
     md = f"# Outreach Variants: {outreach.company_name}\n\n"
     md += f"**Type:** {outreach.message_type} | **Language:** {outreach.language} | **Tone:** {outreach.tone}\n\n"
 
@@ -522,7 +604,14 @@ def _format_outreach_markdown(outreach) -> str:
 
 
 def _format_audit_markdown(audit_result) -> str:
-    """Format audit as markdown"""
+    """Format an audit result object into a markdown string.
+
+    Args:
+        audit_result: The audit result object to format.
+
+    Returns:
+        str: The markdown-formatted audit report.
+    """
     md = f"# Audit Report: {audit_result.domain}\n\n"
     md += f"**Crawled:** {len(audit_result.crawled_urls)} pages | **Audited:** {len(audit_result.audits)} pages\n\n"
 
@@ -556,8 +645,13 @@ def _format_audit_markdown(audit_result) -> str:
     return md
 
 
-def _export_audit_csv(audits: List[Any], filepath: Path):
-    """Export audit findings to CSV"""
+def _export_audit_csv(auds: List[Any], filepath: Path):
+    """Export audit findings to a CSV file.
+
+    Args:
+        audits (List[Any]): A list of audit objects.
+        filepath (Path): The path to the output CSV file.
+    """
     rows = []
     for audit in audits:
         for issue in audit.issues:
@@ -582,9 +676,16 @@ def get_export_preview(
     filters: ExportFilter,
     max_preview: int = 5
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """
-    Get preview of data to be exported with statistics
-    Returns: (preview_leads, statistics)
+    """Get a preview of the data to be exported, along with statistics.
+
+    Args:
+        leads (List[Dict[str, Any]]): The list of leads to preview.
+        filters (ExportFilter): The filters to apply to the leads.
+        max_preview (int): The maximum number of leads to include in the preview.
+
+    Returns:
+        Tuple[List[Dict[str, Any]], Dict[str, Any]]: A tuple containing the preview
+                                                     of leads and a dictionary of statistics.
     """
     # Apply filters
     filtered_leads = apply_filters(leads, filters)

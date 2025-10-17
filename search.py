@@ -1,6 +1,15 @@
 from duckduckgo_search import DDGS
 
 def ddg_sites(query: str, max_results: int = 10) -> list[str]:
+    """Search DuckDuckGo for a given query and return a list of result URLs.
+
+    Args:
+        query (str): The search query.
+        max_results (int): The maximum number of results to return.
+
+    Returns:
+        list[str]: A list of unique result URLs.
+    """
     urls = []
     with DDGS() as ddgs:
         for r in ddgs.text(query, max_results=max_results, safesearch="moderate"):

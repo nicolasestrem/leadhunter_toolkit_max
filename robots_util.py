@@ -9,6 +9,14 @@ _cache = {}
 
 
 def _base_url(url: str) -> Optional[str]:
+    """Get the base URL (scheme and netloc) from a full URL.
+
+    Args:
+        url (str): The URL to parse.
+
+    Returns:
+        Optional[str]: The base URL, or None if the URL is invalid.
+    """
     try:
         parsed = urlparse(url)
         if not parsed.scheme or not parsed.netloc:
@@ -19,6 +27,17 @@ def _base_url(url: str) -> Optional[str]:
 
 
 def get_robots_parser(url: str) -> Optional[urp.RobotFileParser]:
+    """Get a robots.txt parser for a given URL.
+
+    This function fetches and parses the robots.txt file for a domain, with in-memory
+    caching to avoid redundant requests.
+
+    Args:
+        url (str): The URL of the site to get the parser for.
+
+    Returns:
+        Optional[urp.RobotFileParser]: The parser object, or None if the URL is invalid.
+    """
     base = _base_url(url)
     if not base:
         return None
@@ -41,6 +60,14 @@ def get_robots_parser(url: str) -> Optional[urp.RobotFileParser]:
     return rp
 
 def robots_allowed(url: str) -> bool:
+    """Check if a URL is allowed to be crawled according to robots.txt.
+
+    Args:
+        url (str): The URL to check.
+
+    Returns:
+        bool: True if crawling is allowed, False otherwise.
+    """
     try:
         parser = get_robots_parser(url)
         if not parser:
@@ -52,6 +79,15 @@ def robots_allowed(url: str) -> bool:
 
 
 def get_crawl_delay(url: str, user_agent: str = USER_AGENT) -> Optional[float]:
+    """Get the crawl delay specified in the robots.txt file.
+
+    Args:
+        url (str): The URL of the site.
+        user_agent (str): The user agent to check the delay for.
+
+    Returns:
+        Optional[float]: The crawl delay in seconds, or None if not specified.
+    """
     parser = get_robots_parser(url)
     if not parser:
         return None

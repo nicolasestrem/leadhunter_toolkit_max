@@ -24,11 +24,12 @@ _health_lock = threading.Lock()  # Thread-safe access to PLUGIN_HEALTH
 
 
 def init_plugin_health(plugin_name: str):
-    """
-    Initialize health tracking for a plugin (thread-safe)
+    """Initialize the health tracking for a plugin.
+
+    This function sets up the initial health status for a plugin in a thread-safe manner.
 
     Args:
-        plugin_name: Name of plugin
+        plugin_name (str): The name of the plugin.
     """
     with _health_lock:
         if plugin_name not in PLUGIN_HEALTH:
@@ -42,12 +43,15 @@ def init_plugin_health(plugin_name: str):
 
 
 def record_plugin_error(plugin_name: str, error: str):
-    """
-    Record a plugin error and disable if threshold exceeded (thread-safe)
+    """Record an error for a plugin and disable it if a threshold is exceeded.
+
+    This function increments the error count for a plugin and, if the number of
+    consecutive errors reaches a maximum, it disables the plugin. This is a
+    thread-safe operation.
 
     Args:
-        plugin_name: Name of plugin
-        error: Error message
+        plugin_name (str): The name of the plugin.
+        error (str): The error message to record.
     """
     if plugin_name not in PLUGIN_HEALTH:
         init_plugin_health(plugin_name)
@@ -66,11 +70,13 @@ def record_plugin_error(plugin_name: str, error: str):
 
 
 def record_plugin_success(plugin_name: str):
-    """
-    Record a successful plugin call (resets error counter) (thread-safe)
+    """Record a successful plugin call, resetting its error counter.
+
+    This function is called when a plugin hook executes without error, and it resets
+    the consecutive error count for the plugin in a thread-safe manner.
 
     Args:
-        plugin_name: Name of plugin
+        plugin_name (str): The name of the plugin.
     """
     if plugin_name not in PLUGIN_HEALTH:
         init_plugin_health(plugin_name)
@@ -82,14 +88,15 @@ def record_plugin_success(plugin_name: str):
 
 
 def is_plugin_enabled(plugin_name: str) -> bool:
-    """
-    Check if plugin is enabled (thread-safe)
+    """Check if a plugin is currently enabled.
+
+    This function provides a thread-safe way to check the enabled status of a plugin.
 
     Args:
-        plugin_name: Name of plugin
+        plugin_name (str): The name of the plugin.
 
     Returns:
-        True if enabled, False otherwise
+        bool: True if the plugin is enabled, False otherwise.
     """
     with _health_lock:
         if plugin_name not in PLUGIN_HEALTH:
@@ -98,11 +105,13 @@ def is_plugin_enabled(plugin_name: str) -> bool:
 
 
 def enable_plugin(plugin_name: str):
-    """
-    Manually re-enable a disabled plugin (thread-safe)
+    """Manually re-enable a disabled plugin.
+
+    This function allows a user to re-enable a plugin that was automatically disabled
+    due to errors. It also resets the error count for the plugin.
 
     Args:
-        plugin_name: Name of plugin
+        plugin_name (str): The name of the plugin to re-enable.
     """
     with _health_lock:
         if plugin_name in PLUGIN_HEALTH:
@@ -112,25 +121,29 @@ def enable_plugin(plugin_name: str):
 
 
 def get_plugin_health_status() -> Dict[str, Dict]:
-    """
-    Get health status of all plugins (thread-safe)
+    """Get the health status of all plugins.
+
+    This function returns a dictionary containing the health status of all loaded plugins,
+    providing a snapshot of their error counts and enabled status in a thread-safe manner.
 
     Returns:
-        Dict mapping plugin names to health status
+        Dict[str, Dict]: A dictionary mapping plugin names to their health status.
     """
     with _health_lock:
         return PLUGIN_HEALTH.copy()
 
 
 def _load_single_plugin(filepath: Path) -> Optional[dict]:
-    """
-    Load a single plugin from a file path (helper for async loading)
+    """Load a single plugin from a file path.
+
+    This is a helper function for the asynchronous loading process. It handles the
+    dynamic importation of a plugin module and the execution of its 'register' function.
 
     Args:
-        filepath: Path to plugin .py file
+        filepath (Path): The path to the plugin's .py file.
 
     Returns:
-        Plugin metadata dict or None if loading failed
+        Optional[dict]: The plugin's metadata dictionary, or None if loading fails.
     """
     plugin_name = filepath.stem
 
@@ -169,23 +182,17 @@ def _load_single_plugin(filepath: Path) -> Optional[dict]:
 
 
 def load_plugins(async_load: bool = True, max_workers: int = 4) -> List[dict]:
-    """
-    Load all plugins from plugins/ directory
+    """Load all plugins from the 'plugins/' directory.
 
-    Supports both synchronous and asynchronous loading.
-    Async loading uses ThreadPoolExecutor to load plugins in parallel.
-
-    Plugins must:
-    1. Be .py files in plugins/ directory
-    2. Implement a register() function
-    3. Return plugin metadata dict
+    This function dynamically discovers and loads all valid plugins. It supports both
+    synchronous and asynchronous loading to improve startup performance.
 
     Args:
-        async_load: If True, load plugins asynchronously (default: True)
-        max_workers: Max threads for async loading (default: 4)
+        async_load (bool): If True, load plugins asynchronously.
+        max_workers (int): The maximum number of threads for asynchronous loading.
 
     Returns:
-        List of loaded plugin metadata dicts
+        List[dict]: A list of the loaded plugins' metadata dictionaries.
     """
     # Find all .py files in plugins directory
     plugin_files = [
@@ -238,30 +245,32 @@ def load_plugins(async_load: bool = True, max_workers: int = 4) -> List[dict]:
 
 
 def get_loaded_plugins() -> List[dict]:
-    """
-    Get list of loaded plugins (thread-safe)
+    """Get a list of all loaded plugins.
+
+    This function provides a thread-safe way to access the list of plugins that have
+    been successfully loaded.
 
     Returns:
-        List of plugin metadata dicts
+        List[dict]: A list of the loaded plugins' metadata dictionaries.
     """
     with _plugins_lock:
         return LOADED_PLUGINS.copy()
 
 
 def call_plugin_hook(hook_name: str, *args, **kwargs) -> List[Any]:
-    """
-    Call a hook on all loaded plugins with health checking (thread-safe)
+    """Call a hook on all loaded plugins with integrated health checking.
 
-    Automatically tracks plugin health and disables plugins after repeated failures.
-    Disabled plugins are skipped until manually re-enabled.
+    This function is the central entry point for executing plugin hooks. It safely
+    iterates through the loaded plugins, calls the specified hook if it exists, and
+    manages the health status of each plugin.
 
     Args:
-        hook_name: Name of hook function
-        *args: Positional arguments for hook
-        **kwargs: Keyword arguments for hook
+        hook_name (str): The name of the hook function to call.
+        *args: Positional arguments to pass to the hook.
+        **kwargs: Keyword arguments to pass to the hook.
 
     Returns:
-        List of results from plugins that implemented the hook
+        List[Any]: A list of the results from the plugins that implemented the hook.
     """
     results = []
 

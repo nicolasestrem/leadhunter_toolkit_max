@@ -21,16 +21,31 @@ SERP_DATA_DIR.mkdir(exist_ok=True)
 
 @dataclass
 class SERPResult:
-    """Single SERP result entry"""
+    """A data class for a single entry in a Search Engine Results Page (SERP).
+
+    Attributes:
+        keyword (str): The keyword that was searched.
+        position (int): The position of the result in the SERP.
+        title (str): The title of the result.
+        url (str): The URL of the result.
+        snippet (str): The snippet of the result.
+        engine (str): The search engine used ('ddg' or 'google').
+        timestamp (str): The timestamp of when the search was performed.
+    """
     keyword: str
     position: int
     title: str
     url: str
     snippet: str
-    engine: str  # "ddg" or "google"
+    engine: str
     timestamp: str
 
     def to_dict(self) -> dict:
+        """Convert the result to a dictionary.
+
+        Returns:
+            dict: A dictionary representation of the SERP result.
+        """
         return {
             "keyword": self.keyword,
             "position": self.position,
@@ -44,7 +59,15 @@ class SERPResult:
 
 @dataclass
 class SERPSnapshot:
-    """Snapshot of SERP for a keyword"""
+    """A data class for a snapshot of a SERP for a specific keyword.
+
+    Attributes:
+        keyword (str): The keyword that was searched.
+        engine (str): The search engine used.
+        timestamp (str): The timestamp of the snapshot.
+        results (List[SERPResult]): A list of the SERP results.
+        total_results (int): The total number of results in the snapshot.
+    """
     keyword: str
     engine: str
     timestamp: str
@@ -52,6 +75,11 @@ class SERPSnapshot:
     total_results: int
 
     def to_dict(self) -> dict:
+        """Convert the snapshot to a dictionary.
+
+        Returns:
+            dict: A dictionary representation of the SERP snapshot.
+        """
         return {
             "keyword": self.keyword,
             "engine": self.engine,
@@ -62,15 +90,14 @@ class SERPSnapshot:
 
 
 class SERPTracker:
-    """Track keyword positions in search results"""
+    """A class for tracking keyword positions in search engine results."""
 
     def __init__(self, google_api_key: str = "", google_cx: str = ""):
-        """
-        Initialize SERP tracker
+        """Initializes the SERPTracker.
 
         Args:
-            google_api_key: Google Custom Search API key (optional)
-            google_cx: Google Custom Search engine ID (optional)
+            google_api_key (str): Your Google Custom Search API key (optional).
+            google_cx (str): Your Google Custom Search engine ID (optional).
         """
         self.google_api_key = google_api_key
         self.google_cx = google_cx
@@ -81,16 +108,15 @@ class SERPTracker:
         engine: str = "ddg",
         max_results: int = 20
     ) -> SERPSnapshot:
-        """
-        Track current SERP positions for a keyword
+        """Track the current SERP positions for a given keyword.
 
         Args:
-            keyword: Search keyword to track
-            engine: Search engine ("ddg" or "google")
-            max_results: Number of results to fetch (default 20)
+            keyword (str): The keyword to track.
+            engine (str): The search engine to use ('ddg' or 'google').
+            max_results (int): The number of results to fetch.
 
         Returns:
-            SERPSnapshot with current positions
+            SERPSnapshot: A snapshot of the current SERP.
         """
         timestamp = datetime.utcnow().isoformat()
         results = []
@@ -139,7 +165,15 @@ class SERPTracker:
             )
 
     def _fetch_ddg_serp(self, keyword: str, max_results: int) -> List[dict]:
-        """Fetch SERP from DuckDuckGo"""
+        """Fetch the SERP from DuckDuckGo.
+
+        Args:
+            keyword (str): The keyword to search for.
+            max_results (int): The maximum number of results to return.
+
+        Returns:
+            List[dict]: A list of search result dictionaries.
+        """
         from duckduckgo_search import DDGS
 
         results = []
@@ -157,7 +191,15 @@ class SERPTracker:
         return results
 
     def _fetch_google_serp(self, keyword: str, max_results: int) -> List[dict]:
-        """Fetch SERP from Google Custom Search"""
+        """Fetch the SERP from the Google Custom Search API.
+
+        Args:
+            keyword (str): The keyword to search for.
+            max_results (int): The maximum number of results to return.
+
+        Returns:
+            List[dict]: A list of search result dictionaries.
+        """
         import httpx
 
         results = []
@@ -192,7 +234,11 @@ class SERPTracker:
         return results
 
     def _save_snapshot(self, snapshot: SERPSnapshot):
-        """Save SERP snapshot to file"""
+        """Save a SERP snapshot to a file.
+
+        Args:
+            snapshot (SERPSnapshot): The snapshot to save.
+        """
         try:
             # Filename: keyword_engine_timestamp.json
             safe_keyword = "".join(c if c.isalnum() else "_" for c in snapshot.keyword)
@@ -208,15 +254,14 @@ class SERPTracker:
             logger.error(f"Error saving snapshot: {e}")
 
     def get_history(self, keyword: str, engine: Optional[str] = None) -> List[SERPSnapshot]:
-        """
-        Get historical snapshots for a keyword
+        """Get the historical SERP snapshots for a given keyword.
 
         Args:
-            keyword: Keyword to get history for
-            engine: Optional engine filter
+            keyword (str): The keyword to get the history for.
+            engine (Optional[str]): An optional filter for the search engine.
 
         Returns:
-            List of historical snapshots
+            List[SERPSnapshot]: A list of historical snapshots.
         """
         snapshots = []
         safe_keyword = "".join(c if c.isalnum() else "_" for c in keyword)

@@ -19,12 +19,14 @@ from ui.utils.session_state import get_results, set_results
 
 
 def render_hunt_tab(settings: dict, default_keywords: dict):
-    """
-    Render the Hunt tab
+    """Render the Hunt tab in the Streamlit UI.
+
+    This function provides the user interface for searching and extracting leads from
+    websites.
 
     Args:
-        settings: Application settings dict
-        default_keywords: Default keyword categories for classification
+        settings (dict): The current application settings.
+        default_keywords (dict): The default keyword categories for classification.
     """
     # Extract parameters from settings
     from constants import DEFAULT_MAX_SITES, DEFAULT_MAX_PAGES, DEFAULT_FETCH_TIMEOUT, DEFAULT_CONCURRENCY

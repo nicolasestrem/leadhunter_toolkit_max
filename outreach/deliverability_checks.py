@@ -32,24 +32,33 @@ SPAM_ALTERNATIVES = {
 
 @dataclass
 class DeliverabilityIssue:
-    """Represents a deliverability issue"""
-    severity: str  # 'critical', 'warning', 'info'
-    category: str  # 'spam_words', 'length', 'links', 'formatting'
+    """Represents a single deliverability issue found in a message.
+
+    Attributes:
+        severity (str): The severity of the issue ('critical', 'warning', 'info').
+        category (str): The category of the issue (e.g., 'spam_words', 'length').
+        message (str): A description of the issue.
+        suggestion (str): A suggestion for how to resolve the issue.
+    """
+    severity: str
+    category: str
     message: str
     suggestion: str
 
 
 def check_word_count(text: str, min_words: int = 80, max_words: int = 140) -> List[DeliverabilityIssue]:
-    """
-    Check if message word count is within acceptable range
+    """Check if the message's word count is within an acceptable range.
+
+    This function helps ensure that the message is concise enough for good engagement
+    but also detailed enough to be valuable.
 
     Args:
-        text: Message text
-        min_words: Minimum word count
-        max_words: Maximum word count
+        text (str): The text of the message.
+        min_words (int): The minimum acceptable word count.
+        max_words (int): The maximum acceptable word count.
 
     Returns:
-        List of issues found
+        List[DeliverabilityIssue]: A list of any word count-related issues found.
     """
     issues = []
     words = text.split()
@@ -74,14 +83,16 @@ def check_word_count(text: str, min_words: int = 80, max_words: int = 140) -> Li
 
 
 def check_spam_words(text: str) -> List[DeliverabilityIssue]:
-    """
-    Check for spam trigger words
+    """Check the message for the presence of common spam trigger words.
+
+    This function scans the text for words that are frequently associated with spam,
+    helping to avoid spam filters.
 
     Args:
-        text: Message text
+        text (str): The text of the message.
 
     Returns:
-        List of issues found
+        List[DeliverabilityIssue]: A list of any spam word-related issues.
     """
     issues = []
     text_lower = text.lower()
@@ -108,15 +119,17 @@ def check_spam_words(text: str) -> List[DeliverabilityIssue]:
 
 
 def check_link_count(text: str, max_links: int = 1) -> List[DeliverabilityIssue]:
-    """
-    Check number of links in message
+    """Check the number of links in the message.
+
+    This function helps prevent the message from being flagged as spam due to an
+    excessive number of links.
 
     Args:
-        text: Message text
-        max_links: Maximum allowed links
+        text (str): The text of the message.
+        max_links (int): The maximum number of allowed links.
 
     Returns:
-        List of issues found
+        List[DeliverabilityIssue]: A list of any link count-related issues.
     """
     issues = []
 
@@ -138,16 +151,18 @@ def check_link_count(text: str, max_links: int = 1) -> List[DeliverabilityIssue]
 
 
 def check_subject_line(subject: str, min_chars: int = 30, max_chars: int = 60) -> List[DeliverabilityIssue]:
-    """
-    Check subject line quality
+    """Check the quality of an email subject line.
+
+    This function assesses the subject line for common issues, such as being too short,
+    too long, using all caps, or having excessive punctuation.
 
     Args:
-        subject: Email subject line
-        min_chars: Minimum character count (default: 30)
-        max_chars: Maximum character count (default: 60)
+        subject (str): The email subject line.
+        min_chars (int): The minimum acceptable character count.
+        max_chars (int): The maximum acceptable character count.
 
     Returns:
-        List of issues found
+        List[DeliverabilityIssue]: A list of any subject line-related issues.
     """
     issues = []
 
@@ -199,14 +214,16 @@ def check_subject_line(subject: str, min_chars: int = 30, max_chars: int = 60) -
 
 
 def check_personalization(text: str) -> List[DeliverabilityIssue]:
-    """
-    Check for personalization elements
+    """Check the message for personalization elements.
+
+    This function looks for signs of generic, non-personalized content, such as
+    common generic greetings.
 
     Args:
-        text: Message text
+        text (str): The text of the message.
 
     Returns:
-        List of issues found
+        List[DeliverabilityIssue]: A list of any personalization-related issues.
     """
     issues = []
 
@@ -228,14 +245,16 @@ def check_personalization(text: str) -> List[DeliverabilityIssue]:
 
 
 def check_exclamation_marks(text: str) -> List[DeliverabilityIssue]:
-    """
-    Check for excessive exclamation marks
+    """Check for the excessive use of exclamation marks.
+
+    This function helps to ensure that the message maintains a professional tone and
+    avoids a common spam trigger.
 
     Args:
-        text: Message text
+        text (str): The text of the message.
 
     Returns:
-        List of issues found
+        List[DeliverabilityIssue]: A list of any issues related to exclamation marks.
     """
     issues = []
 
@@ -257,16 +276,19 @@ def check_deliverability(
     body: str,
     message_type: str = 'email'
 ) -> Dict[str, any]:
-    """
-    Run all deliverability checks on a message
+    """Run all deliverability checks on a message.
+
+    This function is the main entry point for assessing the deliverability of a message.
+    It consolidates the results from all individual check functions into a single,
+    comprehensive report.
 
     Args:
-        subject: Subject line (for email)
-        body: Message body
-        message_type: Type of message (email, linkedin, sms)
+        subject (str): The subject line of the message (for emails).
+        body (str): The body of the message.
+        message_type (str): The type of message (e.g., 'email', 'linkedin', 'sms').
 
     Returns:
-        Dict with issues and overall score
+        Dict[str, any]: A dictionary containing the score, a list of issues, and other metrics.
     """
     all_issues = []
 
@@ -320,14 +342,16 @@ def check_deliverability(
 
 
 def format_deliverability_report(check_result: Dict[str, any]) -> str:
-    """
-    Format deliverability check result as readable report
+    """Format a deliverability check result into a readable report.
+
+    This function takes the raw output of the 'check_deliverability' function and
+    converts it into a user-friendly, formatted string that is easy to read and understand.
 
     Args:
-        check_result: Result from check_deliverability()
+        check_result (Dict[str, any]): The result from the 'check_deliverability' function.
 
     Returns:
-        Formatted report string
+        str: A formatted, readable report string.
     """
     score = check_result['score']
     issues = check_result['issues']

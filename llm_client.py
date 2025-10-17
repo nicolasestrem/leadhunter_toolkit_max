@@ -7,13 +7,10 @@ logger = get_logger(__name__)
 
 
 class LLMClient:
-    """
-    OpenAI-compatible LLM client with support for local models (LM Studio, Ollama, etc.)
+    """An OpenAI-compatible LLM client.
 
-    Optimized for:
-    - Qwen models (qwen/qwen3-4b-2507, etc.)
-    - GPT-OSS-20B and other local models
-    - OpenAI API
+    This client is designed to work with local models like those served by LM Studio
+    and Ollama, as well as the official OpenAI API.
     """
 
     def __init__(
@@ -26,17 +23,16 @@ class LLMClient:
         top_p: Optional[float] = None,
         max_tokens: Optional[int] = None
     ):
-        """
-        Initialize LLM client
+        """Initializes the LLM client.
 
         Args:
-            api_key: API key (default "not-needed" for local LLMs)
-            base_url: Base URL for API endpoint (auto-appends /v1 if needed)
-            model: Model name/ID
-            temperature: Sampling temperature (0.0-2.0, default 0.2)
-            top_k: Top-K sampling (limits vocabulary to top K tokens)
-            top_p: Nucleus sampling (cumulative probability threshold, 0.0-1.0)
-            max_tokens: Maximum tokens in response (None = unlimited)
+            api_key (str): The API key, which defaults to "not-needed" for local LLMs.
+            base_url (str): The base URL for the API endpoint. It auto-appends '/v1' if not present.
+            model (str): The name or ID of the model to use.
+            temperature (float): The sampling temperature.
+            top_k (Optional[int]): The top-K sampling parameter.
+            top_p (Optional[float]): The nucleus sampling parameter.
+            max_tokens (Optional[int]): The maximum number of tokens in the response.
         """
         self.api_key = api_key or "not-needed"  # Default for local LLMs like LM Studio
 
@@ -54,15 +50,14 @@ class LLMClient:
 
     @retry_with_backoff(max_retries=2, initial_delay=2.0, exceptions=(Exception,))
     def summarize_leads(self, leads: List[dict], instruction: str = "Summarize the top opportunities in 10 bullets.") -> str:
-        """
-        Summarize leads or process custom instructions via LLM.
+        """Summarize a list of leads or process a custom instruction using the LLM.
 
         Args:
-            leads: List of lead dictionaries (can be empty for custom instructions)
-            instruction: Custom instruction or prompt for the LLM
+            leads (List[dict]): A list of lead dictionaries.
+            instruction (str): The instruction or prompt for the LLM.
 
         Returns:
-            LLM response as string
+            str: The response from the LLM as a string.
         """
         if not self.base_url:
             logger.warning("No LLM base URL configured")

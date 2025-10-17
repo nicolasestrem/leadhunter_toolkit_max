@@ -33,22 +33,42 @@ PROMPT_LIBRARY_DIR = BASE_DIR / "llm" / "prompt_library"
 
 @dataclass
 class OutreachVariant:
-    """Single outreach message variant"""
-    angle: str  # problem-focused, opportunity-focused, quick-win
-    subject: str  # Subject line (email only)
-    body: str  # Message body
-    cta: str  # Call to action
-    tone_used: str  # professional, friendly, direct
-    personalization_notes: str  # Notes on personalization
+    """Represents a single outreach message variant.
+
+    Attributes:
+        angle (str): The strategic angle of the message (e.g., 'problem-focused').
+        subject (str): The subject line, primarily for emails.
+        body (str): The main content of the message.
+        cta (str): The call to action.
+        tone_used (str): The tone of the message (e.g., 'professional', 'friendly').
+        personalization_notes (str): Notes on how the message was personalized.
+        deliverability_score (int): A score from 0 to 100 indicating deliverability.
+        deliverability_issues (List): A list of any identified deliverability issues.
+    """
+    angle: str
+    subject: str
+    body: str
+    cta: str
+    tone_used: str
+    personalization_notes: str
     deliverability_score: int = 0
-    deliverability_issues: List = None
+    deliverability_issues: Optional[List] = None
 
 
 @dataclass
 class OutreachResult:
-    """Result of outreach generation"""
+    """Represents the result of an outreach generation process.
+
+    Attributes:
+        variants (List[OutreachVariant]): A list of the generated message variants.
+        message_type (str): The type of message (e.g., 'email', 'linkedin', 'sms').
+        language (str): The language of the outreach.
+        generated_at (datetime): The timestamp of when the outreach was generated.
+        lead_name (str): The name of the lead.
+        deliverability_passed (bool): A flag indicating if all variants passed the deliverability check.
+    """
     variants: List[OutreachVariant]
-    message_type: str  # email, linkedin, sms
+    message_type: str
     language: str
     generated_at: datetime
     lead_name: str
@@ -56,7 +76,14 @@ class OutreachResult:
 
 
 def load_outreach_prompt_config() -> Dict:
-    """Load outreach prompt configuration from YAML"""
+    """Load the outreach prompt configuration from its YAML file.
+
+    This function is responsible for reading and parsing the 'outreach.yml' file,
+    which contains the templates and settings for generating outreach messages.
+
+    Returns:
+        Dict: A dictionary with the outreach prompt configuration.
+    """
     prompt_path = PROMPT_LIBRARY_DIR / "outreach.yml"
 
     with open(prompt_path, 'r', encoding='utf-8') as f:
@@ -66,14 +93,17 @@ def load_outreach_prompt_config() -> Dict:
 
 
 def _build_vertical_context(vertical: Dict) -> str:
-    """
-    Build vertical-specific context string for outreach prompts
+    """Build a vertical-specific context string for outreach prompts.
+
+    This internal helper function constructs a formatted string containing contextual
+    information about a specific vertical (e.g., restaurants, retail). This context
+    is then injected into the LLM prompt to tailor the outreach message.
 
     Args:
-        vertical: Vertical config dict from merged config
+        vertical (Dict): The vertical configuration dictionary from the merged config.
 
     Returns:
-        Formatted context string or empty string if no vertical active
+        str: A formatted context string, or an empty string if no vertical is active.
     """
     if not vertical or 'name' not in vertical:
         return ""
@@ -120,19 +150,21 @@ def format_outreach_prompt(
     language: str,
     tone: str = 'professional'
 ) -> tuple[str, str]:
-    """
-    Format outreach prompts (system + user)
-    Applies vertical preset context if active
+    """Format the outreach prompts, including both system and user prompts.
+
+    This function is responsible for assembling the final prompts that will be sent to the
+    LLM. It incorporates lead data, dossier summaries, and vertical-specific context to
+    create highly tailored and effective prompts.
 
     Args:
-        lead_data: Lead data dict
-        dossier_summary: Summary from dossier
-        message_type: email, linkedin, sms
-        language: Target language
-        tone: Communication tone
+        lead_data (Dict): The lead data dictionary.
+        dossier_summary (str): The summary from the dossier.
+        message_type (str): The type of message (e.g., 'email', 'linkedin').
+        language (str): The target language for the outreach.
+        tone (str): The desired communication tone.
 
     Returns:
-        Tuple of (system_prompt, user_prompt)
+        tuple[str, str]: A tuple containing the system and user prompts.
     """
     config = load_outreach_prompt_config()
 
@@ -200,14 +232,17 @@ def format_outreach_prompt(
 
 
 def parse_llm_outreach_response(response: str) -> List[OutreachVariant]:
-    """
-    Parse LLM response into OutreachVariant objects
+    """Parse the LLM's response into a list of OutreachVariant objects.
+
+    This function is designed to robustly handle the JSON output from the LLM. It includes
+    logic to clean the response by removing common conversational prefixes, suffixes, and
+    markdown code blocks that LLMs sometimes include.
 
     Args:
-        response: LLM JSON response
+        response (str): The JSON response from the LLM.
 
     Returns:
-        List of OutreachVariant objects
+        List[OutreachVariant]: A list of parsed OutreachVariant objects.
     """
     try:
         # Clean response - handle various formats
@@ -277,20 +312,23 @@ def compose_outreach(
     tone: str = 'professional',
     output_dir: Optional[Path] = None
 ) -> OutreachResult:
-    """
-    Compose personalized outreach messages
+    """Compose personalized outreach messages using an LLM.
+
+    This is the main function for generating outreach. It orchestrates the entire process,
+    from formatting the prompts and calling the LLM to parsing the response and checking
+    for deliverability. It also integrates with the plugin system for extensibility.
 
     Args:
-        lead_data: Lead data dict (should include LeadRecord fields)
-        llm_adapter: Configured LLM adapter
-        dossier_summary: Optional dossier summary for context
-        message_type: Type of message (email, linkedin, sms)
-        language: Target language (en, fr, de)
-        tone: Communication tone (professional, friendly, direct)
-        output_dir: Optional output directory for saving drafts
+        lead_data (Dict): The lead data, which should include fields from LeadRecord.
+        llm_adapter (LLMAdapter): A configured LLM adapter.
+        dossier_summary (str): An optional dossier summary for additional context.
+        message_type (str): The type of message (e.g., 'email', 'linkedin').
+        language (str): The target language.
+        tone (str): The communication tone (e.g., 'professional', 'friendly').
+        output_dir (Optional[Path]): An optional directory to save the drafts.
 
     Returns:
-        OutreachResult with variants
+        OutreachResult: An object containing the generated outreach variants.
     """
     logger.info(f"Composing {message_type} outreach for {lead_data.get('name', 'Unknown')}")
 
@@ -393,16 +431,18 @@ def save_outreach_drafts(
     lead_data: Dict,
     output_dir: Path
 ) -> Path:
-    """
-    Save outreach drafts to markdown file
+    """Save the generated outreach drafts to a markdown file.
+
+    This function creates a well-structured markdown file that contains all the outreach
+    variants, along with their associated metadata and deliverability reports.
 
     Args:
-        result: OutreachResult to save
-        lead_data: Lead data
-        output_dir: Output directory
+        result (OutreachResult): The OutreachResult object to be saved.
+        lead_data (Dict): The lead data, used for naming the file.
+        output_dir (Path): The directory where the file will be saved.
 
     Returns:
-        Path to saved file
+        Path: The path to the saved markdown file.
     """
     # Create slug from lead name/domain
     slug = lead_data.get('domain', lead_data.get('name', 'unknown'))
@@ -463,15 +503,17 @@ def save_outreach_drafts(
 
 
 def format_outreach_for_display(variant: OutreachVariant, message_type: str) -> str:
-    """
-    Format outreach variant for display in UI
+    """Format an outreach variant for display in the user interface.
+
+    This function takes an OutreachVariant and produces a formatted string that is
+    suitable for presentation in a Streamlit UI, including indicators for deliverability.
 
     Args:
-        variant: OutreachVariant to format
-        message_type: Type of message
+        variant (OutreachVariant): The outreach variant to format.
+        message_type (str): The type of message.
 
     Returns:
-        Formatted string for display
+        str: A formatted string for display.
     """
     output = f"**{variant.angle.replace('-', ' ').title()}** ({variant.tone_used})\n\n"
 

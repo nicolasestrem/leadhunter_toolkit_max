@@ -8,16 +8,15 @@ logger = get_logger(__name__)
 
 @async_retry_with_backoff(max_retries=3, initial_delay=1.0, exceptions=(httpx.HTTPError, httpx.TimeoutException))
 async def fetch_one(client: httpx.AsyncClient, url: str, timeout: int = 15) -> str:
-    """
-    Fetch a single URL with retry logic
+    """Fetch a single URL with retry logic.
 
     Args:
-        client: httpx AsyncClient instance
-        url: URL to fetch
-        timeout: Request timeout in seconds
+        client (httpx.AsyncClient): The httpx AsyncClient instance to use.
+        url (str): The URL to fetch.
+        timeout (int): The request timeout in seconds.
 
     Returns:
-        HTML content as string, or empty string on failure
+        str: The HTML content of the page, or an empty string on failure.
     """
     try:
         logger.debug(f"Fetching: {url}")
@@ -36,17 +35,16 @@ async def fetch_one(client: httpx.AsyncClient, url: str, timeout: int = 15) -> s
         return ""
 
 async def fetch_many(urls: list[str], timeout: int = 15, concurrency: int = 6, use_cache: bool = True) -> dict[str, str]:
-    """
-    Fetch multiple URLs concurrently with caching
+    """Fetch multiple URLs concurrently, with caching.
 
     Args:
-        urls: List of URLs to fetch
-        timeout: Request timeout in seconds
-        concurrency: Maximum concurrent requests
-        use_cache: Whether to use cache
+        urls (list[str]): A list of URLs to fetch.
+        timeout (int): The request timeout in seconds.
+        concurrency (int): The maximum number of concurrent requests.
+        use_cache (bool): If True, use the cache.
 
     Returns:
-        Dictionary mapping URLs to HTML content
+        dict[str, str]: A dictionary mapping URLs to their HTML content.
     """
     out = {}
     sem = asyncio.Semaphore(concurrency)
@@ -79,15 +77,14 @@ async def fetch_many(urls: list[str], timeout: int = 15, concurrency: int = 6, u
     return out
 
 def extract_links(html: str, base_url: str) -> list[str]:
-    """
-    Extract all links from HTML
+    """Extract all links from a string of HTML.
 
     Args:
-        html: HTML content
-        base_url: Base URL for link context (not currently used for joining)
+        html (str): The HTML content.
+        base_url (str): The base URL for resolving relative links.
 
     Returns:
-        List of href values
+        list[str]: A list of the href values of all links found.
     """
     try:
         tree = HTMLParser(html)
@@ -103,14 +100,13 @@ def extract_links(html: str, base_url: str) -> list[str]:
         return []
 
 def text_content(html: str) -> str:
-    """
-    Extract plain text content from HTML
+    """Extract the plain text content from a string of HTML.
 
     Args:
-        html: HTML content
+        html (str): The HTML content.
 
     Returns:
-        Plain text with whitespace normalized
+        str: The extracted plain text, with whitespace normalized.
     """
     try:
         tree = HTMLParser(html)

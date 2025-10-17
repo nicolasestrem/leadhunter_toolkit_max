@@ -21,16 +21,20 @@ MAX_PRESET_FILE_SIZE = 1 * 1024 * 1024   # 1MB max for preset files
 
 
 def validate_safe_path(base_dir: Path, filename: str, allowed_extensions: list = None) -> Optional[Path]:
-    """
-    Validate that a filename is safe and doesn't attempt path traversal
+    """Validate that a filename is safe and does not attempt path traversal.
+
+    This function checks for common security vulnerabilities, such as directory traversal attacks
+    ('../'), absolute paths, and hidden files. It ensures that the resolved file path is
+    securely located within the specified base directory.
 
     Args:
-        base_dir: Base directory that file must reside within
-        filename: Filename to validate (should not contain path separators)
-        allowed_extensions: Optional list of allowed file extensions (e.g., ['.yml', '.yaml'])
+        base_dir (Path): The base directory that the file must reside within.
+        filename (str): The name of the file to validate. It should not contain path separators.
+        allowed_extensions (list, optional): A list of allowed file extensions.
+                                             Defaults to None.
 
     Returns:
-        Resolved Path object if safe, None if validation fails
+        Optional[Path]: A resolved Path object if the path is safe; otherwise, None.
     """
     # Reject empty filenames
     if not filename or not filename.strip():
@@ -66,15 +70,17 @@ def validate_safe_path(base_dir: Path, filename: str, allowed_extensions: list =
 
 
 def safe_file_size(file_path: Path, max_size: int) -> bool:
-    """
-    Check if file size is within acceptable limits
+    """Check if a file's size is within a specified limit.
+
+    This function helps prevent denial-of-service attacks by ensuring that files
+    being processed do not exceed a safe size limit.
 
     Args:
-        file_path: Path to file
-        max_size: Maximum allowed size in bytes
+        file_path (Path): The path to the file to check.
+        max_size (int): The maximum allowed file size in bytes.
 
     Returns:
-        True if file size is acceptable, False otherwise
+        bool: True if the file size is within the limit, False otherwise.
     """
     try:
         return file_path.stat().st_size <= max_size
@@ -83,9 +89,23 @@ def safe_file_size(file_path: Path, max_size: int) -> bool:
 
 
 class ConfigLoader:
-    """Load and manage application configuration with cache invalidation"""
+    """Load and manage application configuration with cache invalidation.
+
+    This class is responsible for loading, merging, and caching configuration from various
+    sources, including YAML files and JSON settings. It is designed to automatically
+    invalidate the cache when configuration files are modified, ensuring that the application
+    always uses the most up-to-date settings.
+
+    Attributes:
+        _models_config (dict): Cached models configuration.
+        _defaults_config (dict): Cached default settings.
+        _settings (dict): Cached runtime settings.
+        _vertical_cache (dict): Cached vertical presets.
+        _file_mtimes (dict): A dictionary to track the modification times of loaded files.
+    """
 
     def __init__(self):
+        """Initializes a new instance of the ConfigLoader."""
         self._models_config = None
         self._defaults_config = None
         self._settings = None
@@ -95,21 +115,30 @@ class ConfigLoader:
         self._file_mtimes = {}
 
     def _update_file_mtime(self, file_path: Path) -> None:
-        """Record the latest modification time for ``file_path`` if available."""
+        """Record the latest modification time for a file.
+
+        This internal method is used to update the cache with the file's last modification
+        time, which is essential for the cache invalidation mechanism.
+
+        Args:
+            file_path (Path): The path to the file.
+        """
         try:
             self._file_mtimes[str(file_path)] = file_path.stat().st_mtime
         except (OSError, FileNotFoundError):
             self._file_mtimes.pop(str(file_path), None)
 
     def _is_file_modified(self, file_path: Path) -> bool:
-        """
-        Check if file has been modified since last load
+        """Check if a file has been modified since it was last loaded.
+
+        This method compares the file's current modification time with the cached time
+        to determine if the cache is stale.
 
         Args:
-            file_path: Path to file to check
+            file_path (Path): The path to the file to check.
 
         Returns:
-            True if file was modified or not seen before, False otherwise
+            bool: True if the file was modified or has not been seen before, False otherwise.
         """
         if not file_path.exists():
             return False
@@ -129,7 +158,15 @@ class ConfigLoader:
             return False
 
     def load_models(self) -> Dict[str, Any]:
-        """Load model configuration from models.yml with cache invalidation"""
+        """Load model configuration from 'models.yml' with cache invalidation.
+
+        This method reads the 'models.yml' file and loads its content into a dictionary.
+        It uses a cache to avoid unnecessary file reads, reloading the file only if it has
+        been modified since the last read.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the model configurations.
+        """
         models_path = CONFIG_DIR / "models.yml"
 
         # Reload if file was modified or not cached yet
@@ -144,7 +181,15 @@ class ConfigLoader:
         return self._models_config
 
     def load_defaults(self) -> Dict[str, Any]:
-        """Load default settings from defaults.yml with cache invalidation"""
+        """Load default settings from 'defaults.yml' with cache invalidation.
+
+        This method reads the 'defaults.yml' file, which contains the application's
+        default settings. It utilizes a caching mechanism to prevent redundant file
+        access, reloading the file only when it has been updated.
+
+        Returns:
+            Dict[str, Any]: A dictionary of the default settings.
+        """
         defaults_path = CONFIG_DIR / "defaults.yml"
 
         # Reload if file was modified or not cached yet
@@ -159,7 +204,15 @@ class ConfigLoader:
         return self._defaults_config
 
     def load_settings(self) -> Dict[str, Any]:
-        """Load runtime settings from settings.json with cache invalidation"""
+        """Load runtime settings from 'settings.json' with cache invalidation.
+
+        This method loads the user-specific settings from 'settings.json'. These settings
+        override the default configurations. The method uses a cache that is invalidated
+        when the file is modified.
+
+        Returns:
+            Dict[str, Any]: A dictionary of the runtime settings.
+        """
         # Reload if file was modified or not cached yet
         if self._settings is None or self._is_file_modified(SETTINGS_PATH):
             if SETTINGS_PATH.exists():
@@ -172,14 +225,16 @@ class ConfigLoader:
         return self._settings
 
     def get_model_config(self, model_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Get configuration for a specific model by name or alias
+        """Get the configuration for a specific model by its name or alias.
+
+        This method searches for a model's configuration in both the regular and Ollama
+        model sections of the 'models.yml' file.
 
         Args:
-            model_name: Model name or alias (e.g., 'gpt-oss-20b', 'classification')
+            model_name (str): The name or alias of the model (e.g., 'gpt-oss-20b', 'classification').
 
         Returns:
-            Dict with model config or None if not found
+            Optional[Dict[str, Any]]: A dictionary with the model's configuration or None if not found.
         """
         models = self.load_models()
 
@@ -194,19 +249,29 @@ class ConfigLoader:
         return None
 
     def get_default_endpoint(self) -> str:
-        """Get default LLM endpoint"""
+        """Get the default LLM endpoint from the model configuration.
+
+        Retrieves the default endpoint URL for the LLM service, with a fallback to a
+        hardcoded value if not specified in the configuration.
+
+        Returns:
+            str: The default LLM endpoint URL.
+        """
         models = self.load_models()
         return models.get('default_endpoint', 'https://lm.leophir.com/')
 
     def load_vertical_preset(self, vertical_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Load a vertical preset configuration from YAML with security validation
+        """Load a vertical preset configuration from a YAML file with security validation.
+
+        This method loads a specific vertical preset, such as 'restaurant' or 'retail'.
+        It includes security checks to validate the file path and prevent loading overly
+        large files. The presets are cached to improve performance.
 
         Args:
-            vertical_name: Name of vertical (e.g., 'restaurant', 'retail', 'professional_services')
+            vertical_name (str): The name of the vertical preset to load.
 
         Returns:
-            Dict with vertical configuration or None if not found/invalid
+            Optional[Dict[str, Any]]: A dictionary with the vertical configuration, or None if not found or invalid.
         """
         if not vertical_name:
             return None
@@ -246,11 +311,13 @@ class ConfigLoader:
             return None
 
     def get_active_vertical(self) -> Optional[str]:
-        """
-        Get name of currently active vertical preset
+        """Get the name of the currently active vertical preset.
+
+        The active vertical is determined by checking 'settings.json' first, and then
+        falling back to 'defaults.yml'.
 
         Returns:
-            Vertical name or None if no vertical is active
+            Optional[str]: The name of the active vertical, or None if no vertical is active.
         """
         # Check settings.json first
         settings = self.load_settings()
@@ -265,15 +332,18 @@ class ConfigLoader:
         return None
 
     def apply_vertical_overrides(self, config: Dict[str, Any], vertical: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Apply vertical preset overrides to configuration
+        """Apply vertical preset overrides to a configuration dictionary.
+
+        This method merges the settings from a vertical preset into a base configuration.
+        It handles nested structures for scoring, outreach, audit, and other vertical-specific
+        settings.
 
         Args:
-            config: Base configuration dict
-            vertical: Vertical preset dict
+            config (Dict[str, Any]): The base configuration dictionary.
+            vertical (Dict[str, Any]): The vertical preset dictionary.
 
         Returns:
-            Modified configuration with vertical overrides applied
+            Dict[str, Any]: The modified configuration with vertical overrides applied.
         """
         if not vertical:
             return config
@@ -314,15 +384,17 @@ class ConfigLoader:
         return config
 
     def get_merged_config(self) -> Dict[str, Any]:
-        """
-        Get merged configuration with precedence:
+        """Get the merged configuration with a defined precedence.
+
+        This is a key method that constructs the final configuration by merging settings
+        from multiple sources in a specific order of precedence:
         1. settings.json (highest priority)
-        2. vertical presets (if active)
+        2. Active vertical preset
         3. defaults.yml
         4. models.yml
 
         Returns:
-            Merged configuration dictionary
+            Dict[str, Any]: The fully merged and final configuration dictionary.
         """
         # Start with deep copy of defaults to avoid mutating cache
         defaults = self.load_defaults()
@@ -452,7 +524,11 @@ class ConfigLoader:
         return config
 
     def reload(self):
-        """Clear cached configs to force reload on next access"""
+        """Clear all cached configurations to force a reload on the next access.
+
+        This method resets the internal caches, which is useful when configuration files
+        have been changed by an external process.
+        """
         self._models_config = None
         self._defaults_config = None
         self._settings = None
@@ -464,10 +540,21 @@ _config_loader = ConfigLoader()
 
 
 def get_config() -> ConfigLoader:
-    """Get global config loader instance"""
+    """Get the global instance of the configuration loader.
+
+    This function provides a singleton-like access to the ConfigLoader instance,
+    ensuring that the entire application shares the same configuration cache.
+
+    Returns:
+        ConfigLoader: The global instance of the ConfigLoader.
+    """
     return _config_loader
 
 
 def reload_config():
-    """Reload all configuration from disk"""
+    """Reload all configurations from the disk.
+
+    This function is a convenient shortcut to trigger a full reload of all configuration
+    files by calling the 'reload' method on the global ConfigLoader instance.
+    """
     _config_loader.reload()

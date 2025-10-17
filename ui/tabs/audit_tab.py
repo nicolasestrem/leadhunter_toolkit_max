@@ -16,19 +16,28 @@ from constants import (MIN_ONBOARD_CRAWL_PAGES, MAX_ONBOARD_CRAWL_PAGES, DEFAULT
 
 
 def get_llm_adapter():
-    """Helper function to create LLM adapter"""
+    """Create and return a configured LLM adapter.
+
+    This helper function abstracts the process of initializing the LLM adapter
+    based on the current application configuration.
+
+    Returns:
+        LLMAdapter: A configured instance of the LLM adapter.
+    """
     config_loader = ConfigLoader()
     config = config_loader.get_merged_config()
     return LLMAdapter.from_config(config)
 
 
 def render_audit_tab(settings: dict, out_dir: str):
-    """
-    Render the Audit tab
+    """Render the Audit tab in the Streamlit UI.
+
+    This function provides the user interface for both the automated onboarding wizard
+    and the single-page audit functionality.
 
     Args:
-        settings: Application settings dict
-        out_dir: Output directory path
+        settings (dict): The current application settings.
+        out_dir (str): The path to the output directory.
     """
     st.subheader("Client Onboarding & Audit")
     st.caption("Run comprehensive site audits and generate prioritized quick wins")

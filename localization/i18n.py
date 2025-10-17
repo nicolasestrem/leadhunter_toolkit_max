@@ -166,14 +166,17 @@ UI_STRINGS = {
 
 
 def get_language_config(language: str) -> Dict[str, Any]:
-    """
-    Get configuration for a language
+    """Get the configuration for a specific language.
+
+    This function retrieves the language-specific settings, such as date formats,
+    currency symbols, and separators. It falls back to English if the requested
+    language is not supported.
 
     Args:
-        language: Language code (en, fr, de)
+        language (str): The language code (e.g., 'en', 'fr', 'de').
 
     Returns:
-        Language configuration dict
+        Dict[str, Any]: A dictionary containing the language configuration.
     """
     language = language.lower()
     if language not in LANGUAGE_CONFIGS:
@@ -183,15 +186,18 @@ def get_language_config(language: str) -> Dict[str, Any]:
 
 
 def get_tone_preset(language: str, tone: str = 'professional') -> Dict[str, str]:
-    """
-    Get tone preset for a language
+    """Get the tone preset for a specific language and tone.
+
+    This function provides the appropriate greetings, closings, and formality levels
+    for a given communication style. It defaults to English and a professional tone
+    if the requested language or tone is not available.
 
     Args:
-        language: Language code (en, fr, de)
-        tone: Tone name (professional, friendly, direct)
+        language (str): The language code (e.g., 'en', 'fr', 'de').
+        tone (str): The name of the tone (e.g., 'professional', 'friendly').
 
     Returns:
-        Tone preset dict
+        Dict[str, str]: A dictionary containing the tone preset.
     """
     language = language.lower()
     if language not in TONE_PRESETS:
@@ -204,14 +210,14 @@ def get_tone_preset(language: str, tone: str = 'professional') -> Dict[str, str]
 
 
 def get_available_tones(language: str) -> Dict[str, Dict[str, str]]:
-    """
-    Get all available tones for a language
+    """Get all available tones for a given language.
 
     Args:
-        language: Language code
+        language (str): The language code.
 
     Returns:
-        Dict of tone name to tone preset
+        Dict[str, Dict[str, str]]: A dictionary where keys are tone names and values
+                                   are the corresponding tone presets.
     """
     language = language.lower()
     if language not in TONE_PRESETS:
@@ -221,15 +227,17 @@ def get_available_tones(language: str) -> Dict[str, Dict[str, str]]:
 
 
 def translate_string(key: str, language: str) -> str:
-    """
-    Translate a UI string
+    """Translate a UI string using a key and a target language.
+
+    This function looks up a string in the UI_STRINGS dictionary. If a translation
+    is not found, it returns the key itself as a fallback.
 
     Args:
-        key: String key
-        language: Target language
+        key (str): The key of the string to translate.
+        language (str): The target language.
 
     Returns:
-        Translated string or key if not found
+        str: The translated string, or the key if no translation is found.
     """
     language = language.lower()
     if language not in UI_STRINGS:
@@ -244,17 +252,19 @@ def format_message(
     tone: str = 'professional',
     **kwargs
 ) -> str:
-    """
-    Format a message with language and tone
+    """Format a message template with language and tone-specific elements.
+
+    This function injects tone-specific greetings and closings into the template
+    before formatting it with the provided keyword arguments.
 
     Args:
-        template: Message template
-        language: Target language
-        tone: Communication tone
-        **kwargs: Template variables
+        template (str): The message template.
+        language (str): The target language.
+        tone (str): The communication tone.
+        **kwargs: The variables to substitute into the template.
 
     Returns:
-        Formatted message
+        str: The formatted message.
     """
     tone_preset = get_tone_preset(language, tone)
 
@@ -269,37 +279,34 @@ def format_message(
 
 
 def get_language_name(language_code: str) -> str:
-    """
-    Get display name for language code
+    """Get the display name for a given language code.
 
     Args:
-        language_code: Language code (en, fr, de)
+        language_code (str): The language code (e.g., 'en', 'fr', 'de').
 
     Returns:
-        Display name of language
+        str: The display name of the language.
     """
     config = get_language_config(language_code)
     return config.get('name', language_code.upper())
 
 
 def is_language_supported(language_code: str) -> bool:
-    """
-    Check if language is supported
+    """Check if a language is supported by the application.
 
     Args:
-        language_code: Language code to check
+        language_code (str): The language code to check.
 
     Returns:
-        True if supported, False otherwise
+        bool: True if the language is supported, False otherwise.
     """
     return language_code.lower() in SUPPORTED_LANGUAGES
 
 
 def get_default_language() -> str:
-    """
-    Get default language code
+    """Get the default language code for the application.
 
     Returns:
-        Default language code (en)
+        str: The default language code, which is 'en'.
     """
     return 'en'

@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 
 def integrate_sidebar():
-    """
-    Integrate enhanced sidebar into app.py
+    """Integrate the enhanced sidebar into the main application file.
 
-    Replaces lines 275-471 with enhanced sidebar code
-    Creates backup before modifying
+    This function replaces the existing sidebar section in 'app.py' with the
+    enhanced version from 'sidebar_enhanced.py'. It creates a backup of the
+    original 'app.py' before making any modifications.
     """
 
     # File paths
@@ -93,7 +93,11 @@ def integrate_sidebar():
 
 
 def rollback():
-    """Rollback to backup version"""
+    """Roll back to the backup version of the application file.
+
+    This function restores the 'app.py' file from the 'app.py.backup' file,
+    reverting any changes made by the integration script.
+    """
     app_path = Path("app.py")
     backup_path = Path("app.py.backup")
 
@@ -113,7 +117,7 @@ def rollback():
 
 
 def show_help():
-    """Show usage help"""
+    """Show the usage help message for the script."""
     print("""
 Enhanced Sidebar Integration Script
 ====================================

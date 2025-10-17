@@ -15,19 +15,28 @@ from constants import MIN_DOSSIER_CRAWL_PAGES, MAX_DOSSIER_CRAWL_PAGES, DEFAULT_
 
 
 def get_llm_adapter():
-    """Helper function to create LLM adapter"""
+    """Create and return a configured LLM adapter.
+
+    This helper function abstracts the process of initializing the LLM adapter
+    based on the current application configuration.
+
+    Returns:
+        LLMAdapter: A configured instance of the LLM adapter.
+    """
     config_loader = ConfigLoader()
     config = config_loader.get_merged_config()
     return LLMAdapter.from_config(config)
 
 
 def render_dossier_tab(settings: dict, out_dir: str):
-    """
-    Render the Dossier tab
+    """Render the Dossier tab in the Streamlit UI.
+
+    This function provides the user interface for building and displaying comprehensive
+    client dossiers.
 
     Args:
-        settings: Application settings dict
-        out_dir: Output directory path
+        settings (dict): The current application settings.
+        out_dir (str): The path to the output directory.
     """
     st.subheader("Client Dossier Builder")
     st.caption("Generate comprehensive RAG-based client dossiers with cited sources and quick wins")

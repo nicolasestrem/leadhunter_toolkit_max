@@ -7,10 +7,10 @@ from cache_manager import get_cache_stats, cleanup_cache, clear_all_cache
 
 
 def render_cache_section() -> None:
-    """
-    Render cache management section.
+    """Render the cache management section in the sidebar.
 
-    Shows cache statistics and provides cleanup/clear functionality.
+    This function displays cache statistics and provides buttons for clearing and
+    cleaning up the cache.
     """
     st.divider()
     st.subheader("Cache Management")

@@ -8,15 +8,17 @@ from config.loader import ConfigLoader
 
 
 def render_verticals_section(settings: dict, save_callback) -> dict:
-    """
-    Render vertical presets selector.
+    """Render the vertical presets selector in the sidebar.
+
+    This function provides the UI for selecting and applying industry-specific
+    presets, which can influence scoring and outreach generation.
 
     Args:
-        settings: Current settings dictionary
-        save_callback: Function to call when settings are saved
+        settings (dict): The current settings dictionary.
+        save_callback: The function to call when the settings are saved.
 
     Returns:
-        Updated settings dictionary (only if changed)
+        dict: The updated settings dictionary.
     """
     st.divider()
     st.subheader("Vertical Presets")

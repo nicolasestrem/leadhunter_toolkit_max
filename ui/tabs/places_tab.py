@@ -12,11 +12,13 @@ from constants import MIN_MAX_PLACES, MAX_MAX_PLACES, DEFAULT_MAX_PLACES
 
 
 def render_places_tab(settings: dict):
-    """
-    Render the Google Places text search tab
+    """Render the Google Places tab in the Streamlit UI.
+
+    This function provides the user interface for searching and enriching leads using
+    the Google Places API.
 
     Args:
-        settings: Application settings dict
+        settings (dict): The current application settings.
     """
     st.subheader("Text search on Google Places")
     st.caption("Requires a valid API key. Uses /places:searchText and detail lookups.")

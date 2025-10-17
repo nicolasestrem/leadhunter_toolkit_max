@@ -10,14 +10,16 @@ LOGS_DIR = Path(__file__).parent / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
 
 def get_logger(name: str) -> logging.Logger:
-    """
-    Get or create a logger with consistent formatting
+    """Get or create a logger with a consistent configuration.
+
+    This function sets up a logger that outputs to both the console and a file,
+    with different formatting and levels for each.
 
     Args:
-        name: Logger name (usually __name__)
+        name (str): The name of the logger, typically '__name__'.
 
     Returns:
-        Configured logger instance
+        logging.Logger: The configured logger instance.
     """
     logger = logging.getLogger(name)
 

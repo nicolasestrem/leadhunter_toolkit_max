@@ -13,10 +13,13 @@ from export_advanced import (
 
 
 def render_export_sidebar(project: str):
-    """
-    Render the advanced export section in the sidebar
+    """Render the advanced export section in the sidebar.
+
+    This function provides a user interface for filtering and exporting leads in
+    various formats.
+
     Args:
-        project: Current project name from settings
+        project (str): The current project name from the settings.
     """
     st.divider()
     st.subheader("Advanced Export")

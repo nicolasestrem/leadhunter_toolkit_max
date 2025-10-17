@@ -3,6 +3,7 @@ from typing import Optional, List, Dict
 from datetime import datetime
 
 class Social(BaseModel):
+    """A data model for social media links."""
     facebook: Optional[str] = None
     instagram: Optional[str] = None
     linkedin: Optional[str] = None
@@ -10,7 +11,7 @@ class Social(BaseModel):
     youtube: Optional[str] = None
 
 class Lead(BaseModel):
-    """Lead data model for business contact information"""
+    """A data model for business contact information."""
     name: Optional[str] = None
     domain: Optional[str] = None
     website: Optional[str] = None
@@ -34,9 +35,9 @@ class Lead(BaseModel):
 
 
 class LeadRecord(BaseModel):
-    """
-    Enhanced lead data model for consulting pack
-    Includes classification, multi-dimensional scoring, and quality signals
+    """An enhanced lead data model for the consulting pack.
+
+    This model includes classification, multi-dimensional scoring, and quality signals.
     """
     # Basic information (inherited from Lead)
     name: Optional[str] = None
@@ -83,7 +84,14 @@ class LeadRecord(BaseModel):
 
     @classmethod
     def from_lead(cls, lead: Lead) -> 'LeadRecord':
-        """Create LeadRecord from existing Lead"""
+        """Create a LeadRecord from an existing Lead object.
+
+        Args:
+            lead (Lead): The Lead object to convert.
+
+        Returns:
+            LeadRecord: The newly created LeadRecord object.
+        """
         return cls(
             name=lead.name,
             domain=lead.domain,

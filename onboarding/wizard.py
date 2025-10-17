@@ -21,7 +21,20 @@ logger = get_logger(__name__)
 
 @dataclass
 class OnboardingResult:
-    """Result of onboarding process"""
+    """Represents the result of the automated onboarding process.
+
+    This data class is a container for all the artifacts and metrics generated during
+    the onboarding wizard's execution.
+
+    Attributes:
+        domain (str): The domain that was onboarded.
+        pages_crawled (int): The total number of pages crawled.
+        pages_audited (int): The number of pages that were audited.
+        audits (List[PageAudit]): A list of the page audit results.
+        all_quick_wins (List[PrioritizedTask]): A list of the aggregated and prioritized quick wins.
+        generated_at (datetime): The timestamp of when the onboarding was completed.
+        output_file (Optional[Path]): The path to the saved markdown report.
+    """
     domain: str
     pages_crawled: int
     pages_audited: int
@@ -35,21 +48,17 @@ def select_key_pages(
     crawled_urls: List[str],
     max_pages: int = 3
 ) -> List[str]:
-    """
-    Select key pages to audit from crawled URLs
+    """Select a list of key pages to audit from a list of crawled URLs.
 
-    Prioritizes:
-    1. Homepage
-    2. About page
-    3. Contact page
-    4. Services/Products pages
+    This function prioritizes pages that are commonly important for a business, such as
+    the homepage, about, contact, and services pages.
 
     Args:
-        crawled_urls: List of crawled URLs
-        max_pages: Maximum pages to audit
+        crawled_urls (List[str]): A list of crawled URLs.
+        max_pages (int): The maximum number of pages to select.
 
     Returns:
-        List of selected URLs
+        List[str]: A list of the selected, prioritized URLs.
     """
     if not crawled_urls:
         return []
@@ -93,26 +102,22 @@ async def run_onboarding(
     output_dir: Optional[Path] = None,
     concurrency: int = 5
 ) -> OnboardingResult:
-    """
-    Run automated onboarding process
+    """Run the automated onboarding process for a given domain.
 
-    Workflow:
-    1. Crawl site (max_crawl_pages)
-    2. Select key pages (max_audit_pages)
-    3. Audit each key page with LLM
-    4. Generate aggregated quick wins
-    5. Export to markdown
+    This asynchronous function orchestrates the entire onboarding workflow, which includes
+    crawling a site, selecting key pages, auditing them with an LLM, and generating a
+    report of aggregated quick wins.
 
     Args:
-        domain: Domain to onboard (e.g., "example.com")
-        llm_adapter: Configured LLM adapter
-        max_crawl_pages: Max pages to crawl
-        max_audit_pages: Max pages to audit in detail
-        output_dir: Optional output directory
-        concurrency: Concurrent requests
+        domain (str): The domain to onboard (e.g., "example.com").
+        llm_adapter (LLMAdapter): A configured LLM adapter.
+        max_crawl_pages (int): The maximum number of pages to crawl.
+        max_audit_pages (int): The maximum number of pages to audit in detail.
+        output_dir (Optional[Path]): An optional directory to save the report.
+        concurrency (int): The number of concurrent requests for crawling and fetching.
 
     Returns:
-        OnboardingResult
+        OnboardingResult: The result of the onboarding process.
     """
     logger.info(f"Starting onboarding for {domain}")
 

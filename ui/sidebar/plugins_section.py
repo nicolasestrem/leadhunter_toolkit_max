@@ -7,10 +7,10 @@ from plugins import load_plugins
 
 
 def render_plugins_section() -> None:
-    """
-    Render plugins management section.
+    """Render the plugins management section in the sidebar.
 
-    Shows loaded plugins, their details, and provides reload functionality.
+    This function displays the list of loaded plugins, their details, and provides
+    a button to reload all plugins.
     """
     st.divider()
     st.subheader("Plugins")

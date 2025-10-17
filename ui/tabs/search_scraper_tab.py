@@ -12,18 +12,27 @@ from indexing import SiteIndexer
 
 
 def get_search_scraper():
-    """Lazy load SearchScraper module"""
+    """Lazy load the SearchScraper module.
+
+    This function dynamically imports the SearchScraper class to avoid circular
+    dependencies and to improve startup time.
+
+    Returns:
+        The SearchScraper class.
+    """
     from search_scraper import SearchScraper
     return SearchScraper
 
 
 def render_search_scraper_tab(settings: dict, out_dir: str):
-    """
-    Render the Search Scraper tab
+    """Render the Search Scraper tab in the Streamlit UI.
+
+    This function provides the user interface for performing AI-powered web research
+    and for conducting semantic searches on indexed content.
 
     Args:
-        settings: Application settings dict
-        out_dir: Output directory path
+        settings (dict): The current application settings.
+        out_dir (str): The path to the output directory.
     """
     st.subheader("AI-Powered Web Research")
     st.caption("Search the web and extract insights using AI, or get raw markdown content from multiple sources")

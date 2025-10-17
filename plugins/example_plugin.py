@@ -16,26 +16,14 @@ from typing import Dict, Any
 
 
 def register() -> Dict[str, Any]:
-    """
-    Plugin registration function
+    """Register the plugin with the main application.
+
+    This function is the entry point for the plugin system. It returns a dictionary
+    containing the plugin's metadata, including its version, description, and the
+    hooks it implements.
 
     Returns:
-        Dict with plugin metadata:
-        {
-            'version': '1.0.0',
-            'description': 'Plugin description',
-            'hooks': {
-                'hook_name': hook_function,
-                ...
-            },
-            'menu_items': [
-                {
-                    'label': 'Menu Item',
-                    'callback': function
-                },
-                ...
-            ]
-        }
+        Dict[str, Any]: A dictionary of the plugin's metadata.
     """
     return {
         'version': '1.0.0',
@@ -62,14 +50,16 @@ def register() -> Dict[str, Any]:
 
 
 def before_classification_hook(lead_data: dict) -> dict:
-    """
-    Called before a lead is classified
+    """An example hook that is called before a lead is classified.
+
+    This function provides an opportunity to pre-process or modify the lead data
+    before it is sent for classification.
 
     Args:
-        lead_data: Lead data dict
+        lead_data (dict): The lead data dictionary.
 
     Returns:
-        Modified lead_data (or original if no changes)
+        dict: The (potentially modified) lead data.
     """
     # Example: Pre-process lead data before classification
     # Could add custom fields, normalize data, etc.
@@ -77,14 +67,16 @@ def before_classification_hook(lead_data: dict) -> dict:
 
 
 def after_classification_hook(lead_record: dict) -> dict:
-    """
-    Called after a lead is classified
+    """An example hook that is called after a lead has been classified.
+
+    This function can be used to post-process the lead record, such as by adding
+    custom tags based on the classification scores.
 
     Args:
-        lead_record: LeadRecord dict
+        lead_record (dict): The LeadRecord dictionary.
 
     Returns:
-        Modified lead_record (or original if no changes)
+        dict: The (potentially modified) lead record.
     """
     # Example: Add a custom tag based on score
     if lead_record.get('score_fit', 0) >= 9:
@@ -98,15 +90,17 @@ def after_classification_hook(lead_record: dict) -> dict:
 
 
 def before_outreach_hook(lead_data: dict, message_type: str) -> dict:
-    """
-    Called before outreach generation
+    """An example hook that is called before outreach generation.
+
+    This function can be used to add custom context to the lead data, which can then
+    be used in the outreach prompts.
 
     Args:
-        lead_data: Lead data dict
-        message_type: Type of message (email, linkedin, sms)
+        lead_data (dict): The lead data dictionary.
+        message_type (str): The type of message being generated (e.g., 'email').
 
     Returns:
-        Modified lead_data (or original if no changes)
+        dict: The (potentially modified) lead data.
     """
     # Example: Add custom context for specific business types
     if lead_data.get('business_type') == 'restaurant':
@@ -116,15 +110,14 @@ def before_outreach_hook(lead_data: dict, message_type: str) -> dict:
 
 
 def after_outreach_hook(result_dict: dict, lead_data: dict) -> None:
-    """
-    Called after outreach generation
+    """An example hook that is called after outreach has been generated.
+
+    This is an informational hook that can be used for logging, analytics, or
+    triggering external actions like updating a CRM.
 
     Args:
-        result_dict: Outreach result dict with variants
-        lead_data: Lead data dict
-
-    Returns:
-        None (informational hook for logging/analytics)
+        result_dict (dict): A dictionary representing the outreach result.
+        lead_data (dict): The lead data dictionary.
     """
     # Example: Log outreach generation for analytics
     # Could send to analytics service, update CRM, etc.
@@ -132,11 +125,7 @@ def after_outreach_hook(result_dict: dict, lead_data: dict) -> None:
 
 
 def example_action():
-    """
-    Example menu action
-
-    This would be called when user clicks the menu item in Streamlit
-    """
+    """An example of a menu action that can be triggered from the Streamlit UI."""
     print("Example plugin action triggered!")
     return "Plugin action executed successfully"
 

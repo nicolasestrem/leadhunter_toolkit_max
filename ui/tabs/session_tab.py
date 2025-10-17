@@ -7,12 +7,14 @@ import datetime
 
 
 def render_session_tab(settings: dict, out_dir: str):
-    """
-    Render the Session tab
+    """Render the Session tab in the Streamlit UI.
+
+    This function displays information about the current session, such as the current
+    time, project name, and output directory.
 
     Args:
-        settings: Application settings dict
-        out_dir: Output directory path
+        settings (dict): The current application settings.
+        out_dir (str): The path to the output directory.
     """
     st.subheader("Session")
 

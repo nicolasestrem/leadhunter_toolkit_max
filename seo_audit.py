@@ -14,10 +14,42 @@ logger = get_logger(__name__)
 
 @dataclass
 class SEOAuditResult:
-    """Result of SEO content audit"""
-    url: str
+    """A data class for the result of an SEO content audit.
 
-    # Meta tags
+    Attributes:
+        url (str): The URL of the audited page.
+        title (Optional[str]): The title of the page.
+        title_length (int): The length of the title.
+        meta_description (Optional[str]): The meta description of the page.
+        meta_description_length (int): The length of the meta description.
+        meta_keywords (Optional[str]): The meta keywords of the page.
+        canonical_url (Optional[str]): The canonical URL of the page.
+        og_tags (Dict[str, str]): A dictionary of Open Graph tags.
+        twitter_tags (Dict[str, str]): A dictionary of Twitter card tags.
+        h1_tags (List[str]): A list of H1 tags.
+        h2_tags (List[str]): A list of H2 tags.
+        h3_tags (List[str]): A list of H3 tags.
+        heading_structure (Dict[str, int]): A dictionary representing the heading structure.
+        total_images (int): The total number of images on the page.
+        images_with_alt (int): The number of images with alt text.
+        images_without_alt (int): The number of images without alt text.
+        image_alt_coverage (float): The percentage of images with alt text.
+        image_details (List[Dict[str, str]]): A list of dictionaries with details about each image.
+        total_links (int): The total number of links on the page.
+        internal_links (int): The number of internal links.
+        external_links (int): The number of external links.
+        nofollow_links (int): The number of nofollow links.
+        broken_links_suspected (int): The number of suspected broken links.
+        word_count (int): The word count of the page.
+        paragraph_count (int): The number of paragraphs on the page.
+        avg_paragraph_length (float): The average length of paragraphs.
+        schema_types (List[str]): A list of schema.org types found on the page.
+        issues (List[str]): A list of SEO issues found on the page.
+        llm_score (Optional[float]): The content quality score from the LLM.
+        llm_feedback (Optional[str]): The feedback on content quality from the LLM.
+        seo_score (float): The overall SEO score (0-100).
+    """
+    url: str
     title: Optional[str] = None
     title_length: int = 0
     meta_description: Optional[str] = None
@@ -67,27 +99,25 @@ class SEOAuditResult:
 
 
 class SEOAuditor:
-    """SEO content auditor with LLM integration"""
+    """A class for performing SEO content audits on web pages."""
 
     def __init__(self, llm_client=None):
-        """
-        Initialize SEO auditor
+        """Initializes the SEOAuditor.
 
         Args:
-            llm_client: Optional LLMClient instance for content scoring
+            llm_client: An optional LLMClient instance for content scoring.
         """
         self.llm_client = llm_client
 
     def audit_url(self, url: str, html: str) -> SEOAuditResult:
-        """
-        Perform comprehensive SEO audit on a URL
+        """Perform a comprehensive SEO audit on a given URL and its HTML content.
 
         Args:
-            url: URL being audited
-            html: HTML content of the page
+            url (str): The URL being audited.
+            html (str): The HTML content of the page.
 
         Returns:
-            SEOAuditResult with all metrics
+            SEOAuditResult: An object containing all the audit metrics.
         """
         result = SEOAuditResult(url=url)
 
@@ -126,7 +156,12 @@ class SEOAuditor:
         return result
 
     def _audit_meta_tags(self, tree: HTMLParser, result: SEOAuditResult):
-        """Audit meta tags"""
+        """Audit the meta tags of the page.
+
+        Args:
+            tree (HTMLParser): The parsed HTML tree.
+            result (SEOAuditResult): The audit result object to populate.
+        """
         # Title
         title_tag = tree.css_first("title")
         if title_tag:
@@ -181,7 +216,12 @@ class SEOAuditor:
             result.canonical_url = canonical.attributes.get("href")
 
     def _audit_headings(self, tree: HTMLParser, result: SEOAuditResult):
-        """Audit heading structure"""
+        """Audit the heading structure of the page.
+
+        Args:
+            tree (HTMLParser): The parsed HTML tree.
+            result (SEOAuditResult): The audit result object to populate.
+        """
         result.h1_tags = [h.text(strip=True) for h in tree.css("h1")]
         result.h2_tags = [h.text(strip=True) for h in tree.css("h2")]
         result.h3_tags = [h.text(strip=True) for h in tree.css("h3")]
@@ -207,7 +247,13 @@ class SEOAuditor:
                 result.issues.append("H3 tags present without H2 (poor hierarchy)")
 
     def _audit_images(self, tree: HTMLParser, base_url: str, result: SEOAuditResult):
-        """Audit images and alt attributes"""
+        """Audit the images and their alt attributes on the page.
+
+        Args:
+            tree (HTMLParser): The parsed HTML tree.
+            base_url (str): The base URL for resolving relative image paths.
+            result (SEOAuditResult): The audit result object to populate.
+        """
         images = tree.css("img")
         result.total_images = len(images)
 
@@ -236,7 +282,13 @@ class SEOAuditor:
                 )
 
     def _audit_links(self, tree: HTMLParser, base_url: str, result: SEOAuditResult):
-        """Audit internal and external links"""
+        """Audit the internal and external links on the page.
+
+        Args:
+            tree (HTMLParser): The parsed HTML tree.
+            base_url (str): The base URL for identifying internal links.
+            result (SEOAuditResult): The audit result object to populate.
+        """
         base_domain = urlparse(base_url).netloc
         links = tree.css("a[href]")
 
@@ -270,7 +322,12 @@ class SEOAuditor:
             result.issues.append("No internal links found")
 
     def _audit_content(self, tree: HTMLParser, result: SEOAuditResult):
-        """Audit textual content"""
+        """Audit the textual content of the page.
+
+        Args:
+            tree (HTMLParser): The parsed HTML tree.
+            result (SEOAuditResult): The audit result object to populate.
+        """
         # Get visible text
         text = tree.text(separator=" ", strip=True)
 
@@ -294,7 +351,12 @@ class SEOAuditor:
             result.issues.append("No paragraphs found")
 
     def _audit_schema(self, tree: HTMLParser, result: SEOAuditResult):
-        """Audit structured data (schema.org)"""
+        """Audit the structured data (schema.org) on the page.
+
+        Args:
+            tree (HTMLParser): The parsed HTML tree.
+            result (SEOAuditResult): The audit result object to populate.
+        """
         # JSON-LD
         for script in tree.css('script[type="application/ld+json"]'):
             try:
@@ -313,19 +375,13 @@ class SEOAuditor:
                 result.schema_types.append(schema_name)
 
     def _calculate_seo_score(self, result: SEOAuditResult) -> float:
-        """
-        Calculate technical SEO score (0-100)
+        """Calculate the technical SEO score based on the audit results.
 
-        Scoring breakdown:
-        - Title: 15 points
-        - Meta description: 15 points
-        - H1: 10 points
-        - Image alt: 10 points
-        - Content length: 15 points
-        - Heading structure: 10 points
-        - Links: 10 points
-        - Schema: 5 points
-        - Penalties for issues: -2 per issue
+        Args:
+            result (SEOAuditResult): The audit result object.
+
+        Returns:
+            float: The calculated SEO score (0-100).
         """
         score = 0.0
 
@@ -399,7 +455,12 @@ class SEOAuditor:
         return max(0, min(100, score))
 
     def _llm_score_content(self, tree: HTMLParser, result: SEOAuditResult):
-        """Use LLM to score content quality"""
+        """Use an LLM to score the quality of the page's content.
+
+        Args:
+            tree (HTMLParser): The parsed HTML tree.
+            result (SEOAuditResult): The audit result object to populate.
+        """
         if not self.llm_client:
             return
 

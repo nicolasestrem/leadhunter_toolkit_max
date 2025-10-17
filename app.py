@@ -46,21 +46,47 @@ DEFAULT_KEYWORDS = {
 # ============================================================================
 
 def load_settings():
-    """Load settings from settings.json"""
+    """Load settings from the 'settings.json' file.
+
+    This function reads the content of 'settings.json' and parses it as a JSON object.
+    It is designed to handle cases where the file might not exist or is empty by returning
+    an empty dictionary.
+
+    Returns:
+        dict: A dictionary containing the application settings. Returns an empty dictionary
+              if the file cannot be read or does not exist.
+    """
     try:
-        return json.load(open(SETTINGS_PATH, "r", encoding="utf-8"))
-    except Exception:
+        with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
 def save_settings(data: dict):
-    """Save settings to settings.json"""
+    """Save the provided settings to the 'settings.json' file.
+
+    This function serializes the given dictionary into a JSON formatted string and
+    writes it to 'settings.json', overwriting the file if it already exists. The JSON
+    is pretty-printed with an indent of 2 spaces for readability.
+
+    Args:
+        data (dict): A dictionary containing the settings to be saved.
+    """
     with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def list_presets():
-    """List available presets"""
+    """Scan the presets directory and list all available preset files.
+
+    This function identifies presets by looking for files with a '.json' extension in the
+    'PRESETS_DIR'. It extracts the base name of each file (without the extension) to
+    represent the preset name.
+
+    Returns:
+        list: A sorted list of preset names.
+    """
     items = []
     for name in os.listdir(PRESETS_DIR):
         if name.endswith(".json"):
@@ -69,16 +95,36 @@ def list_presets():
 
 
 def load_preset(name: str) -> dict:
-    """Load preset by name"""
+    """Load a specific preset file by name.
+
+    Constructs the full path to the preset file and loads its JSON content into a
+    dictionary. This function is designed to fail gracefully by returning an empty
+    dictionary if the file is not found or is invalid.
+
+    Args:
+        name (str): The name of the preset to load, without the '.json' extension.
+
+    Returns:
+        dict: A dictionary with the preset's content, or an empty dictionary on error.
+    """
     path = os.path.join(PRESETS_DIR, name + ".json")
     try:
-        return json.load(open(path, "r", encoding="utf-8"))
-    except Exception:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
 def save_preset(name: str, data: dict):
-    """Save settings as preset"""
+    """Save a dictionary of settings as a preset file.
+
+    Creates a new preset file or overwrites an existing one. The content of the
+    dictionary is serialized to JSON and written to a file named after the preset.
+
+    Args:
+        name (str): The name for the preset, which will be used as the filename.
+        data (dict): A dictionary containing the settings to be saved in the preset.
+    """
     path = os.path.join(PRESETS_DIR, name + ".json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -89,7 +135,13 @@ def save_preset(name: str, data: dict):
 # ============================================================================
 
 def main():
-    """Main application entry point"""
+    """Main application entry point.
+
+    This function orchestrates the entire Streamlit application. It initializes the page,
+    loads settings, renders the user interface components (sidebar and tabs), and
+    manages the flow of data between them. Each tab is rendered with the necessary
+    settings and configurations.
+    """
 
     # Page configuration and documentation
     setup_page()

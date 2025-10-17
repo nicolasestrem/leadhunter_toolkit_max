@@ -9,11 +9,13 @@ from llm_client import LLMClient
 
 
 def render_review_tab(settings: dict):
-    """
-    Render the Review and Edit tab
+    """Render the Review and Edit tab in the Streamlit UI.
+
+    This function provides a user interface for editing lead data in a spreadsheet-like
+    format and for generating a summary of the leads using an LLM.
 
     Args:
-        settings: Application settings dict
+        settings (dict): The current application settings.
     """
     st.subheader("Review and edit leads")
 

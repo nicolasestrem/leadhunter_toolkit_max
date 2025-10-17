@@ -9,18 +9,17 @@ BASE = "https://places.googleapis.com/v1"
 
 @retry_with_backoff(max_retries=3, initial_delay=1.0, exceptions=(httpx.HTTPError, httpx.TimeoutException))
 def text_search(api_key: str, query: str, region: str = "FR", language: str = "fr", max_results: int = 10):
-    """
-    Search for places using Google Places API text search
+    """Search for places using the Google Places API text search.
 
     Args:
-        api_key: Google Places API key
-        query: Search query
-        region: Region code (e.g., "FR", "DE", "US")
-        language: Language code (e.g., "fr", "de", "en")
-        max_results: Maximum number of results
+        api_key (str): Your Google Places API key.
+        query (str): The search query.
+        region (str): The region code (e.g., "FR", "DE", "US").
+        language (str): The language code (e.g., "fr", "de", "en").
+        max_results (int): The maximum number of results to return.
 
     Returns:
-        List of place dictionaries
+        list: A list of place dictionaries.
     """
     headers = {
         "X-Goog-Api-Key": api_key,
@@ -50,16 +49,15 @@ def text_search(api_key: str, query: str, region: str = "FR", language: str = "f
 
 @retry_with_backoff(max_retries=3, initial_delay=1.0, exceptions=(httpx.HTTPError, httpx.TimeoutException))
 def get_details(api_key: str, place_id: str, language: str = "fr"):
-    """
-    Get detailed information for a specific place
+    """Get detailed information for a specific place from the Google Places API.
 
     Args:
-        api_key: Google Places API key
-        place_id: Place ID
-        language: Language code
+        api_key (str): Your Google Places API key.
+        place_id (str): The ID of the place to get details for.
+        language (str): The language code for the results.
 
     Returns:
-        Place details dictionary
+        dict: A dictionary containing the place's details.
     """
     headers = {
         "X-Goog-Api-Key": api_key,

@@ -9,16 +9,19 @@ logger = get_logger(__name__)
 
 
 def extract_basic(url: str, html: str, settings: dict) -> dict:
-    """
-    Extract basic lead information from HTML
+    """Extract basic lead information from the HTML of a web page.
+
+    This function parses the HTML to find the company name, contact information,
+    social media links, and other relevant details.
 
     Args:
-        url: Source URL
-        html: HTML content
-        settings: Extraction settings (extract_emails, extract_phones, extract_social, city)
+        url (str): The source URL of the web page.
+        html (str): The HTML content of the web page.
+        settings (dict): A dictionary of extraction settings, such as whether
+                         to extract emails, phones, and social links.
 
     Returns:
-        Dictionary with extracted lead data
+        dict: A dictionary containing the extracted lead data.
     """
     logger.debug(f"Extracting data from: {url}")
 

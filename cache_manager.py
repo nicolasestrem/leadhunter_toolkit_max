@@ -19,23 +19,45 @@ MAX_CACHE_AGE_DAYS = 30
 
 
 def _key(url: str) -> str:
-    """Generate cache key from URL"""
+    """Generate a cache key from a URL.
+
+    Args:
+        url (str): The URL to generate a key for.
+
+    Returns:
+        str: The generated cache key.
+    """
     return hashlib.sha256(url.encode("utf-8")).hexdigest()[:24]
 
 
 def cache_path(url: str) -> Path:
-    """Get cache file path for URL"""
+    """Get the cache file path for a given URL.
+
+    Args:
+        url (str): The URL to get the cache path for.
+
+    Returns:
+        Path: The path to the cache file.
+    """
     return CACHE_DIR / f"{_key(url)}.html"
 
 
 def get_cache_size_mb() -> float:
-    """Get total cache size in MB"""
+    """Get the total size of the cache in megabytes.
+
+    Returns:
+        float: The total size of the cache in MB.
+    """
     total_size = sum(f.stat().st_size for f in CACHE_DIR.glob("*.html") if f.is_file())
     return total_size / (1024 * 1024)
 
 
 def get_cache_stats() -> dict:
-    """Get cache statistics"""
+    """Get statistics about the cache.
+
+    Returns:
+        dict: A dictionary containing cache statistics.
+    """
     files = list(CACHE_DIR.glob("*.html"))
     total_size = sum(f.stat().st_size for f in files if f.is_file())
 
@@ -49,15 +71,14 @@ def get_cache_stats() -> dict:
 
 
 def is_cache_valid(url: str, max_age_days: int = MAX_CACHE_AGE_DAYS) -> bool:
-    """
-    Check if cached file exists and is not expired
+    """Check if the cache for a given URL is valid and not expired.
 
     Args:
-        url: URL to check
-        max_age_days: Maximum age in days
+        url (str): The URL to check.
+        max_age_days (int): The maximum age of a cache file in days.
 
     Returns:
-        True if cache is valid and fresh
+        bool: True if the cache is valid, False otherwise.
     """
     path = cache_path(url)
 
@@ -74,14 +95,13 @@ def is_cache_valid(url: str, max_age_days: int = MAX_CACHE_AGE_DAYS) -> bool:
 
 
 def read_cache(url: str) -> Optional[str]:
-    """
-    Read from cache if valid
+    """Read the cached content for a given URL, if it is valid.
 
     Args:
-        url: URL to read
+        url (str): The URL to read from the cache.
 
     Returns:
-        Cached HTML or None if not found/expired
+        Optional[str]: The cached content, or None if the cache is not valid.
     """
     if not is_cache_valid(url):
         return None
@@ -94,15 +114,14 @@ def read_cache(url: str) -> Optional[str]:
 
 
 def write_cache(url: str, content: str) -> bool:
-    """
-    Write content to cache
+    """Write content to the cache for a given URL.
 
     Args:
-        url: URL to cache
-        content: HTML content
+        url (str): The URL to cache the content for.
+        content (str): The HTML content to cache.
 
     Returns:
-        True if successful
+        bool: True if the write operation was successful, False otherwise.
     """
     try:
         cache_path(url).write_text(content, encoding="utf-8")
@@ -113,14 +132,13 @@ def write_cache(url: str, content: str) -> bool:
 
 
 def cleanup_expired(max_age_days: int = MAX_CACHE_AGE_DAYS) -> int:
-    """
-    Remove expired cache files
+    """Remove expired files from the cache.
 
     Args:
-        max_age_days: Maximum age in days
+        max_age_days (int): The maximum age of a cache file in days.
 
     Returns:
-        Number of files deleted
+        int: The number of files that were deleted.
     """
     deleted = 0
     current_time = time.time()
@@ -141,14 +159,13 @@ def cleanup_expired(max_age_days: int = MAX_CACHE_AGE_DAYS) -> int:
 
 
 def cleanup_by_size(max_size_mb: float = MAX_CACHE_SIZE_MB) -> int:
-    """
-    Remove oldest files if cache exceeds size limit
+    """Remove the oldest files from the cache if it exceeds the size limit.
 
     Args:
-        max_size_mb: Maximum cache size in MB
+        max_size_mb (float): The maximum size of the cache in megabytes.
 
     Returns:
-        Number of files deleted
+        int: The number of files that were deleted.
     """
     deleted = 0
     current_size = get_cache_size_mb()
@@ -180,15 +197,16 @@ def cleanup_by_size(max_size_mb: float = MAX_CACHE_SIZE_MB) -> int:
 
 
 def cleanup_cache(max_age_days: int = MAX_CACHE_AGE_DAYS, max_size_mb: float = MAX_CACHE_SIZE_MB) -> dict:
-    """
-    Full cache cleanup: remove expired and enforce size limits
+    """Perform a full cache cleanup.
+
+    This function removes expired files and enforces the cache size limit.
 
     Args:
-        max_age_days: Maximum age in days
-        max_size_mb: Maximum size in MB
+        max_age_days (int): The maximum age of a cache file in days.
+        max_size_mb (float): The maximum size of the cache in megabytes.
 
     Returns:
-        Cleanup statistics
+        dict: A dictionary containing cleanup statistics.
     """
     expired_deleted = cleanup_expired(max_age_days)
     size_deleted = cleanup_by_size(max_size_mb)
@@ -201,11 +219,10 @@ def cleanup_cache(max_age_days: int = MAX_CACHE_AGE_DAYS, max_size_mb: float = M
 
 
 def clear_all_cache() -> int:
-    """
-    Delete all cache files
+    """Delete all files from the cache.
 
     Returns:
-        Number of files deleted
+        int: The number of files that were deleted.
     """
     deleted = 0
     for file_path in CACHE_DIR.glob("*.html"):

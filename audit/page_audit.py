@@ -20,9 +20,17 @@ PROMPT_LIBRARY_DIR = BASE_DIR / "llm" / "prompt_library"
 
 @dataclass
 class AuditIssue:
-    """Represents an audit issue"""
-    category: str  # meta, headings, content, images, links, technical
-    severity: str  # critical, high, medium, low
+    """Represents a single issue identified during a page audit.
+
+    Attributes:
+        category (str): The category of the issue (e.g., 'meta', 'content').
+        severity (str): The severity of the issue ('critical', 'high', 'medium', 'low').
+        title (str): A concise title for the issue.
+        description (str): A detailed description of the issue.
+        recommendation (str): A suggested action to resolve the issue.
+    """
+    category: str
+    severity: str
     title: str
     description: str
     recommendation: str
@@ -30,19 +38,42 @@ class AuditIssue:
 
 @dataclass
 class QuickWinTask:
-    """Represents a quick win task"""
+    """Represents an actionable quick win task derived from an audit.
+
+    Attributes:
+        title (str): The title of the quick win task.
+        action (str): The specific action to be performed.
+        impact (str): The expected positive impact of the action.
+        effort (str): The estimated effort required (e.g., '5 mins', '1 hour').
+    """
     title: str
     action: str
     impact: str
-    effort: str  # 5 mins, 15 mins, 1 hour
+    effort: str
 
 
 @dataclass
 class PageAudit:
-    """Complete page audit result"""
+    """Represents the complete result of a page audit.
+
+    This data class is the main container for all the findings of a page audit, including
+    scores, issues, strengths, and quick wins.
+
+    Attributes:
+        url (str): The URL of the audited page.
+        score (int): The overall audit score (0-100).
+        grade (str): The letter grade corresponding to the score (A, B, C, D, F).
+        issues (List[AuditIssue]): A list of identified issues.
+        strengths (List[str]): A list of the page's strengths.
+        quick_wins (List[QuickWinTask]): A list of actionable quick win tasks.
+        content_score (int): The score for the content category.
+        technical_score (int): The score for the technical category.
+        seo_score (int): The score for the SEO category.
+        generated_at (datetime): The timestamp of when the audit was generated.
+    """
     url: str
-    score: int  # 0-100
-    grade: str  # A, B, C, D, F
+    score: int
+    grade: str
     issues: List[AuditIssue]
     strengths: List[str]
     quick_wins: List[QuickWinTask]
@@ -53,7 +84,14 @@ class PageAudit:
 
 
 def load_audit_prompt_config() -> Dict:
-    """Load audit prompt configuration from YAML"""
+    """Load the audit prompt configuration from its YAML file.
+
+    This function is responsible for reading and parsing the 'audit.yml' file, which
+    contains the templates and settings for performing a page audit.
+
+    Returns:
+        Dict: A dictionary containing the audit prompt configuration.
+    """
     prompt_path = PROMPT_LIBRARY_DIR / "audit.yml"
 
     with open(prompt_path, 'r', encoding='utf-8') as f:
@@ -63,15 +101,17 @@ def load_audit_prompt_config() -> Dict:
 
 
 def extract_page_metrics(html_content: str, url: str) -> Dict:
-    """
-    Extract basic metrics from HTML content
+    """Extract basic SEO and content metrics from the HTML of a page.
+
+    This function parses the HTML to gather important metrics like word count, title tag,
+    image count, and the presence of an H1 tag.
 
     Args:
-        html_content: HTML content
-        url: Page URL
+        html_content (str): The HTML content of the page.
+        url (str): The URL of the page.
 
     Returns:
-        Dict with metrics
+        Dict: A dictionary containing the extracted metrics.
     """
     from selectolax.parser import HTMLParser
 
@@ -119,15 +159,17 @@ def extract_page_metrics(html_content: str, url: str) -> Dict:
 
 
 def format_audit_prompt(url: str, html_content: str) -> tuple[str, str]:
-    """
-    Format audit prompts (system + user)
+    """Format the audit prompts, including both system and user prompts.
+
+    This function assembles the prompts for the LLM by combining the extracted page
+    metrics and HTML content with the templates from the audit prompt configuration.
 
     Args:
-        url: Page URL
-        html_content: HTML content
+        url (str): The URL of the page.
+        html_content (str): The HTML content of the page.
 
     Returns:
-        Tuple of (system_prompt, user_prompt)
+        tuple[str, str]: A tuple containing the system and user prompts.
     """
     config = load_audit_prompt_config()
 
@@ -163,15 +205,17 @@ def format_audit_prompt(url: str, html_content: str) -> tuple[str, str]:
 
 
 def parse_audit_response(response: str, url: str) -> PageAudit:
-    """
-    Parse LLM response into PageAudit object
+    """Parse the LLM's response into a PageAudit object.
+
+    This function is designed to robustly handle the JSON output from the LLM, including
+    cleaning the response and parsing it into the structured PageAudit data class.
 
     Args:
-        response: LLM JSON response
-        url: Page URL
+        response (str): The JSON response from the LLM.
+        url (str): The URL of the audited page.
 
     Returns:
-        PageAudit object
+        PageAudit: A complete PageAudit object.
     """
     try:
         # Clean response
@@ -257,17 +301,19 @@ def audit_page(
     llm_adapter: Optional[LLMAdapter] = None,
     use_llm: bool = True
 ) -> PageAudit:
-    """
-    Audit a web page
+    """Audit a web page, with an option for LLM-enhanced analysis.
+
+    This is the main function for auditing a page. It can perform a basic audit using
+    extracted metrics or a more comprehensive one by leveraging an LLM for deeper insights.
 
     Args:
-        url: Page URL
-        html_content: HTML content
-        llm_adapter: Optional LLM adapter for enhanced analysis
-        use_llm: Whether to use LLM (if False, basic metrics only)
+        url (str): The URL of the page to audit.
+        html_content (str): The HTML content of the page.
+        llm_adapter (Optional[LLMAdapter]): An optional LLM adapter for enhanced analysis.
+        use_llm (bool): If True, use the LLM; otherwise, perform a basic audit.
 
     Returns:
-        PageAudit object
+        PageAudit: The result of the page audit.
     """
     logger.info(f"Auditing page: {url}")
 

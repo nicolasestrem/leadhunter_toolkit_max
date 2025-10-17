@@ -5,6 +5,14 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), "out")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 def export_xlsx(rows: list[dict]) -> str:
+    """Export a list of dictionaries to an XLSX file.
+
+    Args:
+        rows (list[dict]): The list of dictionaries to export.
+
+    Returns:
+        str: The path to the created XLSX file.
+    """
     fn = os.path.join(OUT_DIR, f"leads_{datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx")
     if not rows:
         raise ValueError("No rows to export")

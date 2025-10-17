@@ -16,15 +16,17 @@ from constants import (
 
 
 def render_settings_section(settings: dict, save_callback) -> dict:
-    """
-    Render core settings form.
+    """Render the core application settings form in the sidebar.
+
+    This function creates the user interface for all the main application settings,
+    including search, project, crawl, and LLM configurations.
 
     Args:
-        settings: Current settings dictionary
-        save_callback: Function to call when settings are saved
+        settings (dict): The current settings dictionary.
+        save_callback: The function to call when the settings are saved.
 
     Returns:
-        Updated settings dictionary (only if saved)
+        dict: The updated settings dictionary, which is modified when the user saves.
     """
     st.header("Settings")
 

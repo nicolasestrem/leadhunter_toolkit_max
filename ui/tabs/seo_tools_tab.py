@@ -15,30 +15,51 @@ from constants import (MIN_SERP_RESULTS, MAX_SERP_RESULTS, DEFAULT_SERP_RESULTS,
 
 
 def get_seo_auditor():
-    """Lazy load SEOAuditor module"""
+    """Lazy load the SEOAuditor module.
+
+    This function dynamically imports the SEOAuditor class to avoid circular
+    dependencies and to improve startup time.
+
+    Returns:
+        The SEOAuditor class.
+    """
     from seo_audit import SEOAuditor
     return SEOAuditor
 
 
 def get_serp_tracker():
-    """Lazy load SERPTracker module"""
+    """Lazy load the SERPTracker module.
+
+    This function dynamically imports the SERPTracker class.
+
+    Returns:
+        The SERPTracker class.
+    """
     from serp_tracker import SERPTracker
     return SERPTracker
 
 
 def get_site_extractor():
-    """Lazy load SiteExtractor module"""
+    """Lazy load the SiteExtractor module.
+
+    This function dynamically imports the SiteExtractor class.
+
+    Returns:
+        The SiteExtractor class.
+    """
     from site_extractor import SiteExtractor
     return SiteExtractor
 
 
 def render_seo_tools_tab(settings: dict, out_dir: str):
-    """
-    Render the SEO Tools tab
+    """Render the SEO Tools tab in the Streamlit UI.
+
+    This function provides the user interface for a suite of SEO tools, including a
+    content auditor, a SERP tracker, and a site extractor.
 
     Args:
-        settings: Application settings dict
-        out_dir: Output directory path
+        settings (dict): The current application settings.
+        out_dir (str): The path to the output directory.
     """
     st.subheader("SEO Tools")
     st.caption("Comprehensive SEO analysis, SERP tracking, and site extraction")

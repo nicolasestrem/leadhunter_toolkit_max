@@ -18,6 +18,16 @@ logger = get_logger(__name__)
 
 @dataclass
 class CrawlConfig:
+    """Configuration for the website crawler.
+
+    Attributes:
+        max_depth (int): The maximum depth to crawl.
+        allowed_domains (Optional[Iterable[str]]): A list of allowed domains.
+        path_filters (Iterable[re.Pattern]): A list of regex patterns to filter paths.
+        disallowed_extensions (Iterable[str]): A list of disallowed file extensions.
+        request_delay (Optional[float]): The delay between requests in seconds.
+        use_cache (bool): If True, use the cache.
+    """
     max_depth: int = 2
     allowed_domains: Optional[Iterable[str]] = None
     path_filters: Iterable[re.Pattern] = field(default_factory=list)
@@ -26,6 +36,7 @@ class CrawlConfig:
     use_cache: bool = True
 
     def __post_init__(self):
+        """Post-initialization processing."""
         if self.allowed_domains is not None:
             self.allowed_domains = {d.lower() for d in self.allowed_domains}
         else:
@@ -48,12 +59,19 @@ class CrawlConfig:
 
 
 class RateLimiter:
+    """A simple asynchronous rate limiter."""
     def __init__(self, delay: Optional[float]):
+        """Initializes the RateLimiter.
+
+        Args:
+            delay (Optional[float]): The delay between operations in seconds.
+        """
         self.delay = delay if delay and delay > 0 else None
         self._lock = asyncio.Lock()
         self._last = 0.0
 
     async def wait(self):
+        """Wait for the specified delay."""
         if not self.delay:
             return
 
@@ -68,6 +86,17 @@ class RateLimiter:
 
 
 def canonicalize_url(url: str) -> Optional[str]:
+    """Canonicalize a URL.
+
+    This function normalizes a URL by removing the fragment, stripping trailing
+    slashes from the path, and converting the domain to lowercase.
+
+    Args:
+        url (str): The URL to canonicalize.
+
+    Returns:
+        Optional[str]: The canonicalized URL, or None if the URL is invalid.
+    """
     try:
         parsed = urlparse(url)
     except Exception:
@@ -85,6 +114,16 @@ def canonicalize_url(url: str) -> Optional[str]:
 
 
 def _is_allowed_by_config(url: str, config: CrawlConfig, root: Optional[str] = None) -> bool:
+    """Check if a URL is allowed to be crawled based on the configuration.
+
+    Args:
+        url (str): The URL to check.
+        config (CrawlConfig): The crawl configuration.
+        root (Optional[str]): The root URL of the crawl.
+
+    Returns:
+        bool: True if the URL is allowed, False otherwise.
+    """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         return False
@@ -108,6 +147,15 @@ def _is_allowed_by_config(url: str, config: CrawlConfig, root: Optional[str] = N
 
 
 def _discover_sitemaps(html: str, base_url: str) -> list[str]:
+    """Discover sitemap URLs from the HTML of a page.
+
+    Args:
+        html (str): The HTML content of the page.
+        base_url (str): The base URL of the page.
+
+    Returns:
+        list[str]: A list of discovered sitemap URLs.
+    """
     sitemap_links = []
     for match in re.finditer(r'<link[^>]+rel=["\']sitemap["\'][^>]*href=["\']([^"\']+)["\']', html, re.IGNORECASE):
         sitemap_links.append(urljoin(base_url, match.group(1)))
@@ -116,6 +164,14 @@ def _discover_sitemaps(html: str, base_url: str) -> list[str]:
 
 
 def _parse_sitemap_locations(xml_text: str) -> list[str]:
+    """Parse sitemap locations from an XML string.
+
+    Args:
+        xml_text (str): The XML content of the sitemap.
+
+    Returns:
+        list[str]: A list of URLs found in the sitemap.
+    """
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError:
@@ -136,7 +192,22 @@ async def crawl_site(
     deep_contact: bool = True,
     config: Optional[CrawlConfig] = None,
 ):
-    """Crawl a website starting from root URL using a queue-based BFS."""
+    """Crawl a website starting from a root URL.
+
+    This function uses a queue-based Breadth-First Search (BFS) algorithm to
+    crawl a website, respecting robots.txt rules and rate limits.
+
+    Args:
+        root_url (str): The URL to start crawling from.
+        timeout (int): The timeout for HTTP requests in seconds.
+        concurrency (int): The number of concurrent requests.
+        max_pages (int): The maximum number of pages to crawl.
+        deep_contact (bool): If True, prioritize crawling contact and about pages.
+        config (Optional[CrawlConfig]): The crawl configuration.
+
+    Returns:
+        dict[str, str]: A dictionary mapping page URLs to their HTML content.
+    """
 
     config = config or CrawlConfig()
     if config.max_depth < 0:

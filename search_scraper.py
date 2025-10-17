@@ -14,8 +14,14 @@ if TYPE_CHECKING:
 
 
 class SearchScraperResult:
-    """Result from SearchScraper operation"""
+    """A data class for the result of a search scraper operation."""
     def __init__(self, mode: str, prompt: str):
+        """Initializes the SearchScraperResult.
+
+        Args:
+            mode (str): The mode of the operation ('ai_extraction' or 'markdown').
+            prompt (str): The prompt that was used for the search.
+        """
         self.mode = mode
         self.prompt = prompt
         self.sources: List[Dict[str, str]] = []
@@ -24,6 +30,11 @@ class SearchScraperResult:
         self.error: Optional[str] = None
 
     def to_dict(self) -> dict:
+        """Convert the result to a dictionary.
+
+        Returns:
+            dict: A dictionary representation of the result.
+        """
         return {
             "mode": self.mode,
             "prompt": self.prompt,
@@ -35,13 +46,7 @@ class SearchScraperResult:
 
 
 class SearchScraper:
-    """
-    AI-powered web search and content extraction tool
-
-    Modes:
-    - AI Extraction: Uses LLM to extract structured information (10 credits/page equivalent)
-    - Markdown: Returns raw markdown content (2 credits/page equivalent)
-    """
+    """An AI-powered web search and content extraction tool."""
 
     def __init__(
         self,
@@ -52,20 +57,45 @@ class SearchScraper:
         google_api_key: str = "",
         google_cx: str = ""
     ):
+        """Initializes the SearchScraper.
+
+        Args:
+            llm_base (str): The base URL for the LLM API.
+            llm_key (str): The API key for the LLM.
+            llm_model (str): The name of the LLM model to use.
+            search_engine (str): The search engine to use ('ddg' or 'google').
+            google_api_key (str): The API key for the Google Custom Search API.
+            google_cx (str): The Custom Search Engine ID for the Google API.
+        """
         self.llm_client = LLMClient(api_key=llm_key, base_url=llm_base, model=llm_model)
         self.search_engine = search_engine
         self.google_api_key = google_api_key
         self.google_cx = google_cx
 
     def _search_web(self, query: str, num_results: int) -> List[str]:
-        """Search the web for relevant URLs"""
+        """Search the web for relevant URLs.
+
+        Args:
+            query (str): The search query.
+            num_results (int): The number of results to return.
+
+        Returns:
+            List[str]: A list of result URLs.
+        """
         if self.search_engine == "google" and self.google_api_key and self.google_cx:
             return google_sites(query, num_results, self.google_api_key, self.google_cx)
         else:
             return ddg_sites(query, num_results)
 
     def _html_to_markdown(self, html: str) -> str:
-        """Convert HTML to clean markdown"""
+        """Convert HTML to a clean markdown format.
+
+        Args:
+            html (str): The HTML to convert.
+
+        Returns:
+            str: The converted markdown.
+        """
         if not html:
             return ""
         try:
@@ -95,20 +125,19 @@ class SearchScraper:
         concurrency: int = 6,
         indexer: Optional["SiteIndexer"] = None
     ) -> SearchScraperResult:
-        """
-        Search the web and extract information based on a prompt
+        """Search the web and extract information based on a prompt.
 
         Args:
-            prompt: The search query or research question
-            num_results: Number of web pages to scrape (3-20)
-            extraction_mode: True for AI extraction, False for markdown mode
-            schema: Optional JSON schema for structured extraction
-            timeout: Request timeout in seconds
-            concurrency: Number of concurrent requests
-            indexer: Optional SiteIndexer instance to persist processed content
+            prompt (str): The search query or research question.
+            num_results (int): The number of web pages to scrape.
+            extraction_mode (bool): If True, use AI extraction; otherwise, use markdown mode.
+            schema (Optional[Dict[str, Any]]): An optional JSON schema for structured extraction.
+            timeout (int): The request timeout in seconds.
+            concurrency (int): The number of concurrent requests.
+            indexer (Optional["SiteIndexer"]): An optional SiteIndexer instance to persist content.
 
         Returns:
-            SearchScraperResult with extracted data or markdown content
+            SearchScraperResult: The result of the search and scrape operation.
         """
         result = SearchScraperResult(
             mode="ai_extraction" if extraction_mode else "markdown",
@@ -183,7 +212,16 @@ class SearchScraper:
         markdown_pages: List[str],
         schema: Optional[Dict[str, Any]] = None
     ) -> str:
-        """Use LLM to extract structured information from markdown content"""
+        """Use an LLM to extract structured information from markdown content.
+
+        Args:
+            prompt (str): The prompt for the LLM.
+            markdown_pages (List[str]): A list of markdown-formatted pages.
+            schema (Optional[Dict[str, Any]]): An optional JSON schema for structured extraction.
+
+        Returns:
+            str: The extracted information from the LLM.
+        """
 
         # Combine all markdown content (with length limit for LLM context)
         combined = "\n\n".join(markdown_pages)
@@ -238,7 +276,20 @@ Instructions:
         concurrency: int = 6,
         indexer: Optional["SiteIndexer"] = None
     ) -> SearchScraperResult:
-        """Synchronous wrapper for search_and_scrape"""
+        """A synchronous wrapper for the 'search_and_scrape' method.
+
+        Args:
+            prompt (str): The search query or research question.
+            num_results (int): The number of web pages to scrape.
+            extraction_mode (bool): If True, use AI extraction.
+            schema (Optional[Dict[str, Any]]): An optional JSON schema.
+            timeout (int): The request timeout in seconds.
+            concurrency (int): The number of concurrent requests.
+            indexer (Optional["SiteIndexer"]): An optional SiteIndexer instance.
+
+        Returns:
+            SearchScraperResult: The result of the operation.
+        """
         return asyncio.run(
             self.search_and_scrape(
                 prompt,

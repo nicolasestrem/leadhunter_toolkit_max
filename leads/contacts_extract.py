@@ -56,14 +56,16 @@ SOCIAL_PATTERNS = {
 
 
 def extract_emails(text: str) -> List[str]:
-    """
-    Extract email addresses from text
+    """Extract email addresses from a given text.
+
+    This function uses a regular expression to find all occurrences of email addresses
+    within a string. It then returns a deduplicated and sorted list of the findings.
 
     Args:
-        text: Input text (markdown)
+        text (str): The input text, which may be in markdown format.
 
     Returns:
-        List of unique email addresses
+        List[str]: A sorted list of unique email addresses found in the text.
     """
     emails = EMAIL_PATTERN.findall(text)
     # Deduplicate and sort
@@ -71,14 +73,17 @@ def extract_emails(text: str) -> List[str]:
 
 
 def extract_phones(text: str) -> List[str]:
-    """
-    Extract phone numbers from text
+    """Extract phone numbers from a given text.
+
+    This function applies a series of regular expression patterns to identify various
+    phone number formats, including international ones. The extracted numbers are
+    cleaned, deduplicated, and returned in a sorted list.
 
     Args:
-        text: Input text (markdown)
+        text (str): The input text, which may be in markdown format.
 
     Returns:
-        List of unique phone numbers
+        List[str]: A sorted list of unique phone numbers.
     """
     phones: Set[str] = set()
 
@@ -98,14 +103,17 @@ def extract_phones(text: str) -> List[str]:
 
 
 def extract_social_links(text: str) -> Dict[str, str]:
-    """
-    Extract social media links from text
+    """Extract social media links from a given text.
+
+    This function identifies links to various social media platforms (Facebook, Instagram,
+    LinkedIn, Twitter, YouTube) and returns them in a dictionary. It's designed to
+    capture the first link found for each platform.
 
     Args:
-        text: Input text (markdown)
+        text (str): The input text, which may be in markdown format.
 
     Returns:
-        Dict mapping platform names to URLs
+        Dict[str, str]: A dictionary mapping platform names to their corresponding URLs.
     """
     social = {}
 
@@ -136,18 +144,17 @@ def extract_social_links(text: str) -> Dict[str, str]:
 
 
 def extract_company_name(text: str) -> str:
-    """
-    Extract company name from markdown
+    """Extract a company name from markdown text.
 
-    Looks for:
-    1. First H1 heading
-    2. Title-like patterns in first few lines
+    This function employs a heuristic approach by first searching for a Level 1 markdown
+    heading (H1). If not found, it looks for title-like patterns in the initial lines
+    of the text.
 
     Args:
-        text: Input markdown text
+        text (str): The input markdown text.
 
     Returns:
-        Company name or empty string
+        str: The extracted company name, or an empty string if not found.
     """
     lines = text.split('\n')
 
@@ -172,19 +179,17 @@ def extract_company_name(text: str) -> str:
 
 
 def extract_address(text: str) -> str:
-    """
-    Extract physical address from text
+    """Extract a physical address from a given text.
 
-    Looks for address-like patterns near keywords like:
-    - Address, Adresse, Anschrift
-    - Location, Standort
-    - Visit us, Find us
+    This function searches for address-like patterns in proximity to specific keywords
+    (e.g., 'Address', 'Location'). It is designed to identify and return the first
+    plausible address it finds.
 
     Args:
-        text: Input markdown text
+        text (str): The input markdown text.
 
     Returns:
-        Address string or empty string
+        str: The extracted address, or an empty string if none is found.
     """
     # Keywords that indicate address information
     address_keywords = [
@@ -217,21 +222,17 @@ def extract_address(text: str) -> str:
 
 
 def extract_contacts_from_markdown(markdown: str) -> Dict[str, any]:
-    """
-    Extract all contact information from markdown text
+    """Extract all contact information from a markdown text.
+
+    This function acts as a facade, orchestrating calls to the individual extraction
+    functions (for emails, phones, social links, etc.) and consolidating the results
+    into a single dictionary.
 
     Args:
-        markdown: Input markdown text
+        markdown (str): The input markdown text.
 
     Returns:
-        Dict with extracted contact information:
-        {
-            'emails': List[str],
-            'phones': List[str],
-            'social': Dict[str, str],
-            'company_name': str,
-            'address': str
-        }
+        Dict[str, any]: A dictionary containing all the extracted contact information.
     """
     logger.debug("Extracting contacts from markdown")
 
@@ -253,15 +254,18 @@ def extract_contacts_from_markdown(markdown: str) -> Dict[str, any]:
 
 
 def merge_contact_info(existing: Dict[str, any], new: Dict[str, any]) -> Dict[str, any]:
-    """
-    Merge two contact info dicts, deduplicating and combining
+    """Merge two contact information dictionaries.
+
+    This function intelligently combines two contact dictionaries, deduplicating list-based
+    fields (like emails and phones) and prioritizing non-empty values for single-value
+    fields (like company name and address).
 
     Args:
-        existing: Existing contact info dict
-        new: New contact info dict to merge
+        existing (Dict[str, any]): The existing contact information dictionary.
+        new (Dict[str, any]): The new contact information to merge.
 
     Returns:
-        Merged contact info dict
+        Dict[str, any]: The merged contact information dictionary.
     """
     merged = existing.copy()
 

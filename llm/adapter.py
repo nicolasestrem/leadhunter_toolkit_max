@@ -15,14 +15,17 @@ logger = get_logger(__name__)
 
 
 def mask_api_key(api_key: str) -> str:
-    """
-    Mask API key for safe logging
+    """Mask an API key for safe logging.
+
+    This function takes an API key and returns a masked version, showing only the first
+    and last four characters. This is crucial for preventing sensitive credentials
+    from being exposed in logs.
 
     Args:
-        api_key: API key to mask
+        api_key (str): The API key to mask.
 
     Returns:
-        Masked key showing only first/last 4 chars (or less for short keys)
+        str: The masked API key.
     """
     if not api_key or api_key == "not-needed":
         return "not-needed"
@@ -34,14 +37,17 @@ def mask_api_key(api_key: str) -> str:
 
 
 class LLMAdapter:
-    """
-    Unified adapter for OpenAI-compatible LLM endpoints
+    """A unified adapter for OpenAI-compatible LLM endpoints.
 
-    Supports:
-    - LM Studio (https://lm.leophir.com/)
-    - Ollama (http://oll.leophir.com/)
-    - OpenAI API
-    - Any OpenAI-compatible endpoint
+    This class provides a consistent interface for interacting with various LLM providers,
+    including LM Studio, Ollama, and the official OpenAI API. It standardizes the
+    process of sending chat completion requests and is designed to be easily configurable.
+
+    Supported Endpoints:
+        - LM Studio (e.g., 'https://lm.leophir.com/')
+        - Ollama (e.g., 'http://oll.leophir.com/')
+        - OpenAI API
+        - Any other OpenAI-compatible endpoint
     """
 
     def __init__(
@@ -56,21 +62,22 @@ class LLMAdapter:
         timeout: int = 60,
         supports_system_role: Optional[bool] = None,
     ):
-        """
-        Initialize LLM adapter
+        """Initializes the LLM adapter.
 
         Args:
-            base_url: Base URL for API endpoint (e.g., 'https://lm.leophir.com/')
-                     Auto-appends '/v1' if not present for OpenAI compatibility
-            api_key: API key (defaults to env var LLM_API_KEY, then 'not-needed')
-            model: Model name/ID (e.g., 'openai/gpt-oss-20b', 'qwen/qwen3-4b-2507')
-            temperature: Sampling temperature (0.0-2.0)
-            top_k: Top-K sampling (limits vocabulary to top K tokens)
-            top_p: Nucleus sampling (cumulative probability threshold, 0.0-1.0)
-            max_tokens: Maximum tokens in response
-            timeout: Request timeout in seconds
-            supports_system_role: Whether the endpoint supports the "system" role.
-                If None, it will default to False for Mistral models and True otherwise.
+            base_url (Optional[str]): The base URL for the API endpoint. It auto-appends '/v1'
+                                      if not present for OpenAI compatibility.
+            api_key (Optional[str]): The API key. Defaults to the 'LLM_API_KEY' environment
+                                     variable, then 'not-needed'.
+            model (str): The name or ID of the model to use.
+            temperature (float): The sampling temperature, between 0.0 and 2.0.
+            top_k (Optional[int]): The Top-K sampling parameter.
+            top_p (Optional[float]): The nucleus sampling parameter.
+            max_tokens (Optional[int]): The maximum number of tokens in the response.
+            timeout (int): The request timeout in seconds.
+            supports_system_role (Optional[bool]): Specifies if the endpoint supports the
+                                                   "system" role. If None, it defaults to
+                                                   False for Mistral models and True otherwise.
         """
         # API key fallback chain: param -> env var -> default
         self.api_key = api_key or os.environ.get('LLM_API_KEY', "not-needed")
@@ -115,18 +122,19 @@ class LLMAdapter:
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
-        """
-        Send chat completion request
+        """Send a chat completion request to the LLM.
+
+        This method handles the synchronous communication with the LLM endpoint. It includes
+        a retry mechanism with exponential backoff to handle transient network issues.
 
         Args:
-            messages: List of message dicts with 'role' and 'content'
-                     Example: [{"role": "user", "content": "Hello"}]
-            temperature: Override default temperature
-            max_tokens: Override default max_tokens
-            **kwargs: Additional parameters to pass to the API
+            messages (List[Dict[str, str]]): A list of message dictionaries, each with 'role' and 'content'.
+            temperature (Optional[float]): A specific temperature to override the default.
+            max_tokens (Optional[int]): A specific max_tokens value to override the default.
+            **kwargs: Additional parameters to be passed to the API.
 
         Returns:
-            Response content as string
+            str: The content of the response from the LLM as a string.
         """
         if not self.base_url:
             logger.error("No LLM base URL configured")
@@ -186,21 +194,19 @@ class LLMAdapter:
         system_message: Optional[str] = None,
         **kwargs
     ) -> str:
-        """
-        Simplified chat with optional system message
+        """A simplified method for chats that include an optional system message.
+
+        This is a convenience wrapper around the 'chat' method. It automatically handles
+        the formatting of system messages, even for models that do not natively support
+        the 'system' role.
 
         Args:
-            user_message: User's message/prompt
-            system_message: Optional system message to set context
-            **kwargs: Additional parameters for chat()
+            user_message (str): The user's message or prompt.
+            system_message (Optional[str]): An optional system message to provide context.
+            **kwargs: Additional parameters to be passed to the 'chat' method.
 
         Returns:
-            Response content as string
-
-        Note:
-            When ``supports_system_role`` is False (e.g. some Mistral templates), the
-            system prompt is prepended to the user message to keep compatibility with
-            user/assistant-only chat formats.
+            str: The content of the response from the LLM.
         """
         if system_message and not self.supports_system_role:
             combined_message = f"{system_message}\n\n{user_message}"
@@ -221,17 +227,19 @@ class LLMAdapter:
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
-        """
-        Async version of chat()
+        """The asynchronous version of the 'chat' method.
+
+        This method is designed for use in asynchronous applications. It performs the same
+        functionality as 'chat' but in a non-blocking manner.
 
         Args:
-            messages: List of message dicts
-            temperature: Override default temperature
-            max_tokens: Override default max_tokens
-            **kwargs: Additional parameters
+            messages (List[Dict[str, str]]): A list of message dictionaries.
+            temperature (Optional[float]): A specific temperature to override the default.
+            max_tokens (Optional[int]): A specific max_tokens value to override the default.
+            **kwargs: Additional parameters to be passed to the API.
 
         Returns:
-            Response content as string
+            str: The content of the response from the LLM.
         """
         if not self.base_url:
             logger.error("No LLM base URL configured")
@@ -289,20 +297,18 @@ class LLMAdapter:
         system_message: Optional[str] = None,
         **kwargs
     ) -> str:
-        """
-        Async version of chat_with_system()
+        """The asynchronous version of the 'chat_with_system' method.
+
+        This method provides a non-blocking way to interact with the LLM when a system
+        message is needed, making it suitable for asynchronous applications.
 
         Args:
-            user_message: User's message/prompt
-            system_message: Optional system message
-            **kwargs: Additional parameters
+            user_message (str): The user's message or prompt.
+            system_message (Optional[str]): An optional system message.
+            **kwargs: Additional parameters for the 'chat_async' method.
 
         Returns:
-            Response content as string
-
-        Note:
-            When ``supports_system_role`` is False the system message is prepended to the
-            user content to keep compatibility with user/assistant-only chat formats.
+            str: The content of the response from the LLM.
         """
         if system_message and not self.supports_system_role:
             combined_message = f"{system_message}\n\n{user_message}"
@@ -317,15 +323,17 @@ class LLMAdapter:
 
     @classmethod
     def from_config(cls, config: Dict[str, Any], model_override: Optional[str] = None) -> 'LLMAdapter':
-        """
-        Create adapter from config dict
+        """Create an LLMAdapter instance from a configuration dictionary.
+
+        This class method is a factory that simplifies the creation of an adapter by
+        using a pre-structured configuration dictionary, typically loaded from a file.
 
         Args:
-            config: Config dict (from config.loader)
-            model_override: Optional model name to override config
+            config (Dict[str, Any]): A configuration dictionary.
+            model_override (Optional[str]): An optional model name to override the one in the config.
 
         Returns:
-            Configured LLMAdapter instance
+            LLMAdapter: A configured instance of the LLMAdapter.
         """
         llm_config = config.get('llm', {})
 
@@ -343,14 +351,16 @@ class LLMAdapter:
 
     @classmethod
     def from_model_config(cls, model_config: Dict[str, Any]) -> 'LLMAdapter':
-        """
-        Create adapter from model-specific config
+        """Create an LLMAdapter instance from a model-specific configuration.
+
+        This factory method is tailored for creating an adapter from a configuration
+        that is specific to a single model, often sourced from 'models.yml'.
 
         Args:
-            model_config: Model config dict (from models.yml)
+            model_config (Dict[str, Any]): A model-specific configuration dictionary.
 
         Returns:
-            Configured LLMAdapter instance
+            LLMAdapter: A configured instance of the LLMAdapter.
         """
         return cls(
             base_url=model_config.get('endpoint'),
@@ -369,20 +379,19 @@ class LLMAdapter:
         detail: str = "auto",
         **kwargs
     ) -> str:
-        """
-        Send chat completion request with image (vision API)
+        """Send a chat completion request with an image to a vision-capable model.
+
+        This method allows for multimodal interactions by sending an image along with a
+        text prompt. It can accept either a file path to an image or a base64-encoded string.
 
         Args:
-            prompt: Text prompt/question about the image
-            image_data: Base64-encoded image string or path to image file
-            detail: Image detail level ('low', 'high', 'auto')
-            **kwargs: Additional parameters
+            prompt (str): The text prompt or question about the image.
+            image_data (Union[str, Path]): A base64-encoded image string or a path to the image file.
+            detail (str): The level of detail for the image ('low', 'high', 'auto').
+            **kwargs: Additional parameters for the 'chat' method.
 
         Returns:
-            Response content as string
-
-        Note:
-            Requires vision-capable model (gpt-4-vision, gpt-4o, claude-3, etc.)
+            str: The content of the response from the LLM.
         """
         try:
             # If image_data is a path, encode it
@@ -429,17 +438,19 @@ class LLMAdapter:
         detail: str = "auto",
         **kwargs
     ) -> str:
-        """
-        Send chat completion request with multiple images
+        """Send a chat completion request with multiple images.
+
+        This method extends the vision capabilities to handle multiple images in a single
+        request, which is useful for comparison or context-rich queries.
 
         Args:
-            prompt: Text prompt/question about the images
-            images: List of base64-encoded images or paths
-            detail: Image detail level
-            **kwargs: Additional parameters
+            prompt (str): The text prompt or question about the images.
+            images (List[Union[str, Path]]): A list of base64-encoded images or file paths.
+            detail (str): The level of detail for the images.
+            **kwargs: Additional parameters for the 'chat' method.
 
         Returns:
-            Response content as string
+            str: The content of the response from the LLM.
         """
         try:
             # Build content array with text and all images
@@ -482,17 +493,19 @@ class LLMAdapter:
         detail: str = "auto",
         **kwargs
     ) -> str:
-        """
-        Async version of chat_with_image()
+        """The asynchronous version of the 'chat_with_image' method.
+
+        This method provides a non-blocking way to send an image and a text prompt to a
+        vision-capable model.
 
         Args:
-            prompt: Text prompt about the image
-            image_data: Base64 string or path to image
-            detail: Image detail level
-            **kwargs: Additional parameters
+            prompt (str): The text prompt about the image.
+            image_data (Union[str, Path]): A base64-encoded string or a path to the image.
+            detail (str): The level of detail for the image.
+            **kwargs: Additional parameters for the 'chat_async' method.
 
         Returns:
-            Response content as string
+            str: The content of the response from the LLM.
         """
         try:
             # Prepare image URL
@@ -536,17 +549,19 @@ class LLMAdapter:
         capture_full_page: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
-        """
-        Capture and analyze a website screenshot
+        """Capture and analyze a screenshot of a website.
+
+        This high-level method automates the process of taking a screenshot of a given URL
+        and then sending it to a vision model for analysis.
 
         Args:
-            url: Website URL to analyze
-            analysis_prompt: Optional custom analysis prompt
-            capture_full_page: Whether to capture full page
-            **kwargs: Additional parameters for chat
+            url (str): The URL of the website to analyze.
+            analysis_prompt (Optional[str]): An optional custom prompt for the analysis.
+            capture_full_page (bool): If True, captures the entire page.
+            **kwargs: Additional parameters for the 'chat' method.
 
         Returns:
-            Dict with 'screenshot_path', 'analysis', 'url'
+            Dict[str, Any]: A dictionary containing the screenshot path, analysis, and URL.
         """
         try:
             from multimodal.image_utils import capture_screenshot

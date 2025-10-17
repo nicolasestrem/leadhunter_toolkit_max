@@ -7,10 +7,10 @@ from plugins import load_plugins
 
 
 def setup_page():
-    """
-    Configure Streamlit page settings and initialize plugins.
+    """Configure the Streamlit page and initialize the plugins.
 
-    Sets page title, layout, and loads plugins on first run.
+    This function sets the page title and layout, and it ensures that plugins are
+    loaded only once during the first run of the application.
     """
     st.set_page_config(
         page_title="Lead Hunter Toolkit • Consulting Pack v1",

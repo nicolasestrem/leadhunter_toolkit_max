@@ -10,22 +10,31 @@ from audit.page_audit import PageAudit, QuickWinTask, AuditIssue
 
 @dataclass
 class PrioritizedTask:
-    """Task with priority scoring"""
+    """Represents a task that has been prioritized based on impact and feasibility.
+
+    Attributes:
+        task (QuickWinTask): The underlying quick win task.
+        priority_score (float): The calculated priority score (0-10).
+        impact (int): The estimated impact of the task (1-10).
+        feasibility (int): The estimated feasibility of the task (1-10).
+    """
     task: QuickWinTask
-    priority_score: float  # Impact × Feasibility (0-10)
-    impact: int  # 1-10
-    feasibility: int  # 1-10
+    priority_score: float
+    impact: int
+    feasibility: int
 
 
 def estimate_impact(issue: AuditIssue) -> int:
-    """
-    Estimate impact of fixing an issue (1-10 scale)
+    """Estimate the impact of fixing an audit issue.
+
+    This function assigns an impact score (1-10) based on the issue's severity
+    and category, using a predefined mapping and multipliers.
 
     Args:
-        issue: AuditIssue to evaluate
+        issue (AuditIssue): The audit issue to evaluate.
 
     Returns:
-        Impact score (1-10)
+        int: The estimated impact score.
     """
     impact_map = {
         'critical': 10,
@@ -53,14 +62,17 @@ def estimate_impact(issue: AuditIssue) -> int:
 
 
 def estimate_effort(task_effort_str: str) -> tuple[int, int]:
-    """
-    Estimate effort and convert to feasibility score
+    """Estimate the effort required for a task and convert it to a feasibility score.
+
+    This function parses a human-readable effort string (e.g., "5 mins", "1 hour") and
+    converts it into a numerical feasibility score (1-10), where a higher score
+    indicates a more feasible (i.e., less effortful) task.
 
     Args:
-        task_effort_str: Effort string (e.g., "5 mins", "1 hour")
+        task_effort_str (str): The effort string to estimate.
 
     Returns:
-        Tuple of (minutes, feasibility_score 1-10)
+        tuple[int, int]: A tuple containing the estimated minutes and the feasibility score.
     """
     effort_lower = task_effort_str.lower()
 
@@ -99,14 +111,16 @@ def estimate_effort(task_effort_str: str) -> tuple[int, int]:
 
 
 def convert_issue_to_task(issue: AuditIssue) -> QuickWinTask:
-    """
-    Convert AuditIssue to QuickWinTask
+    """Convert an AuditIssue into a QuickWinTask.
+
+    This function transforms a detected issue into an actionable task, complete with
+    an estimated effort and impact description.
 
     Args:
-        issue: AuditIssue to convert
+        issue (AuditIssue): The audit issue to convert.
 
     Returns:
-        QuickWinTask
+        QuickWinTask: The resulting quick win task.
     """
     # Estimate effort based on severity and category
     effort_map = {
@@ -141,16 +155,19 @@ def generate_quick_wins(
     max_wins: int = 8,
     include_llm_wins: bool = True
 ) -> List[PrioritizedTask]:
-    """
-    Generate prioritized quick wins from audit
+    """Generate a list of prioritized quick wins from a page audit.
+
+    This is the main function for generating quick wins. It combines the quick wins
+    suggested by the LLM with tasks derived from the audit issues, then prioritizes
+    them based on their impact and feasibility.
 
     Args:
-        audit: PageAudit result
-        max_wins: Maximum number of wins to return
-        include_llm_wins: Whether to include LLM-generated quick wins
+        audit (PageAudit): The result of the page audit.
+        max_wins (int): The maximum number of quick wins to return.
+        include_llm_wins (bool): If True, include the LLM-generated quick wins.
 
     Returns:
-        List of PrioritizedTask, sorted by priority
+        List[PrioritizedTask]: A sorted list of the top prioritized tasks.
     """
     tasks = []
 
@@ -199,16 +216,18 @@ def export_quick_wins_markdown(
     url: str,
     domain: str
 ) -> str:
-    """
-    Export quick wins to markdown format
+    """Export a list of quick wins to a markdown-formatted string.
+
+    This function creates a human-readable report of the quick wins, which can be
+    easily saved to a file or displayed in a UI.
 
     Args:
-        tasks: List of PrioritizedTask
-        url: Page URL
-        domain: Domain name
+        tasks (List[PrioritizedTask]): A list of prioritized tasks.
+        url (str): The URL of the audited page.
+        domain (str): The domain name of the audited page.
 
     Returns:
-        Markdown string
+        str: A markdown-formatted string of the quick wins.
     """
     md = f"# Quick Wins: {domain}\n\n"
     md += f"**Page**: {url}\n"

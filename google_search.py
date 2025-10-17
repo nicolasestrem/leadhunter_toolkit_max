@@ -8,17 +8,16 @@ logger = get_logger(__name__)
 
 @retry_with_backoff(max_retries=3, initial_delay=1.0, exceptions=(httpx.HTTPError, httpx.TimeoutException))
 def google_sites(query: str, max_results: int, api_key: str, cx: str) -> List[str]:
-    """
-    Search Google Custom Search API
+    """Search the Google Custom Search API for a given query.
 
     Args:
-        query: Search query
-        max_results: Maximum number of results to return
-        api_key: Google API key
-        cx: Custom Search Engine ID
+        query (str): The search query.
+        max_results (int): The maximum number of results to return.
+        api_key (str): Your Google API key.
+        cx (str): Your Custom Search Engine ID.
 
     Returns:
-        List of result URLs
+        List[str]: A list of result URLs.
     """
     if not api_key or not cx:
         logger.warning("Google Custom Search API credentials not configured")

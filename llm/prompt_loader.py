@@ -13,18 +13,20 @@ PROMPT_LIBRARY_DIR = BASE_DIR / "llm" / "prompt_library"
 
 
 def load_prompt(prompt_name: str) -> Dict[str, Any]:
-    """
-    Load prompt configuration from YAML file
+    """Load a prompt configuration from a YAML file.
+
+    This function locates a prompt file by its name within the 'prompt_library' directory,
+    parses its YAML content, and returns it as a dictionary.
 
     Args:
-        prompt_name: Name of the prompt file (without .yml extension)
-                    e.g., 'classify', 'outreach', 'dossier'
+        prompt_name (str): The name of the prompt file, without the '.yml' extension
+                           (e.g., 'classify', 'outreach').
 
     Returns:
-        Dict containing prompt configuration
+        Dict[str, Any]: A dictionary containing the prompt configuration.
 
     Raises:
-        FileNotFoundError: If prompt file doesn't exist
+        FileNotFoundError: If the specified prompt file does not exist.
     """
     prompt_path = PROMPT_LIBRARY_DIR / f"{prompt_name}.yml"
 
@@ -38,15 +40,17 @@ def load_prompt(prompt_name: str) -> Dict[str, Any]:
 
 
 def format_prompt(template: str, **kwargs) -> str:
-    """
-    Format prompt template with provided variables
+    """Format a prompt template with the provided variables.
+
+    This function uses Python's string formatting to substitute placeholders in the
+    template with their corresponding values from keyword arguments.
 
     Args:
-        template: Prompt template string with {variable} placeholders
-        **kwargs: Variables to substitute into template
+        template (str): The prompt template string, containing placeholders like {variable}.
+        **kwargs: The variables to substitute into the template.
 
     Returns:
-        Formatted prompt string
+        str: The fully formatted prompt string.
     """
     try:
         return template.format(**kwargs)
@@ -55,14 +59,16 @@ def format_prompt(template: str, **kwargs) -> str:
 
 
 def get_classification_prompt(lead_data: Dict[str, Any]) -> tuple[str, str]:
-    """
-    Get formatted classification prompts (system + user)
+    """Get the formatted classification prompts, including both system and user prompts.
+
+    This function loads the 'classify' prompt template, populates it with lead data,
+    and returns the structured prompts ready for use with an LLM.
 
     Args:
-        lead_data: Lead data dict with all required fields
+        lead_data (Dict[str, Any]): A dictionary containing the lead data.
 
     Returns:
-        Tuple of (system_prompt, user_prompt)
+        tuple[str, str]: A tuple containing the system prompt and the user prompt.
     """
     config = load_prompt('classify')
 
@@ -92,16 +98,17 @@ def get_classification_prompt(lead_data: Dict[str, Any]) -> tuple[str, str]:
 
 
 def get_outreach_prompt(lead_data: Dict[str, Any], language: str = 'en', style: str = 'professional') -> tuple[str, str]:
-    """
-    Get formatted outreach prompts
+    """Get the formatted outreach prompts.
+
+    Note: The implementation of this function will be completed in the 'outreach' module.
 
     Args:
-        lead_data: Lead data dict
-        language: Target language (en, fr, de)
-        style: Writing style/voice
+        lead_data (Dict[str, Any]): A dictionary of lead data.
+        language (str): The target language (e.g., 'en', 'fr', 'de').
+        style (str): The desired writing style or voice.
 
     Returns:
-        Tuple of (system_prompt, user_prompt)
+        tuple[str, str]: A tuple of the system and user prompts.
     """
     config = load_prompt('outreach')
     # Implementation will be completed in outreach module
@@ -109,15 +116,16 @@ def get_outreach_prompt(lead_data: Dict[str, Any], language: str = 'en', style: 
 
 
 def get_dossier_prompt(lead_data: Dict[str, Any], pages_content: str) -> tuple[str, str]:
-    """
-    Get formatted dossier building prompts
+    """Get the formatted prompts for building a dossier.
+
+    Note: The implementation of this function will be completed in the 'dossier' module.
 
     Args:
-        lead_data: Lead data dict
-        pages_content: Aggregated content from crawled pages
+        lead_data (Dict[str, Any]): A dictionary of lead data.
+        pages_content (str): The aggregated content from crawled pages.
 
     Returns:
-        Tuple of (system_prompt, user_prompt)
+        tuple[str, str]: A tuple of the system and user prompts.
     """
     config = load_prompt('dossier')
     # Implementation will be completed in dossier module
@@ -125,14 +133,15 @@ def get_dossier_prompt(lead_data: Dict[str, Any], pages_content: str) -> tuple[s
 
 
 def get_audit_prompt(page_data: Dict[str, Any]) -> tuple[str, str]:
-    """
-    Get formatted audit prompts
+    """Get the formatted prompts for an audit.
+
+    Note: The implementation of this function will be completed in the 'audit' module.
 
     Args:
-        page_data: Page analysis data
+        page_data (Dict[str, Any]): A dictionary of page analysis data.
 
     Returns:
-        Tuple of (system_prompt, user_prompt)
+        tuple[str, str]: A tuple of the system and user prompts.
     """
     config = load_prompt('audit')
     # Implementation will be completed in audit module

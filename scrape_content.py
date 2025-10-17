@@ -4,6 +4,17 @@ from selectolax.parser import HTMLParser
 from selectolax.parser import ParserError
 
 def to_markdown(html: str) -> str:
+    """Convert HTML to a simplified markdown format.
+
+    This function extracts headings (h1, h2, h3) and paragraphs from the HTML
+    and converts them into a basic markdown structure.
+
+    Args:
+        html (str): The HTML content to convert.
+
+    Returns:
+        str: The converted markdown string.
+    """
     try:
         # very light markdown from headings and paragraphs
         tree = HTMLParser(html)

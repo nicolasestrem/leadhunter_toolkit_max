@@ -11,16 +11,18 @@ from .cache_section import render_cache_section
 
 
 def render_sidebar(settings: dict, save_callback, load_preset_callback) -> dict:
-    """
-    Render complete sidebar with all sections.
+    """Render the complete sidebar with all its sections.
+
+    This function acts as an orchestrator for the sidebar, calling the rendering
+    functions for each of its distinct sections.
 
     Args:
-        settings: Current settings dictionary
-        save_callback: Function to save settings
-        load_preset_callback: Function to load preset data
+        settings (dict): The current settings dictionary.
+        save_callback: The function to call to save settings.
+        load_preset_callback: The function to call to load preset data.
 
     Returns:
-        Updated settings dictionary
+        dict: The updated settings dictionary.
     """
     with st.sidebar:
         # Core settings form
