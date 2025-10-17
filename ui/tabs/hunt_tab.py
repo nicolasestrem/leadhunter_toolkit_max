@@ -9,7 +9,7 @@ import pandas as pd
 from search import ddg_sites
 from google_search import google_sites
 from crawl import crawl_site
-from leads.contacts_extract import extract_contacts_from_markdown
+from extract import extract_basic
 from fetch import text_content
 from classify import classify_lead
 from scoring import score_lead
@@ -121,32 +121,30 @@ def render_hunt_tab(settings: dict, default_keywords: dict):
                 status_text.text(f"📊 Extracting page {pages_processed}/{total_pages}...")
                 progress_bar.progress(0.5 + (pages_processed / total_pages) * 0.4)
 
-            # Convert HTML to text and extract contacts using new API
-            text = text_content(html)
-            contacts = extract_contacts_from_markdown(text)
+            # Extract contacts using basic extraction
+            lead = extract_basic(page_url, html, crawl_settings)
             
-            dom = domain_of(page_url)
+            dom = lead.get("domain") or domain_of(page_url)
             if not dom:
                 continue
             cur = by_domain.get(dom, {
                 "domain": dom, "website": page_url, "emails": [], "phones": [], "social": {},
-                "name": None, "tags": [], "status": "new", "notes": None,
-                "city": None, "address": None
+                "name": lead.get("name"), "tags": [], "status": "new", "notes": None,
+                "city": lead.get("city"), "address": lead.get("address")
             })
             cur["website"] = cur.get("website") or page_url
-            cur["name"] = cur.get("name") or contacts.get("company_name")
-            cur["emails"] = sorted(set((cur.get("emails") or []) + (contacts.get("emails") or [])))
-            cur["phones"] = sorted(set((cur.get("phones") or []) + (contacts.get("phones") or [])))
-            cur["address"] = cur.get("address") or contacts.get("address")
-            # City matching from settings
-            city = crawl_settings.get("city", "")
-            if city and city.lower() in text.lower():
-                cur["city"] = city
+            cur["name"] = cur.get("name") or lead.get("name")
+            cur["emails"] = sorted(set((cur.get("emails") or []) + (lead.get("emails") or [])))
+            cur["phones"] = sorted(set((cur.get("phones") or []) + (lead.get("phones") or [])))
+            cur["address"] = cur.get("address") or lead.get("address")
+            cur["city"] = cur.get("city") or lead.get("city")
             soc = cur.get("social") or {}
-            for k, v in (contacts.get("social") or {}).items():
+            for k, v in (lead.get("social") or {}).items():
                 if v and not soc.get(k):
                     soc[k] = v
             cur["social"] = soc
+            # Get text content for classification
+            text = text_content(html)
             tags = classify_lead(text, default_keywords)
             cur["tags"] = sorted(set((cur.get("tags") or []) + tags))
             by_domain[dom] = cur
